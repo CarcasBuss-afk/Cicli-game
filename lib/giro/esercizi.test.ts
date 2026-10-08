@@ -6,15 +6,15 @@ import { esegui } from './interprete';
 import { valutaRisposta } from './hint';
 import {
   generaPercorso,
-  generaTappa,
+  generaEsercizio,
   NUM_TAPPE_DEFAULT,
   NUM_TAPPE_MAX,
   NUM_TAPPE_MIN,
-  tappaPerAllievo,
-  type TipoTappa,
-} from './tappe';
+  esercizioPerAllievo,
+  type TipoEsercizio,
+} from './esercizi';
 
-const TIPI: TipoTappa[] = [
+const TIPI: TipoEsercizio[] = [
   'ripeti-n',
   'output-range',
   'completa-range',
@@ -34,7 +34,7 @@ describe('la soluzione di riferimento passa sempre', () => {
     for (const difficolta of [1, 2, 3] as const) {
       it(`${tipo} (difficoltà ${difficolta}) su 40 semi`, () => {
         for (let seme = 1; seme <= 40; seme++) {
-          const tappa = generaTappa(tipo, difficolta, seme * 1013);
+          const tappa = generaEsercizio(tipo, difficolta, seme * 1013);
           const esito = valutaRisposta(tappa, tappa.soluzione);
           expect(esito.hint, `seme ${seme}: ${tappa.consegna}`).toBeNull();
           expect(esito.promosso).toBe(true);
@@ -66,7 +66,7 @@ describe('le tappe sono sensate da mostrare in classe', () => {
   it('il ciclo mostrato nelle tappe di inversione stampa davvero l\'output atteso', () => {
     for (let seme = 1; seme <= 40; seme++) {
       for (const difficolta of [1, 2, 3] as const) {
-        const tappa = generaTappa('ciclo-output', difficolta, seme * 601);
+        const tappa = generaEsercizio('ciclo-output', difficolta, seme * 601);
         const esito = esegui(tappa.codiceMostrato!);
         if (!esito.ok) throw new Error(`codice mostrato non eseguibile: ${esito.errore.messaggio}`);
         expect(esito.output).toEqual(tappa.outputAtteso);
@@ -75,24 +75,24 @@ describe('le tappe sono sensate da mostrare in classe', () => {
   });
 
   it('la tappa da completare ha i trattini nell\'editor e il ciclo già impostato', () => {
-    const tappa = generaTappa('completa-range', 2, 5);
+    const tappa = generaEsercizio('completa-range', 2, 5);
     expect(tappa.codiceIniziale).toContain('__');
     expect(tappa.codiceIniziale).toContain('for i in range(');
     expect(tappa.codiceIniziale).toContain('print(i)');
   });
 
   it('solo le tappe con output in chiaro lo dichiarano', () => {
-    expect(generaTappa('output-range', 1, 1).mostraOutput).toBe(true);
-    expect(generaTappa('completa-range', 1, 1).mostraOutput).toBe(true);
-    expect(generaTappa('ciclo-stringa', 1, 1).mostraOutput).toBe(true);
+    expect(generaEsercizio('output-range', 1, 1).mostraOutput).toBe(true);
+    expect(generaEsercizio('completa-range', 1, 1).mostraOutput).toBe(true);
+    expect(generaEsercizio('ciclo-stringa', 1, 1).mostraOutput).toBe(true);
     // Qui l'output è il segreto della tappa: va indovinato, non mostrato.
-    expect(generaTappa('ciclo-output', 1, 1).mostraOutput).toBe(false);
-    expect(generaTappa('accumulatore', 3, 1).mostraOutput).toBe(false);
-    expect(generaTappa('ripeti-n', 1, 1).mostraOutput).toBe(false);
+    expect(generaEsercizio('ciclo-output', 1, 1).mostraOutput).toBe(false);
+    expect(generaEsercizio('accumulatore', 3, 1).mostraOutput).toBe(false);
+    expect(generaEsercizio('ripeti-n', 1, 1).mostraOutput).toBe(false);
   });
 
   it('le tappe difficili di ripeti-n usano frasi con l\'apostrofo', () => {
-    const tappa = generaTappa('ripeti-n', 2, 3);
+    const tappa = generaEsercizio('ripeti-n', 2, 3);
     expect(tappa.outputAtteso[0]).toContain("'");
     // La soluzione usa le virgolette doppie: con le singole Python darebbe errore.
     expect(tappa.soluzione).toContain('"');
@@ -144,23 +144,23 @@ describe('percorso', () => {
   });
 });
 
-describe('tappaPerAllievo', () => {
+describe('esercizioPerAllievo', () => {
   it('non lascia uscire la soluzione', () => {
-    const pubblica = tappaPerAllievo(generaTappa('output-range', 1, 1));
+    const pubblica = esercizioPerAllievo(generaEsercizio('output-range', 1, 1));
     expect(JSON.stringify(pubblica)).not.toContain('soluzione');
     expect('soluzione' in pubblica).toBe(false);
   });
 
   it('nasconde l\'output quando è il segreto della tappa', () => {
-    const inversione = tappaPerAllievo(generaTappa('ciclo-output', 1, 1));
+    const inversione = esercizioPerAllievo(generaEsercizio('ciclo-output', 1, 1));
     expect(inversione.outputAtteso).toBeUndefined();
-    const conOutput = tappaPerAllievo(generaTappa('output-range', 1, 1));
+    const conOutput = esercizioPerAllievo(generaEsercizio('output-range', 1, 1));
     expect(conOutput.outputAtteso).toBeDefined();
   });
 
   it('nasconde il risultato della somma', () => {
-    const tappa = generaTappa('accumulatore', 2, 1);
-    const pubblica = tappaPerAllievo(tappa);
+    const tappa = generaEsercizio('accumulatore', 2, 1);
+    const pubblica = esercizioPerAllievo(tappa);
     expect(pubblica.outputAtteso).toBeUndefined();
     expect(JSON.stringify(pubblica)).not.toContain(tappa.outputAtteso[0]);
   });
@@ -170,7 +170,7 @@ describe('i generatori del catalogo esteso', () => {
   it('caccia all\'errore: il codice di partenza gira ma stampa altro', () => {
     for (let seme = 1; seme <= 40; seme++) {
       for (const difficolta of [1, 2, 3] as const) {
-        const tappa = generaTappa('caccia-errore', difficolta, seme * 131);
+        const tappa = generaEsercizio('caccia-errore', difficolta, seme * 131);
         const esito = esegui(tappa.codiceIniziale!);
         if (!esito.ok) throw new Error(`il codice sbagliato non gira: ${esito.errore.messaggio}`);
         // Mostriamo all'allievo quello che stampa davvero, non una nostra supposizione.
@@ -182,7 +182,7 @@ describe('i generatori del catalogo esteso', () => {
   });
 
   it('caccia all\'errore: consegnare il codice così com\'è non passa', () => {
-    const tappa = generaTappa('caccia-errore', 2, 7);
+    const tappa = generaEsercizio('caccia-errore', 2, 7);
     const esito = valutaRisposta(tappa, tappa.codiceIniziale!);
     expect(esito.promosso).toBe(false);
     expect(esito.hint).toContain('Non hai cambiato niente');
@@ -191,7 +191,7 @@ describe('i generatori del catalogo esteso', () => {
   it('quante righe: la risposta è davvero il numero di righe del ciclo mostrato', () => {
     for (let seme = 1; seme <= 40; seme++) {
       for (const difficolta of [1, 2, 3] as const) {
-        const tappa = generaTappa('quante-righe', difficolta, seme * 211);
+        const tappa = generaEsercizio('quante-righe', difficolta, seme * 211);
         const esito = esegui(tappa.codiceMostrato!);
         if (!esito.ok) throw new Error(esito.errore.messaggio);
         expect(tappa.outputAtteso).toEqual([String(esito.output.length)]);
@@ -200,17 +200,17 @@ describe('i generatori del catalogo esteso', () => {
   });
 
   it('scala: le righe si allungano o si accorciano di un asterisco alla volta', () => {
-    const sale = generaTappa('scala', 2, 3).outputAtteso.map((r) => r.length);
-    const scende = generaTappa('scala', 3, 3).outputAtteso.map((r) => r.length);
+    const sale = generaEsercizio('scala', 2, 3).outputAtteso.map((r) => r.length);
+    const scende = generaEsercizio('scala', 3, 3).outputAtteso.map((r) => r.length);
     sale.forEach((l, i) => expect(l).toBe(i + 1));
     scende.forEach((l, i) => i > 0 && expect(l).toBe(scende[i - 1] - 1));
     // Il rettangolo, primo scalino, ha righe tutte uguali.
-    expect(new Set(generaTappa('scala', 1, 3).outputAtteso).size).toBe(1);
+    expect(new Set(generaEsercizio('scala', 1, 3).outputAtteso).size).toBe(1);
   });
 
   it('somma che cresce: non è una progressione, quindi non si fa col solo range', () => {
     for (let seme = 1; seme <= 20; seme++) {
-      const numeri = generaTappa('accumulatore-visibile', 2, seme).outputAtteso.map(Number);
+      const numeri = generaEsercizio('accumulatore-visibile', 2, seme).outputAtteso.map(Number);
       const differenze = numeri.slice(1).map((n, i) => n - numeri[i]);
       expect(new Set(differenze).size, numeri.join(' ')).toBeGreaterThan(1);
     }
@@ -218,8 +218,8 @@ describe('i generatori del catalogo esteso', () => {
 
   it('nelle tappe dove il risultato è il segreto, l\'allievo non lo riceve', () => {
     for (const tipo of ['quante-righe', 'conta-giri'] as const) {
-      const tappa = generaTappa(tipo, 2, 5);
-      const pubblica = tappaPerAllievo(tappa);
+      const tappa = generaEsercizio(tipo, 2, 5);
+      const pubblica = esercizioPerAllievo(tappa);
       expect(pubblica.outputAtteso, tipo).toBeUndefined();
       expect('soluzione' in pubblica).toBe(false);
     }

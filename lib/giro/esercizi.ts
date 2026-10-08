@@ -6,11 +6,11 @@
  * risposte a memoria). Dentro una sessione il percorso è uguale per tutti: la gara è equa.
  *
  * Il modulo è puro: niente Firestore, niente Next. La soluzione di riferimento di ogni
- * tappa resta sul server (vedi `tappaPerAllievo`).
+ * tappa resta sul server (vedi `esercizioPerAllievo`).
  */
 import { esegui } from './interprete';
 
-export type TipoTappa =
+export type TipoEsercizio =
   | 'ripeti-n' // stampa N volte la stessa frase
   | 'output-range' // dato l'output, scrivere il ciclo
   | 'completa-range' // come sopra, ma con il ciclo già impostato da completare
@@ -45,8 +45,8 @@ export interface Vincoli {
   accumuloRichiesto?: boolean;
 }
 
-export interface Tappa {
-  tipo: TipoTappa;
+export interface Esercizio {
+  tipo: TipoEsercizio;
   terreno: Terreno;
   /** Testo della consegna, mostrato all'allievo. */
   consegna: string;
@@ -70,9 +70,9 @@ export interface Tappa {
 }
 
 /** La tappa come la vede l'allievo: senza soluzione e senza l'output se è segreto. */
-export type TappaPubblica = Omit<Tappa, 'soluzione' | 'outputAtteso'> & { outputAtteso?: string[] };
+export type EsercizioPubblico = Omit<Esercizio, 'soluzione' | 'outputAtteso'> & { outputAtteso?: string[] };
 
-export function tappaPerAllievo(tappa: Tappa): TappaPubblica {
+export function esercizioPerAllievo(tappa: Esercizio): EsercizioPubblico {
   const { soluzione: _soluzione, outputAtteso, ...resto } = tappa;
   void _soluzione;
   return tappa.mostraOutput ? { ...resto, outputAtteso } : resto;
@@ -154,7 +154,7 @@ function parametriRange(rnd: () => number, difficolta: Difficolta): { inizio: nu
   return { inizio, fine: inizio + passo * quante, passo };
 }
 
-function tappaRipetiN(rnd: () => number, difficolta: Difficolta): Tappa {
+function tappaRipetiN(rnd: () => number, difficolta: Difficolta): Esercizio {
   const frase = difficolta === 1 ? scegli(rnd, FRASI_SEMPLICI) : scegli(rnd, FRASI_APOSTROFO);
   const n = intero(rnd, 3, 8);
   return {
@@ -169,7 +169,7 @@ function tappaRipetiN(rnd: () => number, difficolta: Difficolta): Tappa {
   };
 }
 
-function tappaOutputRange(rnd: () => number, difficolta: Difficolta): Tappa {
+function tappaOutputRange(rnd: () => number, difficolta: Difficolta): Esercizio {
   const { inizio, fine, passo } = parametriRange(rnd, difficolta);
   const numeri = numeriDiRange(inizio, fine, passo);
   return {
@@ -184,7 +184,7 @@ function tappaOutputRange(rnd: () => number, difficolta: Difficolta): Tappa {
   };
 }
 
-function tappaCompletaRange(rnd: () => number, difficolta: Difficolta): Tappa {
+function tappaCompletaRange(rnd: () => number, difficolta: Difficolta): Esercizio {
   const { inizio, fine, passo } = parametriRange(rnd, difficolta);
   const numeri = numeriDiRange(inizio, fine, passo);
   const buchi = passo === 1 ? 'range(__, __)' : 'range(__, __, __)';
@@ -201,12 +201,12 @@ function tappaCompletaRange(rnd: () => number, difficolta: Difficolta): Tappa {
   };
 }
 
-function tappaCicloOutput(rnd: () => number, difficolta: Difficolta): Tappa {
+function tappaCicloOutput(rnd: () => number, difficolta: Difficolta): Esercizio {
   const { inizio, fine, passo } = parametriRange(rnd, difficolta);
   const numeri = numeriDiRange(inizio, fine, passo);
   // In collina e in montagna il ciclo stampa una f-string, non solo il numero.
   const conFrase = difficolta >= 2 && rnd() < 0.6;
-  const etichetta = scegli(rnd, ['Giro', 'Tappa', 'Km'] as const);
+  const etichetta = scegli(rnd, ['Giro', 'Esercizio', 'Km'] as const);
   const corpo = conFrase ? `print(f"${etichetta} {i}")` : 'print(i)';
   const codice = `for i in ${scriviRange(inizio, fine, passo)}:\n    ${corpo}`;
   return {
@@ -222,7 +222,7 @@ function tappaCicloOutput(rnd: () => number, difficolta: Difficolta): Tappa {
   };
 }
 
-function tappaCicloStringa(rnd: () => number, difficolta: Difficolta): Tappa {
+function tappaCicloStringa(rnd: () => number, difficolta: Difficolta): Esercizio {
   const parola = scegli(rnd, PAROLE);
   return {
     tipo: 'ciclo-stringa',
@@ -236,7 +236,7 @@ function tappaCicloStringa(rnd: () => number, difficolta: Difficolta): Tappa {
   };
 }
 
-function tappaAccumulatore(rnd: () => number, difficolta: Difficolta): Tappa {
+function tappaAccumulatore(rnd: () => number, difficolta: Difficolta): Esercizio {
   const pari = difficolta === 3 && rnd() < 0.5;
   if (pari) {
     const n = intero(rnd, 4, 9) * 2; // numero pari fra 8 e 18
@@ -272,7 +272,7 @@ function tappaAccumulatore(rnd: () => number, difficolta: Difficolta): Tappa {
 /** Righe di simboli da ripetere: niente lettere, così non si confonde con ripeti-n. */
 const RIGHE = ['-----', '=======', '+-+-+-+', '~~~~~~', 'o-o-o-o'] as const;
 
-function tappaRigaRipetuta(rnd: () => number, difficolta: Difficolta): Tappa {
+function tappaRigaRipetuta(rnd: () => number, difficolta: Difficolta): Esercizio {
   const riga = scegli(rnd, RIGHE);
   const n = intero(rnd, 3, 7);
   return {
@@ -292,7 +292,7 @@ function tappaRigaRipetuta(rnd: () => number, difficolta: Difficolta): Tappa {
  * risultato si vede: se sbagli, la scala viene storta. E non si aggirano col passo,
  * perché nessun `range` produce stringhe che si allungano.
  */
-function tappaScala(rnd: () => number, difficolta: Difficolta): Tappa {
+function tappaScala(rnd: () => number, difficolta: Difficolta): Esercizio {
   const vincoli: Vincoli = { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 };
   if (difficolta === 1) {
     // Rettangolo: ripasso della notazione "*" * 6, la variabile non serve ancora.
@@ -336,7 +336,7 @@ type Difetto = 'fine' | 'inizio' | 'stringa' | 'passo' | 'segno';
  * L'editor parte con il codice sbagliato già scritto; l'allievo lo corregge.
  * I difetti sono quelli che si vedono davvero in laboratorio.
  */
-function tappaCacciaErrore(rnd: () => number, difficolta: Difficolta): Tappa {
+function tappaCacciaErrore(rnd: () => number, difficolta: Difficolta): Esercizio {
   const { inizio, fine, passo } = parametriRange(rnd, difficolta);
   const giusto = numeriDiRange(inizio, fine, passo).map(String);
 
@@ -377,7 +377,7 @@ function tappaCacciaErrore(rnd: () => number, difficolta: Difficolta): Tappa {
 }
 
 /** Quante righe stampa questo ciclo? Lettura pura: si risponde con un numero solo. */
-function tappaQuanteRighe(rnd: () => number, difficolta: Difficolta): Tappa {
+function tappaQuanteRighe(rnd: () => number, difficolta: Difficolta): Esercizio {
   const { inizio, fine, passo } = parametriRange(rnd, difficolta);
   const quante = numeriDiRange(inizio, fine, passo).length;
   return {
@@ -399,7 +399,7 @@ function tappaQuanteRighe(rnd: () => number, difficolta: Difficolta): Tappa {
  * dentro il ciclo il totale si vede a ogni giro, e si capisce che cosa fa la variabile.
  * Le somme parziali non sono una progressione aritmetica: nessun `range` le produce.
  */
-function tappaAccumulatoreVisibile(rnd: () => number, difficolta: Difficolta): Tappa {
+function tappaAccumulatoreVisibile(rnd: () => number, difficolta: Difficolta): Esercizio {
   const da = difficolta === 3 ? intero(rnd, 2, 4) : 1;
   const a = da + intero(rnd, 3, 6);
   const somme: number[] = [];
@@ -421,7 +421,7 @@ function tappaAccumulatoreVisibile(rnd: () => number, difficolta: Difficolta): T
 }
 
 /** Contare i giri con una variabile: `conta += 1`, e alla fine si stampa solo il conteggio. */
-function tappaContaGiri(rnd: () => number, difficolta: Difficolta): Tappa {
+function tappaContaGiri(rnd: () => number, difficolta: Difficolta): Esercizio {
   const { inizio, fine, passo } = parametriRange(rnd, difficolta);
   const quante = numeriDiRange(inizio, fine, passo).length;
   const intervallo = scriviRange(inizio, fine, passo);
@@ -439,7 +439,7 @@ function tappaContaGiri(rnd: () => number, difficolta: Difficolta): Tappa {
   };
 }
 
-const GENERATORI: Record<TipoTappa, (rnd: () => number, d: Difficolta) => Tappa> = {
+const GENERATORI: Record<TipoEsercizio, (rnd: () => number, d: Difficolta) => Esercizio> = {
   'ripeti-n': tappaRipetiN,
   'output-range': tappaOutputRange,
   'completa-range': tappaCompletaRange,
@@ -454,7 +454,7 @@ const GENERATORI: Record<TipoTappa, (rnd: () => number, d: Difficolta) => Tappa>
   'conta-giri': tappaContaGiri,
 };
 
-export function generaTappa(tipo: TipoTappa, difficolta: Difficolta, seme: number): Tappa {
+export function generaEsercizio(tipo: TipoEsercizio, difficolta: Difficolta, seme: number): Esercizio {
   return GENERATORI[tipo](generatore(seme), difficolta);
 }
 
@@ -469,12 +469,12 @@ export const NUM_TAPPE_MAX = 30;
  * in mezzo con i tipi alternati, arrivo in montagna con l'accumulatore. La difficoltà sale
  * con la posizione.
  */
-function schema(numTappe: number): Array<{ tipo: TipoTappa; difficolta: Difficolta }> {
+function schema(numTappe: number): Array<{ tipo: TipoEsercizio; difficolta: Difficolta }> {
   // Nel gruppone solo tipi che si risolvono con `range` e `print`, cioè con quello che
   // la classe ha fatto per prima. Ciclo sulla parola, scala, somma che cresce e conta
   // giri richiedono argomenti in più: restano per le tappe tematiche, dove li sceglie il
   // docente quando li ha spiegati.
-  const centro: TipoTappa[] = [
+  const centro: TipoEsercizio[] = [
     'output-range',
     'ciclo-output',
     'completa-range',
@@ -485,9 +485,9 @@ function schema(numTappe: number): Array<{ tipo: TipoTappa; difficolta: Difficol
     'caccia-errore',
     'completa-range',
   ];
-  const tipi: TipoTappa[] = [];
+  const tipi: TipoEsercizio[] = [];
   // Due tappe di avvicinamento, poi il gruppone, poi il tappone finale.
-  const avvicinamento: TipoTappa[] = ['ripeti-n', 'riga-ripetuta'];
+  const avvicinamento: TipoEsercizio[] = ['ripeti-n', 'riga-ripetuta'];
   const partenza = Math.min(2, numTappe);
   for (let i = 0; i < partenza; i++) tipi.push(avvicinamento[i]);
   const arrivo = numTappe >= 6 ? 1 : 0;
@@ -507,7 +507,7 @@ function schema(numTappe: number): Array<{ tipo: TipoTappa; difficolta: Difficol
  * Genera il percorso di una sessione: `numTappe` tappe con parametri casuali derivati dal
  * seme. Stesso seme, stesso percorso.
  */
-export function generaPercorso(numTappe = NUM_TAPPE_DEFAULT, seme = Date.now()): Tappa[] {
+export function generaPercorso(numTappe = NUM_TAPPE_DEFAULT, seme = Date.now()): Esercizio[] {
   const quante = Math.max(NUM_TAPPE_MIN, Math.min(NUM_TAPPE_MAX, Math.round(numTappe)));
-  return schema(quante).map((s, i) => generaTappa(s.tipo, s.difficolta, seme + i * 7919));
+  return schema(quante).map((s, i) => generaEsercizio(s.tipo, s.difficolta, seme + i * 7919));
 }

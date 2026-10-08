@@ -6,7 +6,7 @@
  * per ultimo la sua tappa più recente. Gli errori non contano in classifica: costano
  * tempo e basta, come dice il gioco agli allievi.
  */
-import type { TipoTappa } from './tappe';
+import type { TipoEsercizio } from './esercizi';
 
 export type TappaFatta = { completedAt: Date | null; errori: number };
 
@@ -74,10 +74,10 @@ export function erroriPerTappa(allievi: AllievoLim[], numTappe: number): number[
  */
 export function riepilogoPerTipo(
   allievi: AllievoLim[],
-  tipi: TipoTappa[],
-): Array<{ tipo: TipoTappa; errori: number; tappe: number }> {
+  tipi: TipoEsercizio[],
+): Array<{ tipo: TipoEsercizio; errori: number; tappe: number }> {
   const errori = erroriPerTappa(allievi, tipi.length);
-  const somma = new Map<TipoTappa, { errori: number; tappe: number }>();
+  const somma = new Map<TipoEsercizio, { errori: number; tappe: number }>();
   tipi.forEach((tipo, i) => {
     const riga = somma.get(tipo) ?? { errori: 0, tappe: 0 };
     riga.errori += errori[i];
@@ -90,7 +90,7 @@ export function riepilogoPerTipo(
 }
 
 /** Nome leggibile del tipo di tappa, per il riepilogo alla LIM. */
-export const NOME_TIPO: Record<TipoTappa, string> = {
+export const NOME_TIPO: Record<TipoEsercizio, string> = {
   'ripeti-n': 'Ripetere N volte',
   'output-range': 'Scrivere il ciclo',
   'completa-range': 'Completare range',

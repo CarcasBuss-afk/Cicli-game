@@ -3,10 +3,10 @@
  * atteso: così i casi sono quelli veri di laboratorio. */
 import { describe, expect, it } from 'vitest';
 import { valutaRisposta } from './hint';
-import type { Tappa } from './tappe';
+import type { Esercizio } from './esercizi';
 
-/** Tappa "scrivi il ciclo che stampa 0 1 2 3 4". */
-const contaFinoA5: Tappa = {
+/** Esercizio "scrivi il ciclo che stampa 0 1 2 3 4". */
+const contaFinoA5: Esercizio = {
   tipo: 'output-range',
   terreno: 'pianura',
   consegna: 'Scrivi un ciclo che stampa questi numeri, uno per riga:',
@@ -17,16 +17,16 @@ const contaFinoA5: Tappa = {
   vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
 };
 
-/** Tappa con conto alla rovescia: 5 4 3 2 1. */
-const rovescia: Tappa = {
+/** Esercizio con conto alla rovescia: 5 4 3 2 1. */
+const rovescia: Esercizio = {
   ...contaFinoA5,
   terreno: 'montagna',
   outputAtteso: ['5', '4', '3', '2', '1'],
   soluzione: 'for i in range(5, 0, -1):\n    print(i)',
 };
 
-/** Tappa "stampa 3 volte Evviva". */
-const ripetiEvviva: Tappa = {
+/** Esercizio "stampa 3 volte Evviva". */
+const ripetiEvviva: Esercizio = {
   tipo: 'ripeti-n',
   terreno: 'pianura',
   consegna: 'Stampa 3 volte la frase: Evviva',
@@ -37,8 +37,8 @@ const ripetiEvviva: Tappa = {
   vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
 };
 
-/** Tappa dell'accumulatore: somma da 1 a 5 = 15. */
-const somma: Tappa = {
+/** Esercizio dell'accumulatore: somma da 1 a 5 = 15. */
+const somma: Esercizio = {
   tipo: 'accumulatore',
   terreno: 'montagna',
   consegna: 'Somma i numeri da 1 a 5 e stampa solo il risultato.',
@@ -49,8 +49,8 @@ const somma: Tappa = {
   vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
 };
 
-/** Tappa di inversione: si consegna l'output, non il codice. */
-const inversione: Tappa = {
+/** Esercizio di inversione: si consegna l'output, non il codice. */
+const inversione: Esercizio = {
   tipo: 'ciclo-output',
   terreno: 'collina',
   consegna: 'Leggi il ciclo: che cosa stampa? Scrivi le righe esatte, una per riga.',
@@ -63,7 +63,7 @@ const inversione: Tappa = {
 };
 
 /** Scorciatoia: valuta e pretende la bocciatura, restituendo l'hint. */
-function hint(tappa: Tappa, risposta: string): string {
+function hint(tappa: Esercizio, risposta: string): string {
   const esito = valutaRisposta(tappa, risposta);
   if (esito.promosso) throw new Error('attesa bocciatura, invece è stato promosso');
   if (!esito.hint) throw new Error('bocciato senza hint');
@@ -232,7 +232,7 @@ describe('casi di contorno', () => {
   });
 
   it('i trattini del codice da completare', () => {
-    const daCompletare: Tappa = { ...contaFinoA5, tipo: 'completa-range', codiceIniziale: 'for i in range(__, __):\n    print(i)' };
+    const daCompletare: Esercizio = { ...contaFinoA5, tipo: 'completa-range', codiceIniziale: 'for i in range(__, __):\n    print(i)' };
     expect(hint(daCompletare, 'for i in range(__, __):\n    print(i)')).toContain('trattini');
   });
 
@@ -291,7 +291,7 @@ describe('tappe di inversione (si consegna l\'output)', () => {
 });
 
 describe('hint delle tappe nuove', () => {
-  const scalaCrescente: Tappa = {
+  const scalaCrescente: Esercizio = {
     tipo: 'scala',
     terreno: 'collina',
     consegna: 'Disegna questa scala di asterischi:',
@@ -315,7 +315,7 @@ describe('hint delle tappe nuove', () => {
     expect(valutaRisposta(scalaCrescente, 'for n in range(1, 5): print(n * "*")').promosso).toBe(true);
   });
 
-  const sommaVisibile: Tappa = {
+  const sommaVisibile: Esercizio = {
     tipo: 'accumulatore-visibile',
     terreno: 'montagna',
     consegna: 'Somma i numeri da 1 a 5 uno alla volta, e a ogni giro stampa il totale:',
@@ -335,7 +335,7 @@ describe('hint delle tappe nuove', () => {
     expect(h).toBeTruthy();
   });
 
-  const quanteRighe: Tappa = {
+  const quanteRighe: Esercizio = {
     tipo: 'quante-righe',
     terreno: 'collina',
     consegna: 'Quante righe stampa questo ciclo? Scrivi solo il numero.',
@@ -364,7 +364,7 @@ describe('hint delle tappe nuove', () => {
     expect(hint(quanteRighe, '3\n4\n5\n6')).toContain('solo un numero');
   });
 
-  const contaGiri: Tappa = {
+  const contaGiri: Esercizio = {
     tipo: 'conta-giri',
     terreno: 'montagna',
     consegna: 'Conta quante volte gira il ciclo usando una variabile conta.',

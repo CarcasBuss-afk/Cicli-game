@@ -101,7 +101,7 @@ export default function Gara() {
         return;
       }
 
-      // Tappa superata: la card vola via, poi entra la prossima.
+      // Esercizio superata: la card vola via, poi entra la prossima.
       const nuovaSerie = serie + 1;
       setSerie(nuovaSerie);
       setHint(null);
@@ -222,7 +222,7 @@ export default function Gara() {
         </div>
         <div className="text-right">
           <p className="text-2xl font-black">
-            Tappa {stato.tappaCorrente + 1}
+            Esercizio {stato.tappaCorrente + 1}
             <span className="text-base font-normal text-(--color-testo-tenue)"> di {stato.numTappe}</span>
           </p>
           <p className={`text-sm font-bold ${terreno.colore}`}>

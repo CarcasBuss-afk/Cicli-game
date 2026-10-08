@@ -5,7 +5,7 @@ import 'server-only';
 import type { DocumentReference, Timestamp, Transaction } from 'firebase-admin/firestore';
 import { getDb } from '@/lib/firebaseAdmin';
 import { ApiError } from './http';
-import type { Tappa } from './tappe';
+import type { Esercizio } from './esercizi';
 import { tokenValido } from './token';
 
 export type StatoSessione = 'waiting' | 'running' | 'closed';
@@ -19,7 +19,7 @@ export type SessioneDoc = {
   endedAt: Timestamp | null;
   numTappe: number;
   /** Il percorso, uguale per tutti gli allievi della sessione. Resta sul server. */
-  tappe: Tappa[];
+  tappe: Esercizio[];
   /** Quanti allievi hanno già tagliato il traguardo: dà l'ordine d'arrivo. */
   arrivati: number;
   /** Prossimo numero di corsa da assegnare a chi si iscrive. Parte da 1. */

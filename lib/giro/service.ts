@@ -20,7 +20,7 @@ import {
   type Contesto,
   type SessioneDoc,
 } from './store';
-import { tappaPerAllievo, type Tappa } from './tappe';
+import { esercizioPerAllievo, type Esercizio } from './esercizi';
 import { generaToken, hashToken } from './token';
 
 function limita(chiave: string): void {
@@ -46,8 +46,8 @@ const arrivato = (allievo: AllievoDoc, numTappe: number) => allievo.tappaCorrent
 /** La tappa da fare adesso, già ripulita di soluzione e output segreto. */
 function tappaCorrentePubblica(ctx: Contesto) {
   if (ctx.sessione.status !== 'running' || arrivato(ctx.allievo, ctx.sessione.numTappe)) return null;
-  const tappa = ctx.sessione.tappe[ctx.allievo.tappaCorrente] as Tappa | undefined;
-  return tappa ? tappaPerAllievo(tappa) : null;
+  const tappa = ctx.sessione.tappe[ctx.allievo.tappaCorrente] as Esercizio | undefined;
+  return tappa ? esercizioPerAllievo(tappa) : null;
 }
 
 /* ------------------------------------------------------------------------- join */
@@ -218,8 +218,8 @@ export async function submit(body: Record<string, unknown>) {
       );
     }
 
-    const tappa = ctx.sessione.tappe[n] as Tappa | undefined;
-    if (!tappa) throw new ApiError(500, 'INTERNAL', 'Tappa non trovata nel percorso: chiama il prof');
+    const tappa = ctx.sessione.tappe[n] as Esercizio | undefined;
+    if (!tappa) throw new ApiError(500, 'INTERNAL', 'Esercizio non trovata nel percorso: chiama il prof');
 
     const valutazione = valutaRisposta(tappa, risposta);
 
@@ -246,7 +246,7 @@ export async function submit(body: Record<string, unknown>) {
     });
     if (taglia) tx.update(ctx.sessioneRef, { arrivati: FieldValue.increment(1) });
 
-    const seguente = taglia ? null : (ctx.sessione.tappe[prossima] as Tappa | undefined);
+    const seguente = taglia ? null : (ctx.sessione.tappe[prossima] as Esercizio | undefined);
     return {
       promosso: true,
       output: valutazione.output,
@@ -254,7 +254,7 @@ export async function submit(body: Record<string, unknown>) {
       arrivato: taglia,
       posizione,
       erroriTotali: erroriPrima,
-      tappa: seguente ? tappaPerAllievo(seguente) : null,
+      tappa: seguente ? esercizioPerAllievo(seguente) : null,
     };
   });
 }

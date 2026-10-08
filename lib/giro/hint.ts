@@ -9,7 +9,7 @@
  * passerebbero una tappa che chiede un ciclo.
  */
 import { esegui, type Struttura } from './interprete';
-import type { Tappa } from './tappe';
+import type { Esercizio } from './esercizi';
 
 export interface Valutazione {
   promosso: boolean;
@@ -149,9 +149,9 @@ function hintConfronto(prodotto: string[], atteso: string[]): string {
  * l'allievo se la farebbe dettare riga per riga. In queste tappe si dice **dove** guardare,
  * mai **che cosa** ci va.
  */
-const TIPI_SEGRETI: ReadonlySet<Tappa['tipo']> = new Set(['ciclo-output', 'quante-righe', 'accumulatore', 'conta-giri']);
+const TIPI_SEGRETI: ReadonlySet<Esercizio['tipo']> = new Set(['ciclo-output', 'quante-righe', 'accumulatore', 'conta-giri']);
 
-function hintSegreto(tappa: Tappa, prodotto: string[], atteso: string[]): string {
+function hintSegreto(tappa: Esercizio, prodotto: string[], atteso: string[]): string {
   if (tappa.tipo === 'quante-righe') {
     const scritto = prodotto.join(' ').trim();
     if (!/^\d+$/.test(scritto)) return 'Scrivi solo un numero: quante sono le righe, non le righe stesse';
@@ -188,7 +188,7 @@ function lunghezzeDi(righe: string[], simbolo: string): number[] | null {
 }
 
 /** Hint su misura per alcuni tipi di tappa, dove quello generico direbbe poco. */
-function hintSpecifico(tappa: Tappa, prodotto: string[], atteso: string[]): string | null {
+function hintSpecifico(tappa: Esercizio, prodotto: string[], atteso: string[]): string | null {
   if (tappa.tipo === 'scala') {
     const simbolo = atteso[0]?.[0] ?? '*';
     const voluto = lunghezzeDi(atteso, simbolo);
@@ -221,7 +221,7 @@ function hintSpecifico(tappa: Tappa, prodotto: string[], atteso: string[]): stri
 /* --------------------------------------------------------------- controlli di forma */
 
 /** Controlla i vincoli anti-furbo. Restituisce l'hint, oppure null se la forma va bene. */
-function hintStruttura(tappa: Tappa, struttura: Struttura): string | null {
+function hintStruttura(tappa: Esercizio, struttura: Struttura): string | null {
   const { forRichiesti, righeCorpoMax, printFuoriCicloMax } = tappa.vincoli;
 
   if (forRichiesti !== null && struttura.numFor === 0) {
@@ -249,7 +249,7 @@ function hintStruttura(tappa: Tappa, struttura: Struttura): string | null {
 /* -------------------------------------------------------------------- valutazione */
 
 /** Sceglie l'hint giusto per un output sbagliato. */
-function spiega(tappa: Tappa, prodotto: string[], atteso: string[]): string {
+function spiega(tappa: Esercizio, prodotto: string[], atteso: string[]): string {
   if (TIPI_SEGRETI.has(tappa.tipo)) return hintSegreto(tappa, prodotto, atteso);
   return hintSpecifico(tappa, prodotto, atteso) ?? hintConfronto(prodotto, atteso);
 }
@@ -265,7 +265,7 @@ function normalizzaCodice(codice: string): string {
 }
 
 /** Valuta la risposta dell'allievo a una tappa. Non modifica niente: decide e spiega. */
-export function valutaRisposta(tappa: Tappa, risposta: string): Valutazione {
+export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione {
   const testo = risposta ?? '';
   if (testo.trim() === '') {
     return {

@@ -102,7 +102,7 @@ export async function azzeraTappa(body: Record<string, unknown>): Promise<{ ok: 
 
   const n = typeof body.tappa === 'number' ? body.tappa : Number.NaN;
   if (!Number.isInteger(n) || n < 0 || n >= sessione.numTappe) {
-    throw new ApiError(400, 'INVALID_TAPPA', `Tappa non valida (da 1 a ${sessione.numTappe})`);
+    throw new ApiError(400, 'INVALID_TAPPA', `Esercizio non valida (da 1 a ${sessione.numTappe})`);
   }
 
   await getDb().runTransaction(async (tx) => {

@@ -4,7 +4,7 @@
  * 10 secondi e, se la rete fa i capricci, tre tentativi prima di arrendersi con un
  * messaggio chiaro. Gli errori del server (4xx/5xx) non si ritentano: sono risposte.
  */
-import type { TappaPubblica } from './tappe';
+import type { EsercizioPubblico } from './esercizi';
 
 const TIMEOUT_MS = 10_000;
 const TENTATIVI = 3;
@@ -158,7 +158,7 @@ export type RispostaStatus = {
   arrivato: boolean;
   posizione: number | null;
   erroriTotali: number;
-  tappa: TappaPubblica | null;
+  tappa: EsercizioPubblico | null;
 };
 
 export type RispostaSubmit =
@@ -169,7 +169,7 @@ export type RispostaSubmit =
       arrivato: boolean;
       posizione: number | null;
       erroriTotali: number;
-      tappa: TappaPubblica | null;
+      tappa: EsercizioPubblico | null;
     }
   | { promosso: false; hint: string; output: string[] | null; erroriTotali: number };
 

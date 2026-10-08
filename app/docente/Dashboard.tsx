@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { chiamaDocente } from './api';
 import { Accesso } from './Accesso';
 import { useDocente } from './useDocente';
-import { NUM_TAPPE_DEFAULT, NUM_TAPPE_MAX, NUM_TAPPE_MIN } from '@/lib/giro/tappe';
+import { NUM_TAPPE_DEFAULT, NUM_TAPPE_MAX, NUM_TAPPE_MIN } from '@/lib/giro/esercizi';
 
 type Sessione = {
   id: string;

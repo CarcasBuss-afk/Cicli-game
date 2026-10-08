@@ -8,7 +8,7 @@ import {
   ultimoArrivoMs,
   type AllievoLim,
 } from './classifica';
-import type { TipoTappa } from './tappe';
+import type { TipoEsercizio } from './esercizi';
 
 const t = (minuti: number) => new Date(2026, 0, 1, 10, minuti, 0);
 
@@ -121,7 +121,7 @@ describe('errori e riepilogo', () => {
   });
 
   it('raggruppa per tipo, dal più ostico', () => {
-    const tipi: TipoTappa[] = ['ripeti-n', 'output-range', 'accumulatore'];
+    const tipi: TipoEsercizio[] = ['ripeti-n', 'output-range', 'accumulatore'];
     const riepilogo = riepilogoPerTipo([conErrori('A', [0, 1, 9]), conErrori('B', [1, 0, 7])], tipi);
     expect(riepilogo[0].tipo).toBe('accumulatore');
     expect(riepilogo[0].errori).toBe(16);
@@ -129,7 +129,7 @@ describe('errori e riepilogo', () => {
   });
 
   it('con due tappe dello stesso tipo conta la media per tappa', () => {
-    const tipi: TipoTappa[] = ['output-range', 'output-range', 'accumulatore'];
+    const tipi: TipoEsercizio[] = ['output-range', 'output-range', 'accumulatore'];
     // output-range: 10 errori su 2 tappe = 5; accumulatore: 6 su 1 = 6, quindi davanti.
     const riepilogo = riepilogoPerTipo([conErrori('A', [5, 5, 6])], tipi);
     expect(riepilogo[0].tipo).toBe('accumulatore');

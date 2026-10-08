@@ -4,7 +4,7 @@ import 'server-only';
 import { FieldValue } from 'firebase-admin/firestore';
 import { ApiError } from './http';
 import { sessioniRef, trovaSessioneAttiva, type SessioneDoc, type StatoSessione } from './store';
-import { generaPercorso, NUM_TAPPE_DEFAULT, NUM_TAPPE_MAX, NUM_TAPPE_MIN, type Tappa } from './tappe';
+import { generaPercorso, NUM_TAPPE_DEFAULT, NUM_TAPPE_MAX, NUM_TAPPE_MIN, type Esercizio } from './esercizi';
 
 /** Caratteri del codice: senza 0/O/1/I, che alla LIM si confondono. */
 const ALFABETO = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -31,7 +31,7 @@ async function codiceLibero(): Promise<string> {
 }
 
 /** Firestore rifiuta i campi `undefined`: le tappe hanno campi opzionali. */
-function senzaUndefined(tappa: Tappa): Record<string, unknown> {
+function senzaUndefined(tappa: Esercizio): Record<string, unknown> {
   return Object.fromEntries(Object.entries(tappa).filter(([, v]) => v !== undefined));
 }
 

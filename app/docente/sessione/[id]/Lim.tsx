@@ -10,14 +10,14 @@ import { Accesso } from '../../Accesso';
 import { chiamaDocente } from '../../api';
 import { useDocente } from '../../useDocente';
 import { classifica, cronaca, NOME_TIPO, riepilogoPerTipo, type AllievoLim } from '@/lib/giro/classifica';
-import type { TipoTappa } from '@/lib/giro/tappe';
+import type { TipoEsercizio } from '@/lib/giro/esercizi';
 
 type Sessione = {
   code: string;
   classLabel: string;
   status: 'waiting' | 'running' | 'closed';
   numTappe: number;
-  tipi: TipoTappa[];
+  tipi: TipoEsercizio[];
 };
 
 const data = (t: unknown): Date | null =>
@@ -46,7 +46,7 @@ export function Lim({ sessionId }: { sessionId: string }) {
           classLabel: d.classLabel,
           status: d.status,
           numTappe: d.numTappe,
-          tipi: (d.tappe ?? []).map((t: { tipo: TipoTappa }) => t.tipo),
+          tipi: (d.tappe ?? []).map((t: { tipo: TipoEsercizio }) => t.tipo),
         });
       },
       (e) => setErrore(`Lettura della gara non riuscita: ${e.message}`),
