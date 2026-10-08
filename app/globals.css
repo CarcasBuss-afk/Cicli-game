@@ -19,6 +19,63 @@ body {
   height: 100%;
 }
 
+/* La card della tappa superata vola via verso destra, come in PRINT RUSH. */
+@keyframes vola-via {
+  to {
+    transform: translateX(45vw) rotate(7deg) scale(0.85);
+    opacity: 0;
+  }
+}
+
+/* Risposta sbagliata: la card trema, senza togliere niente. */
+@keyframes scuoti {
+  10%,
+  90% {
+    transform: translateX(-3px);
+  }
+  20%,
+  80% {
+    transform: translateX(5px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-8px);
+  }
+  40%,
+  60% {
+    transform: translateX(8px);
+  }
+}
+
+@keyframes entra-da-destra {
+  from {
+    transform: translateX(28vw);
+    opacity: 0;
+  }
+}
+
+.vola-via {
+  animation: vola-via 0.45s ease-in forwards;
+}
+
+.scuoti {
+  animation: scuoti 0.5s ease-in-out;
+}
+
+.entra {
+  animation: entra-da-destra 0.35s ease-out;
+}
+
+/* Chi preferisce niente animazioni (impostazione di sistema) non le vede. */
+@media (prefers-reduced-motion: reduce) {
+  .vola-via,
+  .scuoti,
+  .entra {
+    animation: none;
+  }
+}
+
 body {
   background-color: var(--color-fondo);
   color: var(--color-testo);

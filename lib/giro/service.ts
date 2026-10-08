@@ -164,12 +164,16 @@ export async function submit(body: Record<string, unknown>) {
 
     const valutazione = valutaRisposta(tappa, risposta);
 
+    const erroriPrima = ctx.allievo.erroriTotali ?? 0;
+
     if (!valutazione.promosso) {
       tx.update(ctx.allievoRef, {
         erroriTotali: FieldValue.increment(1),
         [`tappe.${n}.errori`]: FieldValue.increment(1),
       });
-      return { promosso: false, hint: valutazione.hint, output: valutazione.output };
+      // Il totale torna al client: la schermata d'arrivo lo mostra e, senza questo,
+      // resterebbe quello letto all'ingresso.
+      return { promosso: false, hint: valutazione.hint, output: valutazione.output, erroriTotali: erroriPrima + 1 };
     }
 
     const prossima = n + 1;
@@ -190,6 +194,7 @@ export async function submit(body: Record<string, unknown>) {
       tappaCorrente: prossima,
       arrivato: taglia,
       posizione,
+      erroriTotali: erroriPrima,
       tappa: seguente ? tappaPerAllievo(seguente) : null,
     };
   });

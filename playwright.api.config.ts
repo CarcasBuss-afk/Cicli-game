@@ -1,6 +1,12 @@
 /* Test delle API e del flusso di gioco (tests/api): avvia da solo l'emulatore Firestore e
- * il server Next in modalità sviluppo, collegato all'emulatore con il progetto fittizio
- * demo-giro. Serve Java per gli emulatori.
+ * il server Next, collegato all'emulatore con il progetto fittizio demo-giro. Serve Java
+ * per gli emulatori.
+ *
+ * Il server gira in modalità **produzione** (build + start), non in sviluppo, per due
+ * motivi: le variabili NEXT_PUBLIC_* finiscono nel bundle al momento della build, e il
+ * server di sviluppo di Turbopack, se non riesce ad aprire il WebSocket dell'HMR, non
+ * completa l'idratazione: le pagine resterebbero HTML morto e i test del gioco
+ * fallirebbero senza un motivo vero. Il contro è la build a ogni esecuzione (~30 s).
  */
 import { defineConfig, devices } from '@playwright/test';
 import { API_BASE, AUTH_EMULATOR_HOST, EMULATOR_HOST, PORTA_WEB, PROJECT_ID, RATE_LIMIT, TEACHER_EMAIL } from './tests/api/ambiente';
@@ -25,10 +31,11 @@ export default defineConfig({
       timeout: 300_000,
     },
     {
-      command: `npm run dev -- -p ${PORTA_WEB}`,
+      // La build deve vedere le stesse NEXT_PUBLIC_*: finiscono nel bundle del client.
+      command: `npm run build && npm run start -- -p ${PORTA_WEB}`,
       url: `${API_BASE}/api/health`,
       reuseExistingServer: !process.env.CI,
-      timeout: 180_000,
+      timeout: 300_000,
       env: {
         FIRESTORE_EMULATOR_HOST: EMULATOR_HOST,
         FIREBASE_AUTH_EMULATOR_HOST: AUTH_EMULATOR_HOST,
