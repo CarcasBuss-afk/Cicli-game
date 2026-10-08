@@ -372,3 +372,27 @@ describe('struttura del codice (controlli anti-furbo)', () => {
     expect(esito.struttura.numFor).toBe(2);
   });
 });
+
+describe('accumuli nel ciclo (per le tappe della somma)', () => {
+  const accumuli = (codice: string) => {
+    const esito = esegui(codice);
+    if (!esito.ok) throw new Error(esito.errore.messaggio);
+    return esito.struttura.accumuliNelCiclo;
+  };
+
+  it('riconosce += dentro il ciclo', () => {
+    expect(accumuli('t = 0\nfor i in range(3):\n    t += i')).toBe(1);
+  });
+
+  it('riconosce anche la forma lunga t = t + i', () => {
+    expect(accumuli('t = 0\nfor i in range(3):\n    t = t + i')).toBe(1);
+  });
+
+  it('un\'assegnazione semplice non è un accumulo', () => {
+    expect(accumuli('for i in range(3):\n    t = i')).toBe(0);
+  });
+
+  it('un += fuori dal ciclo non conta', () => {
+    expect(accumuli('t = 0\nt += 5\nfor i in range(3):\n    print(i)')).toBe(0);
+  });
+});

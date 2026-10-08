@@ -249,13 +249,31 @@ export default function Gara() {
           </pre>
         )}
 
-        {tappa.outputAtteso && (
-          <div>
-            <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Deve stampare:</p>
-            <pre className="overflow-x-auto rounded-xl border border-(--color-verde)/40 bg-(--color-verde)/5 p-4 font-mono text-[1.05rem] text-(--color-verde)">
-              {tappa.outputAtteso.join('\n')}
-            </pre>
+        {tappa.outputAtteso && tappa.outputSbagliato ? (
+          // Caccia all'errore: quello che deve stampare accanto a quello che stampa adesso.
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Deve stampare:</p>
+              <pre className="overflow-x-auto rounded-xl border border-(--color-verde)/40 bg-(--color-verde)/5 p-4 font-mono text-[1.05rem] text-(--color-verde)">
+                {tappa.outputAtteso.join('\n')}
+              </pre>
+            </div>
+            <div>
+              <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Invece adesso stampa:</p>
+              <pre className="overflow-x-auto rounded-xl border border-red-500/40 bg-red-500/5 p-4 font-mono text-[1.05rem] text-red-300">
+                {tappa.outputSbagliato.length > 0 ? tappa.outputSbagliato.join('\n') : '(niente)'}
+              </pre>
+            </div>
           </div>
+        ) : (
+          tappa.outputAtteso && (
+            <div>
+              <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Deve stampare:</p>
+              <pre className="overflow-x-auto rounded-xl border border-(--color-verde)/40 bg-(--color-verde)/5 p-4 font-mono text-[1.05rem] text-(--color-verde)">
+                {tappa.outputAtteso.join('\n')}
+              </pre>
+            </div>
+          )
         )}
 
         {scriveOutput ? (
@@ -271,7 +289,7 @@ export default function Gara() {
             rows={Math.max(4, risposta.split('\n').length + 1)}
             autoFocus
             spellCheck={false}
-            placeholder={'una riga per ogni print\n…'}
+            placeholder={tappa.segnapostoRisposta ?? 'una riga per ogni print\n…'}
             className="w-full rounded-xl border border-(--color-bordo) bg-black/40 p-4 font-mono text-[1.05rem] outline-none focus:border-(--color-rosa)"
           />
         ) : (

@@ -141,6 +141,83 @@ function hintConfronto(prodotto: string[], atteso: string[]): string {
   return hintTesto(prodotto, atteso);
 }
 
+/* ------------------------------------------------------------ tappe a output segreto */
+
+/**
+ * Tappe in cui l'output atteso è il segreto da scoprire. Qui gli hint normali sarebbero
+ * una scorciatoia: "alla riga 1 ci vuole «Giro 1»" detta la soluzione, e scrivendo a caso
+ * l'allievo se la farebbe dettare riga per riga. In queste tappe si dice **dove** guardare,
+ * mai **che cosa** ci va.
+ */
+const TIPI_SEGRETI: ReadonlySet<Tappa['tipo']> = new Set(['ciclo-output', 'quante-righe', 'accumulatore', 'conta-giri']);
+
+function hintSegreto(tappa: Tappa, prodotto: string[], atteso: string[]): string {
+  if (tappa.tipo === 'quante-righe') {
+    const scritto = prodotto.join(' ').trim();
+    if (!/^\d+$/.test(scritto)) return 'Scrivi solo un numero: quante sono le righe, non le righe stesse';
+    return `Non sono ${scritto}: rifai il conto. Ricorda che \`range\` si ferma **prima** del secondo numero, e che il passo salta dei numeri`;
+  }
+
+  // Un risultato solo (somma, conteggio): si dice che è sbagliato, non quanto deve venire.
+  if (atteso.length === 1) {
+    if (prodotto.length === 0) return 'Il tuo programma non stampa niente: alla fine ci vuole un `print` del risultato';
+    if (prodotto.length > 1) {
+      return `Stampi ${prodotto.length} righe invece di una: il \`print\` va fuori dal ciclo, dopo che il ciclo ha finito`;
+    }
+    return `Ti viene ${prodotto[0]}, ma non è il risultato giusto: controlla da dove parte e dove si ferma il ciclo`;
+  }
+
+  if (prodotto.length !== atteso.length) {
+    const verso = prodotto.length < atteso.length ? 'di più' : 'di meno';
+    return `Hai scritto ${prodotto.length} righe, ma il ciclo ne stampa ${verso}: contale di nuovo`;
+  }
+  const i = prodotto.findIndex((r, idx) => r !== atteso[idx]);
+  const riga = i + 1;
+  if (prodotto[i].toLowerCase() === atteso[i].toLowerCase()) return `Attento alle maiuscole alla riga ${riga}`;
+  if (prodotto[i].replace(/\s+/g, ' ').trim() === atteso[i].replace(/\s+/g, ' ').trim()) {
+    return `Controlla gli spazi alla riga ${riga}`;
+  }
+  return `La riga ${riga} non è giusta: rifai a mente il giro numero ${riga} del ciclo — quanto vale \`i\` in quel momento?`;
+}
+
+/* ------------------------------------------------------------- hint per tipo di tappa */
+
+/** Lunghezze delle righe se sono tutte fatte dello stesso simbolo, altrimenti null. */
+function lunghezzeDi(righe: string[], simbolo: string): number[] | null {
+  return righe.every((r) => [...r].every((c) => c === simbolo)) ? righe.map((r) => r.length) : null;
+}
+
+/** Hint su misura per alcuni tipi di tappa, dove quello generico direbbe poco. */
+function hintSpecifico(tappa: Tappa, prodotto: string[], atteso: string[]): string | null {
+  if (tappa.tipo === 'scala') {
+    const simbolo = atteso[0]?.[0] ?? '*';
+    const voluto = lunghezzeDi(atteso, simbolo);
+    const fatto = lunghezzeDi(prodotto, simbolo);
+    if (!voluto || !fatto || fatto.length === 0) return null;
+    const tutteUguali = (l: number[]) => l.every((x) => x === l[0]);
+    if (tutteUguali(fatto) && !tutteUguali(voluto)) {
+      return 'Le righe devono cambiare lunghezza: dentro il `print` usa la variabile del ciclo, per esempio `"*" * i`';
+    }
+    if (fatto[0] !== voluto[0]) {
+      return `La prima riga ha ${fatto[0]} asterischi, deve averne ${voluto[0]}: guarda il primo numero di \`range\``;
+    }
+    if (fatto.length !== voluto.length) {
+      return `Disegni ${fatto.length} righe invece di ${voluto.length}: guarda dove si ferma \`range\``;
+    }
+    return null;
+  }
+
+  if (tappa.tipo === 'accumulatore-visibile') {
+    // Stampa i al posto del totale: è l'errore che rivela che manca l'accumulo.
+    const numeri = prodotto.map(Number);
+    const sonoGiri = numeri.length > 1 && numeri.every((n, k) => k === 0 || n === numeri[k - 1] + 1);
+    if (sonoGiri && !uguali(prodotto, atteso)) {
+      return 'Stai stampando `i`, cioè il numero del giro: ti serve una variabile che accumula, per esempio `totale += i`, e stampare quella';
+    }
+  }
+  return null;
+}
+
 /* --------------------------------------------------------------- controlli di forma */
 
 /** Controlla i vincoli anti-furbo. Restituisce l'hint, oppure null se la forma va bene. */
@@ -163,10 +240,29 @@ function hintStruttura(tappa: Tappa, struttura: Struttura): string | null {
       ? 'Il `print` va dentro il ciclo: niente `print` aggiunti a mano fuori dal ciclo'
       : 'Fuori dal ciclo ci va un solo `print`, quello del risultato';
   }
+  if (tappa.vincoli.accumuloRichiesto && struttura.accumuliNelCiclo === 0) {
+    return 'Il risultato è giusto, ma deve calcolarlo il ciclo: dentro il ciclo ci vuole una variabile che accumula, per esempio `totale += i`';
+  }
   return null;
 }
 
 /* -------------------------------------------------------------------- valutazione */
+
+/** Sceglie l'hint giusto per un output sbagliato. */
+function spiega(tappa: Tappa, prodotto: string[], atteso: string[]): string {
+  if (TIPI_SEGRETI.has(tappa.tipo)) return hintSegreto(tappa, prodotto, atteso);
+  return hintSpecifico(tappa, prodotto, atteso) ?? hintConfronto(prodotto, atteso);
+}
+
+/** Il codice senza le differenze che non contano (spazi a fine riga, righe vuote). */
+function normalizzaCodice(codice: string): string {
+  return codice
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((r) => r.replace(/\s+$/, ''))
+    .filter((r) => r !== '')
+    .join('\n');
+}
 
 /** Valuta la risposta dell'allievo a una tappa. Non modifica niente: decide e spiega. */
 export function valutaRisposta(tappa: Tappa, risposta: string): Valutazione {
@@ -190,9 +286,10 @@ export function valutaRisposta(tappa: Tappa, risposta: string): Valutazione {
         output: null,
       };
     }
-    const righe = normalizza(testo.replace(/\r\n?/g, '\n').split('\n'));
+    // Gli spazi in testa alla riga scritta a mano non contano: nessuna tappa li chiede.
+    const righe = normalizza(testo.replace(/\r\n?/g, '\n').split('\n')).map((r) => r.trimStart());
     if (uguali(righe, atteso)) return { promosso: true, hint: null, output: righe };
-    return { promosso: false, hint: hintConfronto(righe, atteso), output: righe };
+    return { promosso: false, hint: spiega(tappa, righe, atteso), output: righe };
   }
 
   // I trattini del codice da completare: senza questo controllo l'allievo riceverebbe
@@ -201,6 +298,15 @@ export function valutaRisposta(tappa: Tappa, risposta: string): Valutazione {
     return {
       promosso: false,
       hint: 'Sostituisci i trattini `__` con i numeri giusti',
+      output: null,
+    };
+  }
+
+  // Caccia all'errore: consegnare il codice così com'era non è un tentativo.
+  if (tappa.codiceIniziale && normalizzaCodice(testo) === normalizzaCodice(tappa.codiceIniziale)) {
+    return {
+      promosso: false,
+      hint: 'Non hai cambiato niente: il codice stampa ancora le righe sbagliate. Confronta quello che stampa con quello che deve stampare',
       output: null,
     };
   }
@@ -221,7 +327,7 @@ export function valutaRisposta(tappa: Tappa, risposta: string): Valutazione {
 
   const prodotto = normalizza(esito.output);
   if (!uguali(prodotto, atteso)) {
-    return { promosso: false, hint: hintConfronto(prodotto, atteso), output: prodotto };
+    return { promosso: false, hint: spiega(tappa, prodotto, atteso), output: prodotto };
   }
 
   const forma = hintStruttura(tappa, esito.struttura);

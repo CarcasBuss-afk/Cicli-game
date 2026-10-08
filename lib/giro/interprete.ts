@@ -47,6 +47,11 @@ export interface Struttura {
   printFuoriCiclo: number;
   /** Righe di codice vere (vuote e commenti esclusi). */
   numRighe: number;
+  /**
+   * Accumuli dentro un ciclo: `x += ...` oppure `x = x + ...`. Serve alle tappe della
+   * somma, dove senza questo controllo `for i in range(1): print(15)` passerebbe.
+   */
+  accumuliNelCiclo: number;
 }
 
 export type Esito =
@@ -846,12 +851,39 @@ function ripeti(s: string, n: number, riga: number): string {
 
 /* ------------------------------------------------------------------------ struttura */
 
+/** true se l'espressione legge la variabile `nome` (per riconoscere `x = x + i`). */
+function usaNome(e: Espr, nome: string): boolean {
+  switch (e.k) {
+    case 'nome':
+      return e.v === nome;
+    case 'bin':
+      return usaNome(e.sx, nome) || usaNome(e.dx, nome);
+    case 'neg':
+      return usaNome(e.e, nome);
+    case 'fstr':
+      return e.parti.some((p) => p.k === 'espr' && usaNome(p.e, nome));
+    default:
+      return false;
+  }
+}
+
 function struttura(corpo: Istruzione[]): Struttura {
-  const s: Struttura = { numFor: 0, righeCorpoMax: 0, numPrint: 0, printFuoriCiclo: 0, numRighe: 0 };
+  const s: Struttura = {
+    numFor: 0,
+    righeCorpoMax: 0,
+    numPrint: 0,
+    printFuoriCiclo: 0,
+    numRighe: 0,
+    accumuliNelCiclo: 0,
+  };
 
   const visita = (istruzioni: Istruzione[], dentroCiclo: boolean) => {
     for (const istr of istruzioni) {
       s.numRighe++;
+      if (istr.k === 'assegna') {
+        if (dentroCiclo && (istr.op === '+=' || usaNome(istr.espr, istr.nome))) s.accumuliNelCiclo++;
+        continue;
+      }
       if (istr.k === 'print') {
         s.numPrint++;
         if (!dentroCiclo) s.printFuoriCiclo++;

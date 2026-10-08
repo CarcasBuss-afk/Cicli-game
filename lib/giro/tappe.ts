@@ -8,6 +8,7 @@
  * Il modulo è puro: niente Firestore, niente Next. La soluzione di riferimento di ogni
  * tappa resta sul server (vedi `tappaPerAllievo`).
  */
+import { esegui } from './interprete';
 
 export type TipoTappa =
   | 'ripeti-n' // stampa N volte la stessa frase
@@ -15,7 +16,13 @@ export type TipoTappa =
   | 'completa-range' // come sopra, ma con il ciclo già impostato da completare
   | 'ciclo-output' // dato il ciclo, scrivere l'output (inversione)
   | 'ciclo-stringa' // scorrere le lettere di una parola
-  | 'accumulatore'; // somma con totale += i
+  | 'accumulatore' // somma con totale += i, stampata solo alla fine
+  | 'riga-ripetuta' // stampa N volte una riga di simboli
+  | 'scala' // disegni di asterischi: la variabile del ciclo come valore
+  | 'caccia-errore' // un ciclo sbagliato da correggere
+  | 'quante-righe' // dato il ciclo, dire quante righe stampa
+  | 'accumulatore-visibile' // somma che cresce, stampata a ogni giro
+  | 'conta-giri'; // contatore conta += 1
 
 /** Il terreno dà il tono alla tappa (e il colore sulla LIM): 1 pianura, 2 collina, 3 montagna. */
 export type Terreno = 'pianura' | 'collina' | 'montagna';
@@ -31,6 +38,11 @@ export interface Vincoli {
   righeCorpoMax: number | null;
   /** Massimo di `print` fuori da ogni ciclo; null = non si controlla. */
   printFuoriCicloMax: number | null;
+  /**
+   * Dentro il ciclo ci vuole un accumulo (`x += ...` o `x = x + ...`). Facoltativo:
+   * le gare create prima che esistesse non ce l'hanno, e vale come false.
+   */
+  accumuloRichiesto?: boolean;
 }
 
 export interface Tappa {
@@ -46,6 +58,10 @@ export interface Tappa {
   codiceMostrato?: string;
   /** Contenuto iniziale dell'editor. */
   codiceIniziale?: string;
+  /** Che cosa stampa adesso il codice sbagliato (caccia all'errore): si mostra all'allievo. */
+  outputSbagliato?: string[];
+  /** Testo d'aiuto nella casella di risposta, quando la risposta è un output. */
+  segnapostoRisposta?: string;
   /** Che cosa consegna l'allievo. */
   risposta: Risposta;
   /** Soluzione di riferimento: resta sul server, serve ai test e al docente. */
@@ -234,7 +250,7 @@ function tappaAccumulatore(rnd: () => number, difficolta: Difficolta): Tappa {
       mostraOutput: false,
       risposta: 'codice',
       soluzione: `totale = 0\nfor i in range(2, ${n + 1}, 2):\n    totale += i\nprint(totale)`,
-      vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1 },
+      vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
     };
   }
   const n = intero(rnd, 5, 12);
@@ -247,7 +263,179 @@ function tappaAccumulatore(rnd: () => number, difficolta: Difficolta): Tappa {
     mostraOutput: false,
     risposta: 'codice',
     soluzione: `totale = 0\nfor i in range(1, ${n + 1}):\n    totale += i\nprint(totale)`,
-    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1 },
+    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
+  };
+}
+
+/* ------------------------------------------------- generatori del catalogo esteso */
+
+/** Righe di simboli da ripetere: niente lettere, così non si confonde con ripeti-n. */
+const RIGHE = ['-----', '=======', '+-+-+-+', '~~~~~~', 'o-o-o-o'] as const;
+
+function tappaRigaRipetuta(rnd: () => number, difficolta: Difficolta): Tappa {
+  const riga = scegli(rnd, RIGHE);
+  const n = intero(rnd, 3, 7);
+  return {
+    tipo: 'riga-ripetuta',
+    terreno: TERRENI[difficolta],
+    consegna: `Stampa ${n} righe tutte uguali a questa: \`${riga}\``,
+    outputAtteso: Array.from({ length: n }, () => riga),
+    mostraOutput: false,
+    risposta: 'codice',
+    soluzione: `for i in range(${n}):\n    print("${riga}")`,
+    vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
+  };
+}
+
+/**
+ * Disegni di asterischi. Insegnano che `i` è un valore e non solo un contagiri, ma il
+ * risultato si vede: se sbagli, la scala viene storta. E non si aggirano col passo,
+ * perché nessun `range` produce stringhe che si allungano.
+ */
+function tappaScala(rnd: () => number, difficolta: Difficolta): Tappa {
+  const vincoli: Vincoli = { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 };
+  if (difficolta === 1) {
+    // Rettangolo: ripasso della notazione "*" * 6, la variabile non serve ancora.
+    const righe = intero(rnd, 3, 5);
+    const larghezza = intero(rnd, 4, 8);
+    const riga = '*'.repeat(larghezza);
+    return {
+      tipo: 'scala',
+      terreno: 'pianura',
+      consegna: `Disegna un rettangolo: ${righe} righe da ${larghezza} asterischi ciascuna.`,
+      outputAtteso: Array.from({ length: righe }, () => riga),
+      mostraOutput: true,
+      risposta: 'codice',
+      soluzione: `for i in range(${righe}):\n    print("*" * ${larghezza})`,
+      vincoli,
+    };
+  }
+  const n = intero(rnd, 4, 7);
+  const crescente = difficolta === 2;
+  const lunghezze = crescente
+    ? Array.from({ length: n }, (_, i) => i + 1)
+    : Array.from({ length: n }, (_, i) => n - i);
+  return {
+    tipo: 'scala',
+    terreno: TERRENI[difficolta],
+    consegna: crescente ? 'Disegna questa scala di asterischi:' : 'Disegna questa scala che scende:',
+    outputAtteso: lunghezze.map((l) => '*'.repeat(l)),
+    mostraOutput: true,
+    risposta: 'codice',
+    soluzione: crescente
+      ? `for i in range(1, ${n + 1}):\n    print("*" * i)`
+      : `for i in range(${n}, 0, -1):\n    print("*" * i)`,
+    vincoli,
+  };
+}
+
+type Difetto = 'fine' | 'inizio' | 'stringa' | 'passo' | 'segno';
+
+/**
+ * Caccia all'errore: un ciclo che doveva stampare certi numeri e ne stampa altri.
+ * L'editor parte con il codice sbagliato già scritto; l'allievo lo corregge.
+ * I difetti sono quelli che si vedono davvero in laboratorio.
+ */
+function tappaCacciaErrore(rnd: () => number, difficolta: Difficolta): Tappa {
+  const { inizio, fine, passo } = parametriRange(rnd, difficolta);
+  const giusto = numeriDiRange(inizio, fine, passo).map(String);
+
+  const possibili: Difetto[] =
+    difficolta === 1
+      ? ['fine', 'stringa']
+      : difficolta === 2
+        ? ['fine', 'inizio', 'stringa']
+        : passo < 0
+          ? ['segno', 'fine', 'passo']
+          : ['passo', 'fine'];
+  const difetto = scegli(rnd, possibili);
+
+  let rangeSbagliato = scriviRange(inizio, fine, passo);
+  let corpo = 'print(i)';
+  if (difetto === 'fine') rangeSbagliato = scriviRange(inizio, fine - passo, passo); // un giro di meno
+  if (difetto === 'inizio') rangeSbagliato = scriviRange(inizio + 1, fine, passo); // parte un numero dopo
+  if (difetto === 'passo') rangeSbagliato = `range(${inizio}, ${fine})`; // passo dimenticato
+  if (difetto === 'segno') rangeSbagliato = `range(${inizio}, ${fine}, ${-passo})`; // passo positivo in discesa
+  if (difetto === 'stringa') corpo = 'print("i")'; // stampa la lettera, non il valore
+
+  const codiceSbagliato = `for i in ${rangeSbagliato}:\n    ${corpo}`;
+  const esito = esegui(codiceSbagliato);
+  const sbagliato = esito.ok ? esito.output : [];
+
+  return {
+    tipo: 'caccia-errore',
+    terreno: TERRENI[difficolta],
+    consegna: 'Questo ciclo doveva stampare i numeri qui sotto, ma ha un errore. Trovalo e correggilo.',
+    outputAtteso: giusto,
+    mostraOutput: true,
+    codiceIniziale: codiceSbagliato,
+    outputSbagliato: sbagliato,
+    risposta: 'codice',
+    soluzione: `for i in ${scriviRange(inizio, fine, passo)}:\n    print(i)`,
+    vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
+  };
+}
+
+/** Quante righe stampa questo ciclo? Lettura pura: si risponde con un numero solo. */
+function tappaQuanteRighe(rnd: () => number, difficolta: Difficolta): Tappa {
+  const { inizio, fine, passo } = parametriRange(rnd, difficolta);
+  const quante = numeriDiRange(inizio, fine, passo).length;
+  return {
+    tipo: 'quante-righe',
+    terreno: TERRENI[difficolta],
+    consegna: 'Quante righe stampa questo ciclo? Scrivi solo il numero.',
+    outputAtteso: [String(quante)],
+    mostraOutput: false,
+    codiceMostrato: `for i in ${scriviRange(inizio, fine, passo)}:\n    print(i)`,
+    risposta: 'output',
+    segnapostoRisposta: 'scrivi solo il numero',
+    soluzione: String(quante),
+    vincoli: { forRichiesti: null, righeCorpoMax: null, printFuoriCicloMax: null },
+  };
+}
+
+/**
+ * La somma che si vede crescere: il primo scalino dell'accumulatore. Con il `print`
+ * dentro il ciclo il totale si vede a ogni giro, e si capisce che cosa fa la variabile.
+ * Le somme parziali non sono una progressione aritmetica: nessun `range` le produce.
+ */
+function tappaAccumulatoreVisibile(rnd: () => number, difficolta: Difficolta): Tappa {
+  const da = difficolta === 3 ? intero(rnd, 2, 4) : 1;
+  const a = da + intero(rnd, 3, 6);
+  const somme: number[] = [];
+  let totale = 0;
+  for (let i = da; i <= a; i++) {
+    totale += i;
+    somme.push(totale);
+  }
+  return {
+    tipo: 'accumulatore-visibile',
+    terreno: TERRENI[difficolta],
+    consegna: `Somma i numeri da ${da} a ${a} uno alla volta, e a ogni giro stampa il totale arrivato fin lì:`,
+    outputAtteso: somme.map(String),
+    mostraOutput: true,
+    risposta: 'codice',
+    soluzione: `totale = 0\nfor i in range(${da}, ${a + 1}):\n    totale += i\n    print(totale)`,
+    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 0, accumuloRichiesto: true },
+  };
+}
+
+/** Contare i giri con una variabile: `conta += 1`, e alla fine si stampa solo il conteggio. */
+function tappaContaGiri(rnd: () => number, difficolta: Difficolta): Tappa {
+  const { inizio, fine, passo } = parametriRange(rnd, difficolta);
+  const quante = numeriDiRange(inizio, fine, passo).length;
+  const intervallo = scriviRange(inizio, fine, passo);
+  return {
+    tipo: 'conta-giri',
+    terreno: TERRENI[difficolta],
+    consegna:
+      `Conta quante volte gira il ciclo \`for i in ${intervallo}:\` usando una variabile \`conta\` ` +
+      'che parte da 0 e a ogni giro aumenta di 1. Alla fine stampa solo il conteggio.',
+    outputAtteso: [String(quante)],
+    mostraOutput: false,
+    risposta: 'codice',
+    soluzione: `conta = 0\nfor i in ${intervallo}:\n    conta += 1\nprint(conta)`,
+    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
   };
 }
 
@@ -258,6 +446,12 @@ const GENERATORI: Record<TipoTappa, (rnd: () => number, d: Difficolta) => Tappa>
   'ciclo-output': tappaCicloOutput,
   'ciclo-stringa': tappaCicloStringa,
   accumulatore: tappaAccumulatore,
+  'riga-ripetuta': tappaRigaRipetuta,
+  scala: tappaScala,
+  'caccia-errore': tappaCacciaErrore,
+  'quante-righe': tappaQuanteRighe,
+  'accumulatore-visibile': tappaAccumulatoreVisibile,
+  'conta-giri': tappaContaGiri,
 };
 
 export function generaTappa(tipo: TipoTappa, difficolta: Difficolta, seme: number): Tappa {
@@ -271,23 +465,31 @@ export const NUM_TAPPE_MIN = 4;
 export const NUM_TAPPE_MAX = 30;
 
 /**
- * Lo schema del percorso: partenza in pianura (ripeti-n), gruppone in mezzo con i tipi
- * alternati, arrivo in montagna con l'accumulatore. La difficoltà sale con la posizione.
+ * Lo schema del percorso: partenza in pianura (ripetere una frase, poi una riga), gruppone
+ * in mezzo con i tipi alternati, arrivo in montagna con l'accumulatore. La difficoltà sale
+ * con la posizione.
  */
 function schema(numTappe: number): Array<{ tipo: TipoTappa; difficolta: Difficolta }> {
+  // Nel gruppone solo tipi che si risolvono con `range` e `print`, cioè con quello che
+  // la classe ha fatto per prima. Ciclo sulla parola, scala, somma che cresce e conta
+  // giri richiedono argomenti in più: restano per le tappe tematiche, dove li sceglie il
+  // docente quando li ha spiegati.
   const centro: TipoTappa[] = [
     'output-range',
     'ciclo-output',
     'completa-range',
-    'ciclo-stringa',
+    'caccia-errore',
+    'quante-righe',
     'output-range',
     'ciclo-output',
+    'caccia-errore',
     'completa-range',
   ];
   const tipi: TipoTappa[] = [];
   // Due tappe di avvicinamento, poi il gruppone, poi il tappone finale.
+  const avvicinamento: TipoTappa[] = ['ripeti-n', 'riga-ripetuta'];
   const partenza = Math.min(2, numTappe);
-  for (let i = 0; i < partenza; i++) tipi.push('ripeti-n');
+  for (let i = 0; i < partenza; i++) tipi.push(avvicinamento[i]);
   const arrivo = numTappe >= 6 ? 1 : 0;
   const quanteCentro = numTappe - partenza - arrivo;
   for (let i = 0; i < quanteCentro; i++) tipi.push(centro[i % centro.length]);

@@ -46,7 +46,7 @@ const somma: Tappa = {
   mostraOutput: false,
   risposta: 'codice',
   soluzione: 'totale = 0\nfor i in range(1, 6):\n    totale += i\nprint(totale)',
-  vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1 },
+  vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
 };
 
 /** Tappa di inversione: si consegna l'output, non il codice. */
@@ -190,10 +190,17 @@ describe('tappa dell\'accumulatore', () => {
     expect(h).toContain('fuori dal ciclo');
   });
 
-  it('risultato sbagliato', () => {
+  it('risultato sbagliato: dice quanto ti viene, non quanto deve venire', () => {
     const h = hint(somma, 'totale = 0\nfor i in range(5):\n    totale += i\nprint(totale)');
     expect(h).toContain('10');
-    expect(h).toContain('15');
+    // Il risultato giusto è il segreto della tappa: l'hint non deve dettarlo.
+    expect(h).not.toContain('15');
+  });
+
+  it('il risultato scritto dentro un ciclo finto non vale', () => {
+    // Il ciclo c'è, ma non calcola niente: il numero è scritto a mano.
+    const h = hint(somma, 'for i in range(1):\n    print(15)');
+    expect(h).toContain('deve calcolarlo il ciclo');
   });
 });
 
@@ -244,13 +251,33 @@ describe('tappe di inversione (si consegna l\'output)', () => {
     expect(valutaRisposta(inversione, 'Giro 1\nGiro 2\nGiro 3\n\n').promosso).toBe(true);
   });
 
-  it('una riga di meno', () => {
-    expect(hint(inversione, 'Giro 1\nGiro 2')).toContain('2 righe invece di 3');
+  it('una riga di meno: dice da che parte, non quante', () => {
+    const h = hint(inversione, 'Giro 1\nGiro 2');
+    expect(h).toContain('ne stampa di più');
+    expect(h).not.toContain('3');
   });
 
-  it('parte da 0 invece che da 1', () => {
+  it('riga sbagliata: indica quale, senza dettare il contenuto', () => {
     const h = hint(inversione, 'Giro 0\nGiro 1\nGiro 2');
-    expect(h).toContain('Giro 1');
+    expect(h).toContain('riga 1');
+    // Prima diceva «ci vuole Giro 1»: scrivendo a caso ci si faceva dettare la soluzione.
+    expect(h).not.toContain('Giro 1');
+    expect(h).not.toContain('Giro 3');
+  });
+
+  it('nessuna serie di tentativi a caso fa uscire le righe giuste', () => {
+    for (const tentativo of ['x', 'a\nb\nc', 'Giro\nGiro\nGiro', '1\n2\n3', 'giro 1\ngiro 2\ngiro 3']) {
+      const h = hint(inversione, tentativo);
+      for (const riga of inversione.outputAtteso) expect(h, tentativo).not.toContain(riga);
+    }
+  });
+
+  it('le maiuscole sbagliate si segnalano', () => {
+    expect(hint(inversione, 'giro 1\ngiro 2\ngiro 3')).toContain('maiuscole');
+  });
+
+  it('gli spazi in testa alla riga non contano', () => {
+    expect(valutaRisposta(inversione, '  Giro 1\n Giro 2\nGiro 3').promosso).toBe(true);
   });
 
   it('scrive il codice invece dell\'output', () => {
@@ -260,5 +287,107 @@ describe('tappe di inversione (si consegna l\'output)', () => {
 
   it('risposta vuota', () => {
     expect(hint(inversione, '')).toContain('Scrivi le righe');
+  });
+});
+
+describe('hint delle tappe nuove', () => {
+  const scalaCrescente: Tappa = {
+    tipo: 'scala',
+    terreno: 'collina',
+    consegna: 'Disegna questa scala di asterischi:',
+    outputAtteso: ['*', '**', '***', '****'],
+    mostraOutput: true,
+    risposta: 'codice',
+    soluzione: 'for i in range(1, 5):\n    print("*" * i)',
+    vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
+  };
+
+  it('scala con le righe tutte uguali: manca la variabile', () => {
+    expect(hint(scalaCrescente, 'for i in range(4):\n    print("*" * 4)')).toContain('cambiare lunghezza');
+  });
+
+  it('scala che parte da zero', () => {
+    expect(hint(scalaCrescente, 'for i in range(4):\n    print("*" * i)')).toContain('prima riga ha 0');
+  });
+
+  it('scala giusta in tutti e due i modi di scrivere range', () => {
+    expect(valutaRisposta(scalaCrescente, scalaCrescente.soluzione).promosso).toBe(true);
+    expect(valutaRisposta(scalaCrescente, 'for n in range(1, 5): print(n * "*")').promosso).toBe(true);
+  });
+
+  const sommaVisibile: Tappa = {
+    tipo: 'accumulatore-visibile',
+    terreno: 'montagna',
+    consegna: 'Somma i numeri da 1 a 5 uno alla volta, e a ogni giro stampa il totale:',
+    outputAtteso: ['1', '3', '6', '10', '15'],
+    mostraOutput: true,
+    risposta: 'codice',
+    soluzione: 'totale = 0\nfor i in range(1, 6):\n    totale += i\n    print(totale)',
+    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 0, accumuloRichiesto: true },
+  };
+
+  it('somma che cresce: stampa i invece del totale', () => {
+    expect(hint(sommaVisibile, 'for i in range(1, 6):\n    print(i)')).toContain('Stai stampando `i`');
+  });
+
+  it('somma che cresce: print fuori dal ciclo', () => {
+    const h = hint(sommaVisibile, 'totale = 0\nfor i in range(1, 6):\n    totale += i\nprint(totale)');
+    expect(h).toBeTruthy();
+  });
+
+  const quanteRighe: Tappa = {
+    tipo: 'quante-righe',
+    terreno: 'collina',
+    consegna: 'Quante righe stampa questo ciclo? Scrivi solo il numero.',
+    outputAtteso: ['4'],
+    mostraOutput: false,
+    codiceMostrato: 'for i in range(3, 7):\n    print(i)',
+    risposta: 'output',
+    soluzione: '4',
+    vincoli: { forRichiesti: null, righeCorpoMax: null, printFuoriCicloMax: null },
+  };
+
+  it('quante righe: la risposta giusta', () => {
+    expect(valutaRisposta(quanteRighe, '4').promosso).toBe(true);
+    expect(valutaRisposta(quanteRighe, '  4  ').promosso).toBe(true);
+  });
+
+  it('quante righe: un numero sbagliato non fa uscire quello giusto', () => {
+    for (const tentativo of ['1', '2', '3', '5', '6', '7']) {
+      const h = hint(quanteRighe, tentativo);
+      expect(h).toContain(`Non sono ${tentativo}`);
+      expect(h, tentativo).not.toMatch(/\b4\b/);
+    }
+  });
+
+  it('quante righe: chi scrive le righe invece del numero', () => {
+    expect(hint(quanteRighe, '3\n4\n5\n6')).toContain('solo un numero');
+  });
+
+  const contaGiri: Tappa = {
+    tipo: 'conta-giri',
+    terreno: 'montagna',
+    consegna: 'Conta quante volte gira il ciclo usando una variabile conta.',
+    outputAtteso: ['6'],
+    mostraOutput: false,
+    risposta: 'codice',
+    soluzione: 'conta = 0\nfor i in range(6):\n    conta += 1\nprint(conta)',
+    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
+  };
+
+  it('conta i giri: anche con x = x + 1', () => {
+    expect(valutaRisposta(contaGiri, 'conta = 0\nfor i in range(6):\n    conta = conta + 1\nprint(conta)').promosso).toBe(
+      true,
+    );
+  });
+
+  it('conta i giri: il numero scritto a mano in un ciclo finto non vale', () => {
+    expect(hint(contaGiri, 'for i in range(6):\n    x = 1\nprint(6)')).toContain('deve calcolarlo il ciclo');
+  });
+
+  it('conta i giri: conteggio sbagliato senza rivelare quello giusto', () => {
+    const h = hint(contaGiri, 'conta = 0\nfor i in range(5):\n    conta += 1\nprint(conta)');
+    expect(h).toContain('5');
+    expect(h).not.toMatch(/\b6\b/);
   });
 });

@@ -97,6 +97,12 @@ export const NOME_TIPO: Record<TipoTappa, string> = {
   'ciclo-output': 'Indovinare l\'output',
   'ciclo-stringa': 'Ciclo su una parola',
   accumulatore: 'Somma con accumulatore',
+  'riga-ripetuta': 'Ripetere una riga',
+  scala: 'Scala di asterischi',
+  'caccia-errore': 'Caccia all\'errore',
+  'quante-righe': 'Quante righe stampa',
+  'accumulatore-visibile': 'Somma che cresce',
+  'conta-giri': 'Contare i giri',
 };
 
 /** "mm:ss" sotto l'ora, altrimenti "h:mm:ss". */

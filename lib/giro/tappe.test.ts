@@ -21,6 +21,12 @@ const TIPI: TipoTappa[] = [
   'ciclo-output',
   'ciclo-stringa',
   'accumulatore',
+  'riga-ripetuta',
+  'scala',
+  'caccia-errore',
+  'quante-righe',
+  'accumulatore-visibile',
+  'conta-giri',
 ];
 
 describe('la soluzione di riferimento passa sempre', () => {
@@ -157,5 +163,65 @@ describe('tappaPerAllievo', () => {
     const pubblica = tappaPerAllievo(tappa);
     expect(pubblica.outputAtteso).toBeUndefined();
     expect(JSON.stringify(pubblica)).not.toContain(tappa.outputAtteso[0]);
+  });
+});
+
+describe('i generatori del catalogo esteso', () => {
+  it('caccia all\'errore: il codice di partenza gira ma stampa altro', () => {
+    for (let seme = 1; seme <= 40; seme++) {
+      for (const difficolta of [1, 2, 3] as const) {
+        const tappa = generaTappa('caccia-errore', difficolta, seme * 131);
+        const esito = esegui(tappa.codiceIniziale!);
+        if (!esito.ok) throw new Error(`il codice sbagliato non gira: ${esito.errore.messaggio}`);
+        // Mostriamo all'allievo quello che stampa davvero, non una nostra supposizione.
+        expect(tappa.outputSbagliato).toEqual(esito.output);
+        // E deve essere davvero sbagliato, altrimenti non c'è niente da correggere.
+        expect(esito.output, tappa.codiceIniziale).not.toEqual(tappa.outputAtteso);
+      }
+    }
+  });
+
+  it('caccia all\'errore: consegnare il codice così com\'è non passa', () => {
+    const tappa = generaTappa('caccia-errore', 2, 7);
+    const esito = valutaRisposta(tappa, tappa.codiceIniziale!);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('Non hai cambiato niente');
+  });
+
+  it('quante righe: la risposta è davvero il numero di righe del ciclo mostrato', () => {
+    for (let seme = 1; seme <= 40; seme++) {
+      for (const difficolta of [1, 2, 3] as const) {
+        const tappa = generaTappa('quante-righe', difficolta, seme * 211);
+        const esito = esegui(tappa.codiceMostrato!);
+        if (!esito.ok) throw new Error(esito.errore.messaggio);
+        expect(tappa.outputAtteso).toEqual([String(esito.output.length)]);
+      }
+    }
+  });
+
+  it('scala: le righe si allungano o si accorciano di un asterisco alla volta', () => {
+    const sale = generaTappa('scala', 2, 3).outputAtteso.map((r) => r.length);
+    const scende = generaTappa('scala', 3, 3).outputAtteso.map((r) => r.length);
+    sale.forEach((l, i) => expect(l).toBe(i + 1));
+    scende.forEach((l, i) => i > 0 && expect(l).toBe(scende[i - 1] - 1));
+    // Il rettangolo, primo scalino, ha righe tutte uguali.
+    expect(new Set(generaTappa('scala', 1, 3).outputAtteso).size).toBe(1);
+  });
+
+  it('somma che cresce: non è una progressione, quindi non si fa col solo range', () => {
+    for (let seme = 1; seme <= 20; seme++) {
+      const numeri = generaTappa('accumulatore-visibile', 2, seme).outputAtteso.map(Number);
+      const differenze = numeri.slice(1).map((n, i) => n - numeri[i]);
+      expect(new Set(differenze).size, numeri.join(' ')).toBeGreaterThan(1);
+    }
+  });
+
+  it('nelle tappe dove il risultato è il segreto, l\'allievo non lo riceve', () => {
+    for (const tipo of ['quante-righe', 'conta-giri'] as const) {
+      const tappa = generaTappa(tipo, 2, 5);
+      const pubblica = tappaPerAllievo(tappa);
+      expect(pubblica.outputAtteso, tipo).toBeUndefined();
+      expect('soluzione' in pubblica).toBe(false);
+    }
   });
 });

@@ -31,6 +31,16 @@ Tipi di tappa, in difficoltà crescente (il percorso li mescola con una curva di
 4. **ciclo-output** (inversione): dato il ciclo, scrivere l'output esatto (campo testo, non editor).
 5. **ciclo-stringa**: `for lettera in "ciao"` (se nel programma della classe).
 6. **accumulatore** (tappa di montagna): somma dei numeri da 1 a N con `totale += i`.
+7. **riga-ripetuta**: stampa N volte una riga di simboli (`-----`).
+8. **scala**: disegni di asterischi — rettangolo, scala che sale, scala che scende (`print("*" * i)`). Insegna la variabile come valore, e non si aggira col passo.
+9. **caccia-errore**: un ciclo sbagliato già scritto nell'editor, con accanto quello che stampa adesso; l'allievo lo corregge.
+10. **quante-righe**: dato il ciclo, rispondere con il solo numero di righe che stampa.
+11. **accumulatore-visibile**: la somma che cresce, stampata a ogni giro (`1 3 6 10 15`): primo scalino dell'accumulatore.
+12. **conta-giri**: contatore `conta += 1`, stampato alla fine.
+
+Il catalogo completo, con l'ordine didattico e le decisioni, è in `PERCORSO.md`. Nel percorso misto della gara singola escono solo i tipi risolvibili con `range` e `print` (vedi `schema()` in `lib/giro/tappe.ts`): ciclo sulla parola, scala, somma che cresce e conta giri restano per le tappe tematiche.
+
+**Tappe a output segreto** (`ciclo-output`, `quante-righe`, `accumulatore`, `conta-giri`): gli hint dicono dove guardare, **mai** il contenuto atteso — altrimenti scrivendo a caso ci si fa dettare la soluzione. Vedi `TIPI_SEGRETI` in `lib/giro/hint.ts`.
 
 Ogni tipo ha un **generatore** con parametri casuali entro limiti didattici (es. stop ≤ 12, step ∈ {1,2,3,-1,-2}, mai più di ~12 righe di output) e una **soluzione di riferimento** che produce l'output atteso.
 
@@ -38,7 +48,7 @@ Ogni tipo ha un **generatore** con parametri casuali entro limiti didattici (es.
 
 **Sottoinsieme Python ammesso** dal micro-interprete: assegnazione di interi e stringhe, `for <var> in range(a[, b[, c]])`, `for <var> in "stringa"`, `print(...)` con stringhe, numeri, variabili e f-string semplici, `+`/`+=` su interi, indentazione a blocco singolo. Tutto il resto → errore con messaggio in italiano comprensibile. Tetto di sicurezza: max 1000 iterazioni, max 200 righe di output.
 
-**Anti-furbo (vincolo)**: per le tappe che chiedono un ciclo, la soluzione deve contenere **esattamente un `for`** e il corpo al massimo 2 righe. Altrimenti `print("0")` ripetuto a mano passerebbe la verifica. Il micro-interprete espone la struttura (numero di for, righe del corpo) proprio per questo controllo.
+**Anti-furbo (vincolo)**: per le tappe che chiedono un ciclo, la soluzione deve contenere **esattamente un `for`** e il corpo al massimo 2 righe; nelle tappe della somma ci vuole anche un accumulo dentro il ciclo (`accumuloRichiesto`), altrimenti `for i in range(1): print(28)` passerebbe. Altrimenti `print("0")` ripetuto a mano passerebbe la verifica. Il micro-interprete espone la struttura (numero di for, righe del corpo) proprio per questo controllo.
 
 **Hint mirati** (stile PRINT RUSH, generati dal confronto tra output prodotto e atteso): "il tuo ciclo parte da 0, deve partire da 3", "una ripetizione di troppo: guarda il secondo numero di range", "ti serve il terzo numero di range (il passo)", "il conto alla rovescia vuole un passo negativo", più gli errori di sintassi ("dopo `range(...)` ci vogliono i due punti", "la riga dentro il ciclo va spostata a destra (indentazione)"). Gli hint sono gratuiti e automatici: l'errore costa solo tempo.
 

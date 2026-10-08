@@ -1,8 +1,11 @@
 # Il Giro a tappe tematiche — progetto del percorso
 
 Raccolta delle decisioni prese nel brainstorming. È il piano di contenuto e di struttura
-per la versione del gioco spalmata su più lezioni. Non è ancora implementato: oggi il
-gioco fa **una gara sola** con un percorso misto di esercizi.
+per la versione del gioco spalmata su più lezioni.
+
+**Stato (9 ottobre 2026)**: gli esercizi del catalogo sono costruiti (tutti tranne le
+f-string e "conta le lettere"), il numero di corsa pure. **Manca la struttura a tappe
+tematiche**: oggi il gioco fa ancora **una gara sola** con un percorso misto.
 
 ## 1. L'idea di fondo
 
@@ -57,7 +60,7 @@ La variabile non si usa: conta solo le ripetizioni. Primo scalino.
 |---|---|---|---|
 | Ripeti una frase | Stampa 5 volte `Evviva` | `for i in range(5): print("Evviva")` | ✔ |
 | Frase con apostrofo | Stampa 4 volte `C'è il sole` | obbliga le virgolette doppie | ✔ |
-| Riga ripetuta | 6 righe di `-----` | `print("-----")` nel ciclo | ○ |
+| Riga ripetuta | 6 righe di `-----` | `print("-----")` nel ciclo | ✔ |
 
 ### B. Contare — il `for` che scorre i numeri
 
@@ -82,8 +85,8 @@ Non si scrive, si legge. Veloce e preziosa: è l'abilità che manca quasi sempre
 | Esercizio | Esempio | Risposta | |
 |---|---|---|---|
 | Che cosa stampa? | dato il ciclo, scrivi le righe | l'output | ✔ |
-| Quante righe stampa? | solo il numero | un numero | ○ |
-| **Caccia all'errore** | "doveva stampare 1..5, stampa 0..4: correggilo" | il codice giusto | ○ |
+| Quante righe stampa? | solo il numero | un numero | ✔ |
+| **Caccia all'errore** | "doveva stampare 1..5, stampa 0..4: correggilo" | il codice giusto | ✔ |
 
 ### E. Disegnare — la variabile come valore
 
@@ -95,9 +98,9 @@ supporta già.
 
 | Esercizio | Esempio | Soluzione | |
 |---|---|---|---|
-| Rettangolo | 4 righe da 6 asterischi | `print("*" * 6)`, `i` non si usa | ○ |
-| Scala crescente | `*`, `**`, `***`, `****` | `print("*" * i)` | ○ |
-| Scala decrescente | la stessa al contrario | `print("*" * i)` con passo negativo | ○ |
+| Rettangolo | 4 righe da 6 asterischi | `print("*" * 6)`, `i` non si usa | ✔ |
+| Scala crescente | `*`, `**`, `***`, `****` | `print("*" * i)` | ✔ |
+| Scala decrescente | la stessa al contrario | `print("*" * i)` con passo negativo | ✔ |
 
 ### F. Accumulare — la variabile che ricorda
 
@@ -105,10 +108,10 @@ Il tappone, spezzato in due scalini invece di uno.
 
 | Esercizio | Esempio | Soluzione | |
 |---|---|---|---|
-| Somma visibile | stampa `1 3 6 10 15` | `totale += i` con `print` **dentro** | ○ |
+| Somma visibile | stampa `1 3 6 10 15` | `totale += i` con `print` **dentro** | ✔ |
 | Somma finale | somma 1..5, stampa `15` | `print` **fuori** dal ciclo | ✔ |
 | Somma dei pari | i pari fino a 10 | `range(2, 11, 2)` + accumulatore | ✔ |
-| Conta i giri | quante volte gira il ciclo | `conta += 1` | ○ |
+| Conta i giri | quante volte gira il ciclo | `conta += 1` | ✔ |
 
 ### G. Cicli su una parola
 
@@ -136,14 +139,34 @@ Da aprire solo quando la classe avrà fatto le f-string.
 | 2 | Contare con `range` (da 0 a N, da A a B, completa) | no, pronta |
 | 3 | Il passo, avanti e indietro | no, pronta |
 | 4 | Leggere il codice: che cosa stampa | no, pronta |
-| 5 | La scala di asterischi | esercizi nuovi |
+| 5 | La scala di asterischi | no, pronta |
 | 6 | Cronometro (ripasso veloce delle tappe 1-3) | formato nuovo |
-| 7 | Caccia all'errore | esercizi nuovi |
-| 8 | Accumulatore: somma visibile, poi somma finale | metà nuova |
+| 7 | Caccia all'errore | no, pronta |
+| 8 | Accumulatore: somma visibile, poi somma finale | no, pronta |
 | 9 | Cicli su una parola | no, pronta |
 
-Gli esercizi delle tappe 1-4 e 9 **esistono già**: di quelle tappe manca solo la struttura
-che le tiene insieme, non il contenuto.
+Gli esercizi di **tutte** le tappe esistono: manca solo la struttura che le tiene insieme.
+La cronometro (6) è un formato, non un tipo di esercizio: riusa quelli delle tappe 1-3.
+
+**Nella gara singola di oggi** il percorso misto usa solo i tipi che si risolvono con
+`range` e `print`: ripeti, riga ripetuta, scrivi il ciclo, completa, che cosa stampa,
+caccia all'errore, quante righe, e l'accumulatore come tappone finale. Il **ciclo sulla
+parola è stato tolto dal mix**, perché la classe non l'ha ancora fatto; scala, somma che
+cresce e conta giri sono pronti ma escono solo quando il docente li sceglierà nelle tappe
+tematiche.
+
+### Due difetti trovati costruendo gli esercizi nuovi, e sistemati
+
+**Gli hint delle tappe a output segreto rivelavano la risposta.** In "che cosa stampa",
+nella somma finale e in "quante righe" l'hint diceva "alla riga 1 ci vuole «Giro 1»" o
+"deve venire 28": scrivendo a caso, un allievo si faceva dettare la soluzione. Ora in
+quelle tappe l'hint dice **dove** guardare ("la riga 2 non è giusta: rifai a mente il
+secondo giro"), mai **che cosa** ci va.
+
+**La somma si poteva vincere scrivendo il risultato in un ciclo finto**:
+`for i in range(1): print(28)` aveva un `for`, un corpo di una riga e passava. Ora le tappe
+dell'accumulatore chiedono che dentro il ciclo ci sia davvero un accumulo (`totale += i`
+oppure `totale = totale + i`).
 
 ## 6. Due formati speciali
 
@@ -188,8 +211,8 @@ struttura sopra.
 - **Dashboard**: comporre il Giro scegliendo le tappe, poi aprire e chiudere una tappa alla
   volta.
 - **LIM**: due classifiche (tappa e generale), il cronometro della tappa.
-- **Generatori nuovi**: scala, caccia all'errore, accumulatore visibile, riga ripetuta,
-  quante righe stampa, conta i giri.
+- ~~Generatori nuovi~~: **fatti** — scala, caccia all'errore, accumulatore visibile, riga
+  ripetuta, quante righe stampa, conta i giri.
 
 ## 9. L'identità attraverso le settimane — **deciso e fatto**
 
