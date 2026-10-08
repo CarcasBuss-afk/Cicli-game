@@ -30,7 +30,7 @@ export function getClientApp(): FirebaseApp {
 export function getClientAuth(): Auth {
   if (!auth) {
     auth = getAuth(getClientApp());
-    if (EMULATORI) connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+    if (EMULATORI) connectAuthEmulator(auth, 'http://127.0.0.1:9199', { disableWarnings: true });
   }
   return auth;
 }
@@ -38,7 +38,7 @@ export function getClientAuth(): Auth {
 export function getClientDb(): Firestore {
   if (!db) {
     db = getFirestore(getClientApp());
-    if (EMULATORI) connectFirestoreEmulator(db, '127.0.0.1', 8089);
+    if (EMULATORI) connectFirestoreEmulator(db, '127.0.0.1', 8099);
   }
   return db;
 }

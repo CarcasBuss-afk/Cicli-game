@@ -79,13 +79,11 @@ giroSessions/{sessionId}
   status: "waiting" | "running" | "closed"
   createdAt, startedAt, endedAt: Timestamp
   numTappe: number              // default 12
-  tappe: Array<{                // generate alla creazione, uguali per tutti
-    tipo: string                // "ripeti-n" | "output-range" | ...
-    consegna: string            // testo mostrato all'allievo
-    outputAtteso: string[]      // righe attese
-    mostraOutput: boolean       // true per output-range, false per ciclo-output
-    codiceMostrato?: string     // per completa-range e ciclo-output
-  }>
+  arrivati: number              // quanti hanno tagliato: dà l'ordine d'arrivo
+  seme: number                  // seme del percorso, per rigenerarlo identico
+  tappe: Array<Tappa>           // generate alla creazione, uguali per tutti (lib/giro/tappe.ts):
+                                // tipo, terreno, consegna, outputAtteso, mostraOutput,
+                                // codiceMostrato?, codiceIniziale?, risposta, soluzione, vincoli
 
 giroSessions/{sessionId}/players/{playerId}
   name: string                  // nome di battesimo, normalizzato come nell'escape room
@@ -107,13 +105,15 @@ Allievo (`/api/giro/*`, tutte POST, body JSON, auth `playerId` + `token` via sha
 
 | Route | Body | Risposta | Note |
 |---|---|---|---|
-| `join` | `{code, name}` | `{playerId, token, name, sessionStatus}` | sessione `waiting` o `running`; nomi normalizzati e doppioni rifiutati come nell'escape room (a parità di nome il server suggerisce "Luca B.") |
-| `status` | `{playerId, token}` | `{sessionStatus, tappaCorrente, numTappe, tappa}` | `tappa` = solo consegna/codiceMostrato/output se `mostraOutput` della tappa corrente |
-| `submit` | `{playerId, token, tappa, codice}` | `{ok: true, tappaSuccessiva?}` oppure `{ok: false, hint}` | valida col micro-interprete; registra `completedAt` solo la prima volta; rifiuta se `tappa != tappaCorrente` o sessione non `running` |
+| `join` | `{code, name}` | `{playerId, token, name, sessionStatus, numTappe, classLabel}` | sessione `waiting` o `running`; il codice si può scrivere in minuscolo; nomi normalizzati (trim, spazi, iniziali maiuscole) e doppioni rifiutati: a parità di nome il messaggio suggerisce «Luca B.», e il punto dell'iniziale è ammesso |
+| `status` | `{playerId, token}` | `{sessionStatus, name, classLabel, numTappe, tappaCorrente, arrivato, posizione, erroriTotali, tappa}` | funziona in qualunque stato della sessione (la pagina deve poter mostrare "aspetta il via" e "gara chiusa"); `tappa` è la tappa pubblica corrente, `null` se la gara non è `running` o se l'allievo è arrivato |
+| `submit` | `{playerId, token, tappa, risposta}` | promosso: `{promosso: true, output, tappaCorrente, arrivato, posizione, tappa}`; bocciato: `{promosso: false, hint, output}` | `tappa` è l'indice 0-based e deve essere esattamente `tappaCorrente`. **Una risposta sbagliata non è un errore HTTP**: è il gioco normale e torna 200 con l'hint. Tutto in una transazione: completamento della tappa, conteggio errori, `ordineArrivo` al traguardo |
 
 Docente (`/api/docente/*`, `Authorization: Bearer <ID token>`, email in `TEACHER_EMAILS`): crea sessione (genera il percorso), avvia, chiudi, correggi nome, elimina allievo, azzera tappa. Stesso impianto di auth dell'escape room (claim `teacher` auto-assegnato al primo accesso).
 
-Errori: HTTP 4xx/5xx con `{error, message}` in italiano. Codici sul modello dell'escape room (`INVALID_BODY`, `INVALID_NAME`, `SESSION_NOT_FOUND`, `DUPLICATE_PLAYER`, `UNAUTHORIZED`, `SESSION_NOT_RUNNING`, `INVALID_TAPPA`, `RATE_LIMITED`, `INTERNAL`).
+`/api/giro/test-setup` esiste **solo per i test**: risponde 404 se non è impostato `FIRESTORE_EMULATOR_HOST`. Prepara una gara e restituisce anche le soluzioni, perciò non deve mai funzionare in produzione.
+
+Errori: HTTP 4xx/5xx con `{error, message}` in italiano. Codici: `INVALID_BODY`, `INVALID_NAME`, `SESSION_NOT_FOUND` (404), `DUPLICATE_PLAYER` (409), `UNAUTHORIZED` (401), `SESSION_NOT_RUNNING` (403, waiting o closed), `INVALID_TAPPA` (400 se fuori percorso, 409 se non è la tappa corrente), `ALREADY_FINISHED` (403), `RATE_LIMITED` (429), `INTERNAL` (500).
 
 ## Pagine
 
@@ -127,8 +127,8 @@ Errori: HTTP 4xx/5xx con `{error, message}` in italiano. Codici sul modello dell
 - Next.js (App Router) + TypeScript + Tailwind **alla radice del repo**, deploy su Vercel, Node 22. `firebase-admin` v13 (la 14 rompe su Vercel, verificato nell'escape room).
 - Credenziali Admin da variabili d'ambiente (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`): stessi valori dell'escape room (`html-escape-room/web/.env`), mai file di service account nel repo.
 - Editor: CodeMirror 6 (`codemirror`, `@codemirror/lang-python`, tema One Dark).
-- Micro-interprete e generatori in `lib/giro/` **puri e senza dipendenze** (niente Firestore, niente Next): testabili in isolamento.
-- Test: **Vitest** per micro-interprete, generatori e hint (è il cuore, va coperto bene); **Playwright** (solo Chromium) con emulatore Firestore per API e flusso completo, sul modello di `html-escape-room/tests/api/`.
+- Micro-interprete, generatori e hint in `lib/giro/` **puri e senza dipendenze** (niente Firestore, niente Next): testabili in isolamento. I moduli che toccano Firestore (`store.ts`, `service.ts`, `sessioni.ts`) hanno `import 'server-only'`.
+- Test: **Vitest** (`npm test`) per micro-interprete, generatori, hint, nomi e rate limit (è il cuore, va coperto bene); **Playwright** (`npm run test:api`, solo Chromium) con emulatore Firestore per API e flusso completo, sul modello di `html-escape-room/tests/api/`. Gli emulatori girano sulle porte 8099/9199 e il server di test sulla 3211: diverse da quelle dell'escape room, così i due progetti possono avere i test aperti insieme. Serve Java.
 - Commit piccoli, un task alla volta. Prima di dichiarare un task concluso, esegui i test.
 
 ## Cosa NON fare
@@ -137,3 +137,13 @@ Errori: HTTP 4xx/5xx con `{error, message}` in italiano. Codici sul modello dell
 - Non usare l'SDK client Firebase nelle pagine allievi (solo `fetch`; client SDK solo in `/docente` per login e `onSnapshot`).
 - Non eseguire il codice dell'allievo con `eval`/`Function` o Python reale: solo il micro-interprete.
 - Non toccare le regole/collezioni `escapeSessions` esistenti se non per copiarle nel file di regole condiviso.
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->
