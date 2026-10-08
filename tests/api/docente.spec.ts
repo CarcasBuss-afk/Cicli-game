@@ -100,7 +100,7 @@ test.describe('vista LIM', () => {
     await accediDocente(page, `/docente/sessione/${gara.sessionId}`);
     const righe = page.getByRole('list', { name: 'classifica' }).locator('li');
     await expect(righe.first()).toContainText('Primo');
-    await expect(righe.first()).toContainText('👕');
+    await expect(righe.first()).toContainText('maglia rosa');
     await expect(righe.last()).toContainText('Ultimo');
   });
 

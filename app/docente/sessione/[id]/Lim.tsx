@@ -184,10 +184,13 @@ export function Lim({ sessionId }: { sessionId: string }) {
                 >
                   <div className="flex items-baseline gap-3">
                     <span className="w-8 text-2xl font-black text-(--color-testo-tenue)">{posto + 1}</span>
-                    <span className="text-2xl font-bold">
-                      {posto === 0 && <span aria-label="maglia rosa">👕 </span>}
-                      {a.name}
-                    </span>
+                    {/* L'emoji della maglietta è verde: la maglia rosa si fa col colore. */}
+                    {posto === 0 && (
+                      <span className="rounded-md bg-(--color-rosa) px-2 py-0.5 text-sm font-black text-white uppercase">
+                        maglia rosa
+                      </span>
+                    )}
+                    <span className="text-2xl font-bold">{a.name}</span>
                     <span className="text-xl text-(--color-testo-tenue)">
                       {a.tappaCorrente}/{sessione.numTappe}
                     </span>
