@@ -44,6 +44,9 @@ async function corri(
 
 const classifica = (page: Page) => page.getByRole('list', { name: 'classifica' }).locator('li');
 
+/** Il piano del Giro sta chiuso per lasciare lo schermo alla classe: si apre con un clic. */
+const apriPiano = (page: Page) => page.getByText(/^Il Giro: \d+ tapp/).click();
+
 test.describe('dashboard', () => {
   test('compone un Giro con le tappe proposte e lo chiude', async ({ page }) => {
     await accediDocente(page);
@@ -148,6 +151,7 @@ test.describe('vista LIM', () => {
       sessione: { migliori: number };
     }).toMatchObject({ sessione: { migliori: 3 } });
 
+    await apriPiano(page);
     await page.getByLabel('tappa da aggiungere').selectOption('scala');
     await page.getByRole('button', { name: 'Aggiungi tappa' }).click();
     await expect(page.getByRole('list', { name: 'piano del giro' })).toContainText('Tappa 2 · La scala');
@@ -177,6 +181,7 @@ test.describe('cancellare una tappa dalla LIM', () => {
   test('prima del via, dal piano del Giro', async ({ page, request }) => {
     const giro = await creaGiro(request, ['ripeti', 'contare', 'passo']);
     await accediDocente(page, `/docente/sessione/${giro.sessionId}`);
+    await apriPiano(page);
     const piano = page.getByRole('list', { name: 'piano del giro' });
     await expect(piano.locator('li')).toHaveCount(3);
 
@@ -233,6 +238,39 @@ test.describe('gare create prima del Giro a tappe', () => {
 
     await page.goto(`/docente/sessione/${sessionId}`);
     await expect(page.getByText(/versione di prima del Giro a tappe/)).toBeVisible();
+  });
+});
+
+test.describe('una classe intera sulla LIM', () => {
+  // Il caso che conta in laboratorio: 25 allievi su uno schermo da 1280x720, la LIM o il
+  // proiettore più piccolo che si trova. Nessuno deve finire sotto il bordo dello schermo.
+  test.use({ viewport: { width: 1280, height: 720 } });
+
+  /** Quante voci della lista stanno interamente dentro lo schermo, senza scorrere. */
+  const visibili = (page: Page, etichetta: string) =>
+    page.evaluate((etichetta) => {
+      const voci = [...document.querySelectorAll(`[aria-label="${etichetta}"] > li`)];
+      return { totali: voci.length, dentro: voci.filter((li) => li.getBoundingClientRect().bottom <= window.innerHeight).length };
+    }, etichetta);
+
+  test('25 allievi si vedono tutti, durante la tappa e fra le tappe', async ({ page, request }) => {
+    const giro = await creaGiro(request, ['ripeti', 'contare']);
+    const classe = [];
+    for (let i = 1; i <= 25; i++) classe.push(await entra(request, giro.code, `Allievo${'abcdefghijklmnopqrstuvwxyz'[i]}`));
+    const { esercizi } = await setup(request, { azione: 'apri', sessionId: giro.sessionId, tappa: 0, minuti: 10 });
+    for (let i = 0; i < classe.length; i++) await corri(request, classe[i], 0, esercizi, (i % 5) + 1);
+
+    await accediDocente(page, `/docente/sessione/${giro.sessionId}`);
+    await expect(classifica(page)).toHaveCount(25);
+    expect(await visibili(page, 'classifica')).toEqual({ totali: 25, dentro: 25 });
+    // Il comando per chiudere la tappa deve restare a portata, senza scorrere.
+    await expect(page.getByRole('button', { name: 'Chiudi la tappa' })).toBeInViewport();
+
+    await page.getByRole('button', { name: 'Chiudi la tappa' }).click();
+    await expect(page.getByRole('list', { name: 'classifica generale' }).locator('li')).toHaveCount(25);
+    expect(await visibili(page, 'classifica generale')).toEqual({ totali: 25, dentro: 25 });
+    expect(await visibili(page, "ordine d'arrivo")).toEqual({ totali: 25, dentro: 25 });
+    await expect(page.getByRole('button', { name: /VIA! Tappa 2/ })).toBeInViewport();
   });
 });
 

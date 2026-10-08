@@ -154,11 +154,13 @@ export function Lim({ sessionId }: { sessionId: string }) {
   const leader = singola ? null : (giro.generale[0]?.id ?? null);
 
   return (
-    <main className="flex min-h-screen flex-col gap-5 p-6">
-      <header className="flex flex-wrap items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-(--color-rosa)">Il Giro dei Cicli</h1>
-          <p className="text-xl text-(--color-testo-tenue)">
+    // Tutto deve stare in uno schermo della LIM, anche 1280x720: niente da scorrere
+    // mentre la classe guarda. Per questo intestazione su una riga e margini stretti.
+    <main className="flex min-h-screen flex-col gap-3 p-4">
+      <header className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <div className="flex flex-wrap items-baseline gap-x-4">
+          <h1 className="text-2xl font-black text-(--color-rosa)">Il Giro dei Cicli</h1>
+          <p className="text-lg text-(--color-testo-tenue)">
             classe {giro.classLabel} · {singola ? 'gara singola' : `${giro.tappe.length} tappe`} · {allievi.length}{' '}
             {allievi.length === 1 ? 'corridore' : 'corridori'}
             {!maiPartito && giro.status !== 'closed' && <span className="ml-3 font-mono">codice {giro.code}</span>}
@@ -172,7 +174,7 @@ export function Lim({ sessionId }: { sessionId: string }) {
                   void azione('sessioni', { azione: 'chiudi' });
                 }
               }}
-              className="rounded-lg border border-(--color-bordo) px-4 py-2 text-(--color-testo-tenue) hover:text-(--color-testo)"
+              className="rounded-lg border border-(--color-bordo) px-3 py-1 text-sm text-(--color-testo-tenue) hover:text-(--color-testo)"
             >
               {singola ? 'Chiudi gara' : 'Chiudi il Giro'}
             </button>
@@ -209,6 +211,30 @@ export function Lim({ sessionId }: { sessionId: string }) {
   );
 }
 
+/* --------------------------------------------------------------- densità a schermo */
+
+/**
+ * Quante colonne servono perché la classe intera stia in uno schermo. Con pochi allievi
+ * righe grandi, una sotto l'altra; con una classe piena, righe compatte su più colonne.
+ * Le soglie vengono dalle misure a 1280x720 con 25 allievi.
+ */
+function colonnePer(quanti: number): 1 | 2 | 3 {
+  if (quanti <= 8) return 1;
+  if (quanti <= 18) return 2;
+  return 3;
+}
+
+// Le classi di Tailwind devono comparire intere nel sorgente: niente `grid-cols-${n}`.
+const GRIGLIA = { 1: 'grid-cols-1', 2: 'grid-cols-2', 3: 'grid-cols-3' } as const;
+
+/**
+ * Righe per colonna di un elenco riempito dall'alto in basso: con `grid-auto-flow: column`
+ * la griglia ha bisogno di sapere quante righe ha ogni colonna.
+ */
+function righePerColonna(quanti: number, colonne: number): React.CSSProperties {
+  return { gridTemplateRows: `repeat(${Math.max(1, Math.ceil(quanti / colonne))}, auto)` };
+}
+
 /** Conferma prima di cancellare una tappa: il messaggio dice che cosa succede davvero. */
 function confermaCancellazione(tappa: TappaLim, indice: number): boolean {
   const nome = `la tappa ${indice + 1} · ${tappa.nome}`;
@@ -230,16 +256,25 @@ function Partenza({
   allievi: AllievoLim[];
   azione: (rotta: string, corpo: Record<string, unknown>) => Promise<void>;
 }) {
+  // Il codice gigante si restringe quando la lista dei corridori diventa lunga: il VIA
+  // deve restare sullo schermo.
+  const affollato = allievi.length > 10;
   return (
-    <section className="flex flex-col items-center gap-6 py-6">
-      <p className="text-2xl text-(--color-testo-tenue)">Entrate su questo sito con il codice</p>
-      <p className="font-mono text-[9rem] leading-none font-black tracking-[0.1em] text-(--color-rosa)">{giro.code}</p>
+    <section className="flex flex-1 flex-col items-center gap-3">
+      <p className="text-xl text-(--color-testo-tenue)">Entrate su questo sito con il codice</p>
+      <p
+        className={`font-mono leading-none font-black tracking-[0.1em] text-(--color-rosa) ${
+          affollato ? 'text-[5rem]' : 'text-[8rem]'
+        }`}
+      >
+        {giro.code}
+      </p>
       {allievi.length === 0 ? (
         <p className="text-3xl">Nessuno in griglia di partenza</p>
       ) : (
         <ListaCorridori allievi={allievi} />
       )}
-      <ApriTappa giro={giro} indice={0} azione={azione} grande />
+      <ApriTappa giro={giro} indice={0} azione={azione} grande={!affollato} />
       {giro.tappe.length > 1 && (
         <div className="w-full max-w-md">
           <PianoGiro giro={giro} azione={azione} />
@@ -265,8 +300,8 @@ function ApriTappa({
   const [minuti, setMinuti] = useState<string>(tappa.durataSec ? String(Math.round(tappa.durataSec / 60)) : '');
   const singola = giro.tappe.length === 1 && tappa.tema === 'misto';
   return (
-    <div className="flex flex-wrap items-center justify-center gap-4">
-      <label className="flex items-center gap-2 text-lg">
+    <div className="flex flex-wrap items-center justify-center gap-3">
+      <label className="flex items-center gap-2">
         <span className="text-(--color-testo-tenue)">durata</span>
         <input
           type="number"
@@ -276,14 +311,14 @@ function ApriTappa({
           onChange={(e) => setMinuti(e.target.value)}
           placeholder="∞"
           aria-label="minuti"
-          className="w-20 rounded-lg border border-(--color-bordo) bg-black/30 px-3 py-2 text-center outline-none focus:border-(--color-rosa)"
+          className="w-16 rounded-lg border border-(--color-bordo) bg-black/30 px-2 py-1.5 text-center outline-none focus:border-(--color-rosa)"
         />
-        <span className="text-(--color-testo-tenue)">min (vuoto = senza limite)</span>
+        <span className="text-sm text-(--color-testo-tenue)">min (vuoto = senza limite)</span>
       </label>
       <button
         onClick={() => void azione('tappe', { azione: 'apri', tappa: indice, minuti: minuti === '' ? null : Number(minuti) })}
         className={`rounded-xl bg-(--color-verde) font-black text-black hover:brightness-110 ${
-          grande ? 'px-8 py-4 text-3xl' : 'px-5 py-2.5 text-lg'
+          grande ? 'px-8 py-3 text-3xl' : 'px-5 py-2 text-xl'
         }`}
       >
         VIA! {singola ? '' : `Tappa ${indice + 1} · ${tappa.nome}`}
@@ -336,117 +371,208 @@ function TappaInCorso({
     [allievi, indice],
   );
   const perId = useMemo(() => new Map(allievi.map((a) => [a.id, a])), [allievi]);
-  const eventi = useMemo(() => cronaca(allievi, indice), [allievi, indice]);
+  const eventi = useMemo(() => cronaca(allievi, indice, 5), [allievi, indice]);
   // Nella gara singola la maglia rosa va a chi guida la tappa, che è la gara intera.
   const maglia = singola ? (righe[0]?.km ? righe[0].id : null) : leader;
+  const colonne = colonnePer(righe.length);
 
   return (
-    <div className="flex flex-1 flex-col gap-5">
-      <section className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-(--color-bordo) bg-(--color-fondo-card) px-5 py-3">
-        <p className="text-2xl font-bold">
+    <div className="flex flex-1 flex-col gap-3">
+      <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-(--color-bordo) bg-(--color-fondo-card) px-4 py-2">
+        <p className="text-xl font-bold">
           {singola ? tappa.nome : `Tappa ${indice + 1} · ${tappa.nome}`}
-          <span className="ml-3 text-lg font-normal text-(--color-testo-tenue)">{tappa.km} km</span>
+          <span className="ml-3 text-base font-normal text-(--color-testo-tenue)">{tappa.km} km</span>
         </p>
         {secondi !== null && (
           <p
             aria-label="tempo rimasto"
-            className={`font-mono text-5xl font-black ${scaduta ? 'text-red-400' : secondi <= 60 ? 'text-(--color-giallo)' : ''}`}
+            className={`font-mono text-4xl font-black ${scaduta ? 'text-red-400' : secondi <= 60 ? 'text-(--color-giallo)' : ''}`}
           >
             {scaduta ? 'TEMPO!' : `⏱ ${formattaSecondi(secondi)}`}
           </p>
         )}
-        {!singola && (
+        <div className="flex items-center gap-3">
+          {!singola && (
+            <button
+              onClick={() => {
+                if (confermaCancellazione(tappa, indice)) void azione('tappe', { azione: 'elimina', tappa: indice });
+              }}
+              className="text-sm text-(--color-testo-tenue) underline"
+            >
+              annulla questa tappa
+            </button>
+          )}
           <button
-            onClick={() => {
-              if (confermaCancellazione(tappa, indice)) void azione('tappe', { azione: 'elimina', tappa: indice });
-            }}
-            className="text-sm text-(--color-testo-tenue) underline"
+            onClick={() => void azione('tappe', { azione: 'chiudi', tappa: indice })}
+            className={`rounded-lg px-4 py-2 font-bold ${
+              scaduta ? 'bg-(--color-rosa) text-white hover:brightness-110' : 'border border-(--color-bordo) text-(--color-testo-tenue)'
+            }`}
           >
-            annulla questa tappa
+            {singola ? 'Chiudi la gara e mostra la classifica' : 'Chiudi la tappa'}
           </button>
-        )}
-        <button
-          onClick={() => void azione('tappe', { azione: 'chiudi', tappa: indice })}
-          className={`rounded-lg px-5 py-2.5 text-lg font-bold ${
-            scaduta ? 'bg-(--color-rosa) text-white hover:brightness-110' : 'border border-(--color-bordo) text-(--color-testo-tenue)'
-          }`}
-        >
-          {singola ? 'Chiudi la gara e mostra la classifica' : 'Chiudi la tappa'}
-        </button>
+        </div>
       </section>
 
-      <div className="flex flex-1 flex-col gap-5 lg:flex-row">
-        <section className="flex-1">
-          <ul aria-label="classifica" className="flex flex-col gap-2">
-            {righe.map((r) => {
-              const a = perId.get(r.id);
-              const arrivo = a?.tappe[String(indice)]?.ordineArrivo ?? null;
-              return (
-                <li
-                  key={r.id}
-                  onClick={() => setScelto(scelto === r.id ? null : r.id)}
-                  className={`cursor-pointer rounded-xl border p-3 ${
-                    r.posizione === 1 && r.km > 0
-                      ? 'border-(--color-rosa) bg-(--color-rosa)/10'
-                      : 'border-(--color-bordo) bg-(--color-fondo-card)'
-                  }`}
-                >
-                  <div className="flex items-baseline gap-3">
-                    <span className="w-8 text-2xl font-black text-(--color-testo-tenue)">{r.posizione}</span>
-                    {r.numero !== null && <span className="font-mono text-xl text-(--color-testo-tenue)">{r.numero}</span>}
-                    {maglia === r.id && <MagliaRosa />}
-                    <span className="text-2xl font-bold">{r.name}</span>
-                    <span className="text-xl text-(--color-testo-tenue)">
-                      {r.km}/{tappa.km} km
-                    </span>
-                    {arrivo !== null && <span className="text-xl text-(--color-giallo)">🏁 {arrivo}° arrivato</span>}
-                    {r.errori > 0 && (
-                      <span className="ml-auto text-lg text-(--color-testo-tenue)">
-                        {r.errori} {r.errori === 1 ? 'errore' : 'errori'}
-                      </span>
-                    )}
-                  </div>
-                  <Strada fatti={r.km} totale={tappa.km} />
-                  {scelto === r.id && a && (
-                    <Azioni allievo={a} indice={indice} km={tappa.km} azione={(c) => azione('allievi', { ...c, playerId: a.id })} />
-                  )}
-                </li>
-              );
-            })}
-            {righe.length === 0 && <p className="text-2xl text-(--color-testo-tenue)">Nessuno in gara.</p>}
-          </ul>
-        </section>
+      <div className="flex flex-1 gap-4">
+        {/* Riempita per colonne, dall'alto in basso: una classifica si legge così, non a righe. */}
+        <ul
+          aria-label="classifica"
+          className={`grid flex-1 grid-flow-col content-start gap-x-3 gap-y-1.5 ${GRIGLIA[colonne]}`}
+          style={righePerColonna(righe.length, colonne)}
+        >
+          {righe.map((r) => {
+            const a = perId.get(r.id);
+            return (
+              <RigaCorridore
+                key={r.id}
+                posizione={r.posizione}
+                numero={r.numero}
+                nome={r.name}
+                km={r.km}
+                totale={tappa.km}
+                errori={r.errori}
+                arrivo={a?.tappe[String(indice)]?.ordineArrivo ?? null}
+                maglia={maglia === r.id}
+                inTesta={r.posizione === 1 && r.km > 0}
+                compatta={colonne > 1}
+                scelto={scelto === r.id}
+                onClick={() => setScelto(scelto === r.id ? null : r.id)}
+              >
+                {a && (
+                  <Azioni allievo={a} indice={indice} km={tappa.km} azione={(c) => azione('allievi', { ...c, playerId: a.id })} />
+                )}
+              </RigaCorridore>
+            );
+          })}
+          {righe.length === 0 && <p className="text-2xl text-(--color-testo-tenue)">Nessuno in gara.</p>}
+        </ul>
 
-        <aside className="flex w-full flex-col gap-4 lg:w-80">
-          <section className="rounded-xl border border-(--color-bordo) bg-(--color-fondo-card) p-4">
-            <h2 className="mb-2 font-bold text-(--color-testo-tenue)">Cronaca</h2>
-            <ul aria-label="cronaca" className="flex flex-col gap-1 text-lg">
-              {eventi.map((e, i) => (
-                <li key={i}>
-                  <span className="font-bold">{e.nome}</span> ha chiuso il km {e.km}
-                </li>
-              ))}
-              {eventi.length === 0 && <li className="text-(--color-testo-tenue)">Ancora nessun chilometro chiuso.</li>}
-            </ul>
-          </section>
-          {!singola && giro.generale.length > 0 && (
-            <section className="rounded-xl border border-(--color-rosa)/40 bg-(--color-rosa)/5 p-4">
-              <h2 className="mb-2 font-bold text-(--color-rosa)">Generale prima di questa tappa</h2>
-              <ol className="flex flex-col gap-1 text-lg">
-                {giro.generale.slice(0, 5).map((g) => (
-                  <li key={g.id} className="flex justify-between gap-2">
-                    <span>
-                      {g.posizione}. {g.name}
-                    </span>
-                    <span className="text-(--color-testo-tenue)">{g.punti} pt</span>
+        {/* Con tre colonne la classe riempie lo schermo: cronaca e generale lasciano il posto. */}
+        {colonne < 3 && (
+          <aside className="hidden w-64 shrink-0 flex-col gap-3 lg:flex">
+            <section className="rounded-xl border border-(--color-bordo) bg-(--color-fondo-card) p-3">
+              <h2 className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Cronaca</h2>
+              <ul aria-label="cronaca" className="flex flex-col gap-0.5">
+                {eventi.map((e, i) => (
+                  <li key={i}>
+                    <span className="font-bold">{e.nome}</span> ha chiuso il km {e.km}
                   </li>
                 ))}
-              </ol>
+                {eventi.length === 0 && <li className="text-(--color-testo-tenue)">Ancora nessun chilometro chiuso.</li>}
+              </ul>
             </section>
-          )}
-        </aside>
+            {!singola && giro.generale.length > 0 && (
+              <section className="rounded-xl border border-(--color-rosa)/40 bg-(--color-rosa)/5 p-3">
+                <h2 className="mb-1 text-sm font-bold text-(--color-rosa)">Generale prima di questa tappa</h2>
+                <ol className="flex flex-col gap-0.5">
+                  {giro.generale.slice(0, 5).map((g) => (
+                    <li key={g.id} className="flex justify-between gap-2">
+                      <span className="truncate">
+                        {g.posizione}. {g.name}
+                      </span>
+                      <span className="text-(--color-testo-tenue)">{g.punti} pt</span>
+                    </li>
+                  ))}
+                </ol>
+              </section>
+            )}
+          </aside>
+        )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Un corridore nella tappa. Con pochi allievi la riga è grande, con la strada intera e il
+ * ciclista; con la classe piena sta tutta su una linea, e la strada diventa cinque
+ * caselle accanto al nome.
+ */
+function RigaCorridore({
+  posizione,
+  numero,
+  nome,
+  km,
+  totale,
+  errori,
+  arrivo,
+  maglia,
+  inTesta,
+  compatta,
+  scelto,
+  onClick,
+  children,
+}: {
+  posizione: number;
+  numero: number | null;
+  nome: string;
+  km: number;
+  totale: number;
+  errori: number;
+  arrivo: number | null;
+  maglia: boolean;
+  inTesta: boolean;
+  compatta: boolean;
+  scelto: boolean;
+  onClick: () => void;
+  children?: React.ReactNode;
+}) {
+  return (
+    <li
+      onClick={onClick}
+      className={`cursor-pointer rounded-lg border ${compatta ? 'px-2 py-1' : 'px-3 py-2'} ${
+        inTesta ? 'border-(--color-rosa) bg-(--color-rosa)/10' : 'border-(--color-bordo) bg-(--color-fondo-card)'
+      } ${scelto && compatta ? 'col-span-full' : ''}`}
+    >
+      <div className="flex items-center gap-2">
+        <span className={`w-8 shrink-0 text-right font-black text-(--color-testo-tenue) ${compatta ? 'text-xl' : 'text-2xl'}`}>
+          {posizione}
+        </span>
+        {/* Il numero di corsa sembra un dorsale: accanto alla posizione, due numeri nudi si confondono. */}
+        {numero !== null && <Dorsale numero={numero} />}
+        {maglia && <MagliaRosa piccola={compatta} />}
+        <span className={`min-w-0 flex-1 truncate font-bold ${compatta ? 'text-xl' : 'text-2xl'}`}>{nome}</span>
+        {compatta && <Caselle fatti={km} totale={totale} />}
+        <span className={`shrink-0 font-mono text-(--color-testo-tenue) ${compatta ? 'text-sm' : 'text-xl'}`}>
+          {km}/{totale} km
+        </span>
+        {arrivo !== null && (
+          <span className={`shrink-0 text-(--color-giallo) ${compatta ? 'text-sm' : 'text-xl'}`}>
+            🏁 {arrivo}°{compatta ? '' : ' arrivato'}
+          </span>
+        )}
+        {!compatta && errori > 0 && (
+          <span className="ml-auto shrink-0 text-lg text-(--color-testo-tenue)">
+            {errori} {errori === 1 ? 'errore' : 'errori'}
+          </span>
+        )}
+      </div>
+      {!compatta && <Strada fatti={km} totale={totale} />}
+      {scelto && children}
+    </li>
+  );
+}
+
+/** Il numero di corsa disegnato come il dorsale di un ciclista. */
+function Dorsale({ numero }: { numero: number }) {
+  return (
+    <span
+      aria-label={`numero ${numero}`}
+      className="shrink-0 rounded border border-(--color-rosa)/60 bg-white/90 px-1 font-mono text-xs leading-4 font-black text-black"
+    >
+      {numero}
+    </span>
+  );
+}
+
+/** I chilometri come caselle accese, per le righe compatte. */
+function Caselle({ fatti, totale }: { fatti: number; totale: number }) {
+  return (
+    <span className="flex shrink-0 gap-0.5" aria-hidden>
+      {Array.from({ length: totale }, (_, i) => (
+        <span key={i} className={`h-3 w-4 rounded-sm ${i < fatti ? 'bg-(--color-rosa)' : 'bg-(--color-bordo)'}`} />
+      ))}
+    </span>
   );
 }
 
@@ -466,39 +592,38 @@ function FraLeTappe({
   const [mostraNumeri, setMostraNumeri] = useState(false);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-3">
+      {/* In alto, su una riga: che cosa viene dopo. È il comando che serve per primo. */}
+      <section className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 rounded-xl border border-(--color-verde)/40 bg-(--color-verde)/5 px-4 py-2">
+        {prossima >= 0 ? (
+          <>
+            <p className="text-lg">
+              Prossima: <span className="font-bold">tappa {prossima + 1} · {giro.tappe[prossima].nome}</span>
+            </p>
+            <ApriTappa key={prossima} giro={giro} indice={prossima} azione={azione} />
+          </>
+        ) : (
+          <p className="text-lg text-(--color-testo-tenue)">
+            Tutte le tappe sono state corse: aggiungine un&apos;altra dal piano del Giro, oppure chiudi il Giro.
+          </p>
+        )}
+        <button onClick={() => setMostraNumeri((m) => !m)} className="text-(--color-testo-tenue) underline">
+          {mostraNumeri ? 'torna alla classifica' : 'mostra codice e numeri di corsa'}
+        </button>
+      </section>
+
       {mostraNumeri ? (
-        <section className="flex flex-col items-center gap-4">
+        <section className="flex flex-col items-center gap-3">
           <p className="text-2xl text-(--color-testo-tenue)">
             Codice <span className="font-mono text-4xl font-black text-(--color-rosa)">{giro.code}</span> · chi rientra
             usa il suo numero
           </p>
           <ListaCorridori allievi={allievi} />
-          <button onClick={() => setMostraNumeri(false)} className="text-(--color-testo-tenue) underline">
-            torna alla classifica
-          </button>
         </section>
       ) : (
-        <div className="flex flex-col gap-6 lg:flex-row">
-          <div className="flex flex-1 flex-col gap-6">
-            {ultima && <RisultatiTappa giro={giro} indice={ultima.i} allievi={allievi} />}
-            {prossima >= 0 ? (
-              <section className="flex flex-col items-center gap-3 rounded-xl border border-(--color-verde)/40 bg-(--color-verde)/5 p-5">
-                <p className="text-xl">
-                  Prossima: <span className="font-bold">tappa {prossima + 1} · {giro.tappe[prossima].nome}</span>
-                </p>
-                <ApriTappa key={prossima} giro={giro} indice={prossima} azione={azione} />
-                <button onClick={() => setMostraNumeri(true)} className="text-(--color-testo-tenue) underline">
-                  mostra codice e numeri di corsa
-                </button>
-              </section>
-            ) : (
-              <p className="text-xl text-(--color-testo-tenue)">
-                Tutte le tappe sono state corse: aggiungine un&apos;altra, oppure chiudi il Giro.
-              </p>
-            )}
-          </div>
-          <aside className="flex w-full flex-col gap-4 lg:w-96">
+        <div className="flex flex-1 flex-col gap-4 lg:flex-row">
+          <div className="min-w-0 flex-1">{ultima && <RisultatiTappa giro={giro} indice={ultima.i} allievi={allievi} />}</div>
+          <aside className="flex w-full shrink-0 flex-col gap-3 lg:w-[30rem]">
             <ClassificaGenerale giro={giro} azione={azione} />
             <PianoGiro giro={giro} azione={azione} />
           </aside>
@@ -514,19 +639,24 @@ function RisultatiTappa({ giro, indice, allievi }: { giro: GiroLim; indice: numb
     .map((a) => ({ a, p: a.tappe[String(indice)] }))
     .filter((x) => x.p && x.p.posizione !== null)
     .sort((x, y) => (x.p!.posizione ?? 0) - (y.p!.posizione ?? 0));
+  const colonne = righe.length > 14 ? 3 : 2;
   return (
-    <section className="rounded-xl border border-(--color-bordo) bg-(--color-fondo-card) p-5">
-      <h2 className="mb-3 text-2xl font-bold">
+    <section className="rounded-xl border border-(--color-bordo) bg-(--color-fondo-card) p-4">
+      <h2 className="mb-2 text-xl font-bold">
         Tappa {indice + 1} · {tappa.nome}: ordine d&apos;arrivo
       </h2>
       <Podio nomi={righe.slice(0, 3).map(({ a, p }) => ({ id: a.id, name: a.name, sotto: `${p!.km} km · ${p!.punti} pt` }))} />
-      <ol aria-label="ordine d'arrivo" className="mt-4 grid gap-x-8 gap-y-1 text-lg sm:grid-cols-2">
+      <ol
+        aria-label="ordine d'arrivo"
+        className={`mt-3 grid grid-flow-col gap-x-6 gap-y-0.5 ${GRIGLIA[colonne]}`}
+        style={righePerColonna(righe.length, colonne)}
+      >
         {righe.map(({ a, p }) => (
           <li key={a.id} className="flex justify-between gap-2">
-            <span>
+            <span className="truncate">
               {p!.posizione}. {a.name}
             </span>
-            <span className="text-(--color-testo-tenue)">
+            <span className="shrink-0 text-(--color-testo-tenue)">
               {p!.km} km · {p!.punti} pt
             </span>
           </li>
@@ -544,23 +674,28 @@ function ClassificaGenerale({
   azione: (rotta: string, corpo: Record<string, unknown>) => Promise<void>;
 }) {
   const [n, setN] = useState(giro.migliori ? String(giro.migliori) : '');
+  const dueColonne = giro.generale.length > 12;
   return (
-    <section className="rounded-xl border border-(--color-rosa)/50 bg-(--color-rosa)/5 p-4">
-      <h2 className="mb-2 text-xl font-bold text-(--color-rosa)">Classifica generale</h2>
-      <ol aria-label="classifica generale" className="flex flex-col gap-1 text-lg">
+    <section className="rounded-xl border border-(--color-rosa)/50 bg-(--color-rosa)/5 p-3">
+      <h2 className="mb-1 text-lg font-bold text-(--color-rosa)">Classifica generale</h2>
+      <ol
+        aria-label="classifica generale"
+        className={`grid grid-flow-col gap-x-4 gap-y-0.5 ${dueColonne ? 'grid-cols-2 text-base' : 'grid-cols-1 text-lg'}`}
+        style={righePerColonna(giro.generale.length, dueColonne ? 2 : 1)}
+      >
         {giro.generale.map((g) => (
           <li key={g.id} className="flex items-baseline justify-between gap-2">
-            <span className="flex items-baseline gap-2">
-              <span className="w-6 text-right text-(--color-testo-tenue)">{g.posizione}</span>
-              {g.posizione === 1 && g.punti > 0 && <MagliaRosa />}
-              <span className="font-bold">{g.name}</span>
+            <span className="flex min-w-0 items-baseline gap-1.5">
+              <span className="w-6 shrink-0 text-right text-(--color-testo-tenue)">{g.posizione}</span>
+              {g.posizione === 1 && g.punti > 0 && <MagliaRosa piccola />}
+              <span className="truncate font-bold">{g.name}</span>
             </span>
-            <span className="text-(--color-testo-tenue)">{g.punti} pt</span>
+            <span className="shrink-0 text-(--color-testo-tenue)">{g.punti} pt</span>
           </li>
         ))}
         {giro.generale.length === 0 && <li className="text-(--color-testo-tenue)">Ancora nessun punto.</li>}
       </ol>
-      <label className="mt-3 flex flex-wrap items-center gap-2 border-t border-(--color-bordo) pt-3 text-sm">
+      <label className="mt-2 flex flex-wrap items-center gap-2 border-t border-(--color-bordo) pt-2 text-sm">
         <span className="text-(--color-testo-tenue)">Contano le migliori</span>
         <input
           type="number"
@@ -570,12 +705,12 @@ function ClassificaGenerale({
           onChange={(e) => setN(e.target.value)}
           placeholder="tutte"
           aria-label="tappe migliori"
-          className="w-20 rounded-lg border border-(--color-bordo) bg-black/30 px-2 py-1 text-center outline-none focus:border-(--color-rosa)"
+          className="w-16 rounded-lg border border-(--color-bordo) bg-black/30 px-2 py-0.5 text-center outline-none focus:border-(--color-rosa)"
         />
         <span className="text-(--color-testo-tenue)">tappe di ciascuno</span>
         <button
           onClick={() => void azione('tappe', { azione: 'migliori', migliori: n === '' ? null : Number(n) })}
-          className="rounded-lg border border-(--color-bordo) px-3 py-1 hover:border-(--color-rosa)"
+          className="rounded-lg border border-(--color-bordo) px-2 py-0.5 hover:border-(--color-rosa)"
         >
           Applica
         </button>
@@ -584,6 +719,10 @@ function ClassificaGenerale({
   );
 }
 
+/**
+ * Il piano del Giro, chiuso di partenza: serve al docente ogni tanto (aggiungere o togliere
+ * una tappa), e aperto ruberebbe alla classe lo spazio dello schermo.
+ */
 function PianoGiro({
   giro,
   azione,
@@ -593,10 +732,14 @@ function PianoGiro({
 }) {
   const [tema, setTema] = useState<Tema>(TEMI_DEL_GIRO[0].id);
   const segno = { 'da-correre': '○', 'in-corso': '▶', chiusa: '✔' } as const;
+  const corse = giro.tappe.filter((t) => t.stato === 'chiusa').length;
   return (
-    <section className="rounded-xl border border-(--color-bordo) bg-(--color-fondo-card) p-4">
-      <h2 className="mb-2 font-bold text-(--color-testo-tenue)">Il Giro</h2>
-      <ol aria-label="piano del giro" className="flex flex-col gap-1">
+    <details className="rounded-xl border border-(--color-bordo) bg-(--color-fondo-card) px-3 py-2">
+      <summary className="cursor-pointer font-bold text-(--color-testo-tenue)">
+        Il Giro: {giro.tappe.length} {giro.tappe.length === 1 ? 'tappa' : 'tappe'}, {corse}{' '}
+        {corse === 1 ? 'corsa' : 'corse'}
+      </summary>
+      <ol aria-label="piano del giro" className="mt-2 flex flex-col gap-0.5">
         {giro.tappe.map((t, i) => (
           <li key={i} className={`flex items-center gap-2 ${t.stato === 'chiusa' ? 'text-(--color-testo-tenue)' : ''}`}>
             <span>
@@ -618,7 +761,7 @@ function PianoGiro({
           </li>
         ))}
       </ol>
-      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-(--color-bordo) pt-3 text-sm">
+      <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-(--color-bordo) pt-2 text-sm">
         <select
           value={tema}
           onChange={(e) => setTema(e.target.value as Tema)}
@@ -638,17 +781,14 @@ function PianoGiro({
           Aggiungi tappa
         </button>
       </div>
-    </section>
+    </details>
   );
 }
 
 /* --------------------------------------------------------------------- fine Giro */
 
 function FineGiro({ giro, allievi, singola }: { giro: GiroLim; allievi: AllievoLim[]; singola: boolean }) {
-  const riepilogo = useMemo(
-    () => riepilogoErrori(giro.tappe.map((t) => t.tipi), allievi),
-    [giro, allievi],
-  );
+  const riepilogo = useMemo(() => riepilogoErrori(giro.tappe.map((t) => t.tipi), allievi), [giro, allievi]);
   const podio = singola
     ? allievi
         .map((a) => ({ a, p: a.tappe['0'] }))
@@ -659,27 +799,23 @@ function FineGiro({ giro, allievi, singola }: { giro: GiroLim; allievi: AllievoL
     : giro.generale.slice(0, 3).map((g) => ({ id: g.id, name: g.name, sotto: `${g.punti} punti` }));
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
-      <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4 lg:flex-row">
+      <div className="flex min-w-0 flex-1 flex-col gap-3">
         <section>
-          <h2 className="mb-3 text-center text-3xl font-black">{singola ? 'Classifica finale' : 'Il podio del Giro'}</h2>
+          <h2 className="mb-2 text-center text-2xl font-black">{singola ? 'Classifica finale' : 'Il podio del Giro'}</h2>
           <Podio nomi={podio} />
         </section>
-        {singola ? (
-          <RisultatiTappa giro={giro} indice={0} allievi={allievi} />
-        ) : (
-          <ClassificaFinale righe={giro.generale} />
-        )}
+        {singola ? <RisultatiTappa giro={giro} indice={0} allievi={allievi} /> : <ClassificaFinale righe={giro.generale} />}
       </div>
       {riepilogo.some((r) => r.errori > 0) && (
-        <aside className="w-full lg:w-96">
-          <section className="rounded-xl border border-(--color-giallo)/40 bg-(--color-giallo)/5 p-4">
-            <h2 className="mb-2 text-xl font-bold text-(--color-giallo)">Da rispiegare</h2>
-            <ul className="flex flex-col gap-1">
+        <aside className="w-full shrink-0 lg:w-80">
+          <section className="rounded-xl border border-(--color-giallo)/40 bg-(--color-giallo)/5 p-3">
+            <h2 className="mb-1 text-lg font-bold text-(--color-giallo)">Da rispiegare</h2>
+            <ul className="flex flex-col gap-0.5">
               {riepilogo.map((r) => (
                 <li key={r.tipo} className="flex justify-between gap-2">
                   <span>{NOME_TIPO[r.tipo]}</span>
-                  <span className="text-(--color-testo-tenue)">
+                  <span className="shrink-0 text-(--color-testo-tenue)">
                     {r.errori} {r.errori === 1 ? 'errore' : 'errori'}
                   </span>
                 </li>
@@ -696,14 +832,19 @@ function FineGiro({ giro, allievi, singola }: { giro: GiroLim; allievi: AllievoL
 }
 
 function ClassificaFinale({ righe }: { righe: RigaGenerale[] }) {
+  const colonne = righe.length > 16 ? 3 : 2;
   return (
-    <ol aria-label="classifica generale" className="grid gap-x-8 gap-y-1 text-xl sm:grid-cols-2">
+    <ol
+      aria-label="classifica generale"
+      className={`grid grid-flow-col gap-x-6 gap-y-0.5 text-lg ${GRIGLIA[colonne]}`}
+      style={righePerColonna(righe.length, colonne)}
+    >
       {righe.map((g) => (
         <li key={g.id} className="flex justify-between gap-2">
-          <span>
+          <span className="truncate">
             {g.posizione}. {g.name}
           </span>
-          <span className="text-(--color-testo-tenue)">{g.punti} pt</span>
+          <span className="shrink-0 text-(--color-testo-tenue)">{g.punti} pt</span>
         </li>
       ))}
     </ol>
@@ -712,25 +853,32 @@ function ClassificaFinale({ righe }: { righe: RigaGenerale[] }) {
 
 /* ------------------------------------------------------------------ pezzi comuni */
 
-function MagliaRosa() {
+function MagliaRosa({ piccola = false }: { piccola?: boolean }) {
   // L'emoji della maglietta è verde: la maglia rosa si fa col colore.
   return (
-    <span className="rounded-md bg-(--color-rosa) px-2 py-0.5 text-sm font-black whitespace-nowrap text-white uppercase">
+    <span
+      className={`shrink-0 rounded-md bg-(--color-rosa) font-black whitespace-nowrap text-white uppercase ${
+        piccola ? 'px-1.5 text-[0.65rem] leading-5' : 'px-2 py-0.5 text-sm'
+      }`}
+    >
       maglia rosa
     </span>
   );
 }
 
+/** Il podio su una riga: tre medaglie e tre nomi, alto quanto basta. */
 function Podio({ nomi }: { nomi: Array<{ id: string; name: string; sotto: string }> }) {
   const medaglie = ['🥇', '🥈', '🥉'];
   if (nomi.length === 0) return null;
   return (
-    <div className="flex flex-wrap items-end justify-center gap-6 rounded-xl border border-(--color-rosa)/40 bg-(--color-rosa)/5 p-6">
+    <div className="flex flex-wrap items-center justify-center gap-x-10 gap-y-2 rounded-xl border border-(--color-rosa)/40 bg-(--color-rosa)/5 px-4 py-3">
       {nomi.map((n, i) => (
-        <div key={n.id} className="text-center">
-          <p className="text-5xl">{medaglie[i]}</p>
-          <p className="text-2xl font-bold">{n.name}</p>
-          <p className="text-(--color-testo-tenue)">{n.sotto}</p>
+        <div key={n.id} className="flex items-center gap-3">
+          <span className="text-4xl">{medaglie[i]}</span>
+          <div>
+            <p className="text-2xl leading-tight font-bold">{n.name}</p>
+            <p className="text-sm text-(--color-testo-tenue)">{n.sotto}</p>
+          </div>
         </div>
       ))}
     </div>
@@ -743,19 +891,20 @@ function Podio({ nomi }: { nomi: Array<{ id: string; name: string; sotto: string
  */
 function ListaCorridori({ allievi }: { allievi: AllievoLim[] }) {
   const perNumero = [...allievi].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0));
+  const testo = allievi.length > 15 ? 'text-xl' : 'text-2xl';
   return (
     <div className="w-full">
-      <p className="mb-3 text-center text-2xl text-(--color-testo-tenue)">
+      <p className="mb-2 text-center text-lg text-(--color-testo-tenue)">
         {allievi.length} in griglia di partenza · il numero serve per rientrare da un altro PC
       </p>
       <ul
         aria-label="corridori"
-        className="mx-auto grid max-w-5xl grid-cols-2 gap-x-8 gap-y-1 text-left sm:grid-cols-3 lg:grid-cols-4"
+        className={`mx-auto grid max-w-6xl grid-cols-2 gap-x-6 gap-y-0.5 text-left sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 ${testo}`}
       >
         {perNumero.map((a) => (
-          <li key={a.id} className="flex items-baseline gap-3 text-2xl">
-            <span className="w-10 text-right font-mono font-black text-(--color-rosa)">{a.numero ?? '–'}</span>
-            <span>{a.name}</span>
+          <li key={a.id} className="flex min-w-0 items-baseline gap-2">
+            <span className="w-8 shrink-0 text-right font-mono font-black text-(--color-rosa)">{a.numero ?? '–'}</span>
+            <span className="truncate">{a.name}</span>
           </li>
         ))}
       </ul>
@@ -763,16 +912,16 @@ function ListaCorridori({ allievi }: { allievi: AllievoLim[] }) {
   );
 }
 
-/** I chilometri percorsi: una casella per chilometro, il ciclista dove è arrivato. */
+/** I chilometri percorsi, per le righe grandi: una casella per km, il ciclista dove è arrivato. */
 function Strada({ fatti, totale }: { fatti: number; totale: number }) {
   return (
-    <div className="relative mt-2 flex items-center gap-1">
+    <div className="relative mt-1.5 flex items-center gap-1">
       {Array.from({ length: totale }, (_, i) => (
-        <div key={i} className={`h-3 flex-1 rounded-full ${i < fatti ? 'bg-(--color-rosa)' : 'bg-(--color-bordo)'}`} />
+        <div key={i} className={`h-2.5 flex-1 rounded-full ${i < fatti ? 'bg-(--color-rosa)' : 'bg-(--color-bordo)'}`} />
       ))}
       <span
         aria-hidden
-        className="pointer-events-none absolute -top-1 text-xl transition-all duration-500"
+        className="pointer-events-none absolute -top-1.5 text-lg transition-all duration-500"
         style={{ left: `calc(${(Math.min(fatti, totale) / Math.max(totale, 1)) * 100}% - 0.6rem)` }}
       >
         🚴
@@ -800,7 +949,7 @@ function Azioni({
   return (
     <div
       onClick={(e) => e.stopPropagation()}
-      className="mt-3 flex flex-wrap items-end gap-3 border-t border-(--color-bordo) pt-3 text-base"
+      className="mt-2 flex flex-wrap items-end gap-3 border-t border-(--color-bordo) pt-2 text-base"
     >
       <label className="flex flex-col gap-1">
         <span className="text-sm text-(--color-testo-tenue)">Correggi il nome</span>
@@ -808,11 +957,11 @@ function Azioni({
           <input
             value={nome}
             onChange={(e) => setNome(e.target.value)}
-            className="w-40 rounded-lg border border-(--color-bordo) bg-black/30 px-3 py-1.5 outline-none focus:border-(--color-rosa)"
+            className="w-40 rounded-lg border border-(--color-bordo) bg-black/30 px-3 py-1 outline-none focus:border-(--color-rosa)"
           />
           <button
             onClick={() => void azione({ azione: 'rinomina', name: nome })}
-            className="rounded-lg border border-(--color-bordo) px-3 py-1.5 hover:border-(--color-rosa)"
+            className="rounded-lg border border-(--color-bordo) px-3 py-1 hover:border-(--color-rosa)"
           >
             Salva
           </button>
@@ -828,11 +977,11 @@ function Azioni({
             max={km}
             value={kmRitorno}
             onChange={(e) => setKmRitorno(Number(e.target.value))}
-            className="w-20 rounded-lg border border-(--color-bordo) bg-black/30 px-3 py-1.5 outline-none focus:border-(--color-rosa)"
+            className="w-16 rounded-lg border border-(--color-bordo) bg-black/30 px-2 py-1 outline-none focus:border-(--color-rosa)"
           />
           <button
             onClick={() => void azione({ azione: 'rimanda', tappa: indice, km: kmRitorno - 1 })}
-            className="rounded-lg border border-(--color-bordo) px-3 py-1.5 hover:border-(--color-rosa)"
+            className="rounded-lg border border-(--color-bordo) px-3 py-1 hover:border-(--color-rosa)"
           >
             Rimanda
           </button>
@@ -843,7 +992,7 @@ function Azioni({
         onClick={() => {
           if (confirm(`Eliminare ${allievo.name} dal Giro?`)) void azione({ azione: 'elimina' });
         }}
-        className="ml-auto rounded-lg border border-red-500/40 px-3 py-1.5 text-red-300 hover:bg-red-500/10"
+        className="ml-auto rounded-lg border border-red-500/40 px-3 py-1 text-red-300 hover:bg-red-500/10"
       >
         Elimina
       </button>

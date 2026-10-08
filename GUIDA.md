@@ -118,6 +118,14 @@ generale** somma le **migliori N tappe** di ciascuno, così chi è assente non r
 Aprire la tappa successiva chiude da sola quella in corso: non c'è il rischio di
 dimenticarne una aperta.
 
+### Quanto sta sullo schermo
+
+La LIM è pensata per stare in **uno schermo solo, senza scorrere**, anche su un proiettore
+da 1280×720 e con una classe di 25 allievi. Le righe si stringono e si dispongono su più
+colonne man mano che gli allievi aumentano (una colonna fino a 8, due fino a 18, poi tre),
+e le classifiche si leggono dall'alto in basso, colonna per colonna. Il piano del Giro sta
+chiuso per lasciare spazio alla classe: si apre con un clic sul riquadro **Il Giro**.
+
 ### Correzioni durante la tappa
 
 Tocca la riga di un allievo alla LIM:
