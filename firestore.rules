@@ -1,0 +1,47 @@
+rules_version = '2';
+
+// Regole Firestore del progetto "html-css-attivita".
+//
+// ATTENZIONE: il progetto Firebase ha UN SOLO file di regole, condiviso con il repository
+// html-escape-room. Questo file le contiene TUTTE: il blocco escapeSessions (copiato da
+// html-escape-room/firestore.rules, da tenere allineato) e il blocco giroSessions del Giro
+// dei Cicli. Pubblicare da qui sovrascrive anche quelle dell'escape room.
+//
+// In entrambe le attività i client non toccano mai Firestore: tutto passa dalle API del
+// server, che usano l'Admin SDK e ignorano queste regole. Dai client è ammessa una sola
+// cosa: la lettura in tempo reale da parte del docente autenticato con il claim teacher
+// (serve alla vista LIM).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isTeacher() {
+      return request.auth != null && request.auth.token.teacher == true;
+    }
+
+    // Fuga dal Server (repository html-escape-room)
+    match /escapeSessions/{sessionId} {
+      allow read: if isTeacher();
+      allow write: if false;
+
+      match /{document=**} {
+        allow read: if isTeacher();
+        allow write: if false;
+      }
+    }
+
+    // Il Giro dei Cicli (questo repository)
+    match /giroSessions/{sessionId} {
+      allow read: if isTeacher();
+      allow write: if false;
+
+      match /{document=**} {
+        allow read: if isTeacher();
+        allow write: if false;
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

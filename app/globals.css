@@ -1,0 +1,26 @@
+@import 'tailwindcss';
+
+/* Tema del Giro dei Cicli: fondo scuro da laboratorio, accento rosa come la maglia rosa.
+ * I colori dell'editor (stile VS Code / One Dark) stanno nel componente dell'editor. */
+@theme {
+  --color-fondo: rgb(17 20 28);
+  --color-fondo-card: rgb(26 30 42);
+  --color-bordo: rgb(44 50 66);
+  --color-rosa: rgb(236 72 153);
+  --color-rosa-scuro: rgb(157 23 77);
+  --color-verde: rgb(52 211 153);
+  --color-giallo: rgb(250 204 21);
+  --color-testo: rgb(226 232 240);
+  --color-testo-tenue: rgb(148 163 184);
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background-color: var(--color-fondo);
+  color: var(--color-testo);
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}

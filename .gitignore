@@ -1,0 +1,26 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+
+# variabili d'ambiente (mai nel repository)
+.env
+.env.local
+.env*.local
+
+# test
+test-results/
+playwright-report/
+.playwright/
+
+# emulatori Firebase
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+.firebase/
+
+# vario
+*.tsbuildinfo
+next-env.d.ts
+.DS_Store
