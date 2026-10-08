@@ -8,6 +8,9 @@ con i ciclisti che avanzano, la maglia rosa e la cronaca.
 Ispirato al minigioco **PRINT RUSH** del manuale edu-code: l'errore non toglie punti,
 costa solo tempo, e porta sempre un suggerimento che dice che cosa guardare.
 
+**Per usarlo in classe**: `GUIDA.md` ha la procedura passo passo, dalla preparazione
+(regole Firestore, deploy, domini autorizzati) alla lezione.
+
 ## Come si gioca in classe
 
 1. Il docente apre `/docente`, accede con Google e crea una gara (classe e numero di tappe).
