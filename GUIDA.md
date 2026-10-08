@@ -68,58 +68,80 @@ autorizzato.
 
 ---
 
-## Parte 2 — Il giorno della lezione
+## Parte 2 — Il Giro in classe
 
-### Prima che entrino
+### Come funziona, in breve
 
-1. Sul PC della LIM apri **`/docente`** e accedi.
-2. **Nuova gara**: scrivi la classe (es. `2A`) e il numero di tappe. Per la prima volta
-   parti con **8 tappe** e guarda l'orologio: saprai come tarare le volte dopo.
-3. Apri **Vista LIM** e metti il browser a schermo intero (F11). Il codice della gara
-   riempie lo schermo.
-4. Scrivi alla lavagna l'indirizzo del sito (quello Vercel, senza `/docente`).
+Un **Giro** è un campionato che dura settimane. È fatto di **tappe**: ogni tappa è una gara
+breve (di solito 10 minuti) su **un argomento solo**, con **5 esercizi** che si chiamano
+**chilometri**. Apri una tappa quando hai spiegato quell'argomento; fra una tappa e l'altra
+possono passare giorni.
 
-### Quando arrivano
+In ogni tappa conta chi fa più chilometri, e a parità chi li ha chiusi prima. Gli errori non
+tolgono niente. Alla chiusura della tappa ognuno prende dei **punti** (25 al primo, 20 al
+secondo, 16 al terzo… e almeno 1 a chiunque abbia fatto un chilometro). La **classifica
+generale** somma le **migliori N tappe** di ciascuno, così chi è assente non resta indietro.
 
-5. Gli allievi aprono il sito, scrivono **il codice** e **il loro nome**. Li vedi comparire
-   in griglia di partenza alla LIM, ciascuno con il suo **numero di corsa**.
-   - Se in classe ci sono due allievi con lo stesso nome, al secondo il sito chiede da
-     solo di aggiungere l'iniziale del cognome ("Luca B.").
-   - Alla tappa successiva, chi è già iscritto **non riscrive il nome**: entra con il
-     codice della gara e il suo numero, scegliendo "Ho già un numero". La lista con i
-     numeri è proiettata alla LIM prima del via: non devono ricordarsela.
-6. Quando ci sono tutti, premi **VIA!**.
+### Una volta sola: creare il Giro
 
-### Durante la gara
+1. Apri **`/docente`** e accedi.
+2. Scrivi la classe e lascia selezionato **Giro a tappe**.
+3. Spunta le tappe che farai, nell'ordine del programma. Di partenza sono spuntate le prime
+   quattro (ripetere, contare con range, il passo, leggere il codice). **Non preoccuparti di
+   scegliere tutto subito**: le altre tappe si aggiungono dalla LIM quando arrivi a
+   quell'argomento.
+4. Se vuoi, scrivi quante tappe contano nella generale ("le migliori N"). Puoi lasciarlo
+   vuoto e deciderlo più avanti, anche a Giro iniziato.
+5. **Crea il Giro**. Il codice di 4 caratteri resta lo stesso per tutto il Giro: puoi
+   scriverlo su un cartello in laboratorio.
 
-Alla LIM vedi una riga per allievo: la strada percorsa, il ciclista, gli errori, e la
-maglia rosa al primo. A destra la cronaca delle ultime tappe chiuse.
+> Per una gara di un'ora sola, come prima, c'è **Gara singola**: una tappa mista, senza
+> limite di tempo.
 
-Toccando la riga di un allievo si aprono le correzioni:
+### Ogni lezione
+
+1. Apri la **Vista LIM** del Giro e proiettala (F11 per lo schermo intero).
+2. Gli allievi aprono il sito:
+   - **la prima volta** scrivono il codice e il nome, e ricevono il loro **numero di corsa**;
+   - **dalle volte dopo** scelgono "Ho già un numero" e scrivono codice e numero. Alla LIM
+     c'è il link **"mostra codice e numeri di corsa"**: proietta la lista, così nessuno deve
+     ricordarsela.
+3. Quando sei pronto, scegli la **durata** (10 minuti proposti, la cronometro 5; vuoto =
+   senza limite) e premi **VIA!**. La pagina degli allievi parte da sola.
+4. Durante la tappa la LIM mostra il **cronometro**, la classifica dal vivo con la strada di
+   ciascuno e la cronaca dei chilometri chiusi. Allo scadere degli allievi compare "Tempo
+   scaduto".
+5. Premi **Chiudi la tappa** (anche prima del tempo, se vedi che sono tutti fermi). Compaiono
+   l'**ordine d'arrivo con i punti** e la **classifica generale** con la maglia rosa. Gli
+   allievi vedono la loro posizione nella tappa e in generale.
+
+Aprire la tappa successiva chiude da sola quella in corso: non c'è il rischio di
+dimenticarne una aperta.
+
+### Correzioni durante la tappa
+
+Tocca la riga di un allievo alla LIM:
 
 | Problema | Che cosa fare |
 |---|---|
 | Nome scritto male all'ingresso | *Correggi il nome* → Salva |
-| Ha superato una tappa per sbaglio, o vuoi fargliela rifare | *Rimanda alla tappa N* |
-| Si è iscritto due volte / iscritto per errore | *Elimina* |
+| Ha superato un chilometro per sbaglio, o vuoi farglielo rifare | *Rimanda al km N* |
+| Si è iscritto due volte / per errore | *Elimina* |
 
-Se un allievo chiude il browser o ricarica la pagina, riprende da dove era. Se invece si
-sposta **su un altro PC**, rientra con il suo numero di corsa: il browser nuovo non lo
-conosce, ma il server sì. Rientrando, la sessione aperta sul PC di prima si chiude — un
-allievo corre da una postazione alla volta.
+Le correzioni ricalcolano punti e classifica da sole, anche su una tappa già chiusa.
 
-### Alla fine
+### Quando arrivi a un argomento nuovo
 
-7. **Chiudi gara**: alla LIM compaiono il podio e il riquadro **Da rispiegare**, con i
-   tipi di tappa ordinati per errori. È la cosa più utile per te: dice su che cosa la
-   classe ha faticato di più.
-8. La gara chiusa resta nell'elenco: puoi riaprire la vista LIM anche dopo, per
-   commentare i risultati.
+Fra una tappa e l'altra, nel riquadro **Il Giro** della LIM, scegli il tema dal menu e premi
+**Aggiungi tappa**. Le tappe disponibili, nell'ordine del programma: ripetere, contare con
+range, il passo, leggere il codice, testo e numero (f-string), la scala, cronometro, caccia
+all'errore, accumulatore, cicli su una parola.
 
-Per una seconda gara si crea una gara nuova: il percorso viene generato di nuovo con
-numeri diversi, quindi non si può vincere a memoria.
+### Alla fine del Giro
 
----
+**Chiudi il Giro** (in alto a destra della LIM). Compaiono il **podio del Giro**, la
+classifica generale completa e il riquadro **Da rispiegare**: i tipi di esercizio ordinati per
+errori, cioè su che cosa la classe ha faticato di più in tutto il Giro.
 
 ## Cose da sapere
 
@@ -131,9 +153,9 @@ indietro un allievo. Se un giorno diventasse un problema vero, si può stringere
 **Se cade la rete** le pagine degli allievi non si rompono: riprovano da sole e mostrano
 "Connessione al server persa". Quando la rete torna, si riprende.
 
-**Gli errori non tolgono punti.** Conta chi arriva più lontano, e a parità chi ci è
-arrivato prima. Gli errori si contano solo per il riepilogo finale. Vale la pena dirlo
-agli allievi prima di cominciare: toglie la paura di provare.
+**Gli errori non tolgono punti.** In ogni tappa conta chi fa più chilometri, e a parità chi
+li ha chiusi prima. Gli errori si contano solo per il riepilogo "Da rispiegare". Vale la pena
+dirlo agli allievi prima di cominciare: toglie la paura di provare.
 
 **I `print` scritti a mano non valgono.** Se un allievo stampa cinque righe invece di
 scrivere il ciclo, il sistema se ne accorge e glielo dice.

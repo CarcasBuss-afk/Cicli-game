@@ -1,20 +1,19 @@
 /* SOLO PER I TEST. Attiva unicamente quando è impostato FIRESTORE_EMULATOR_HOST, cioè
  * quando il server parla con l'emulatore: in produzione risponde 404.
  *
- * Serve ai test delle API per preparare una gara (creare, dare il via, chiudere) e per
- * rileggere lo stato, senza passare dalla pagina docente, che arriva nel Task 6.
- * Restituisce anche le soluzioni delle tappe: per questo non deve esistere in produzione.
+ * Serve ai test per preparare un Giro (crearlo, aprire e chiudere tappe, far scadere il
+ * tempo) e per rileggere lo stato senza passare dalla pagina docente.
+ * Restituisce anche le soluzioni degli esercizi: per questo non deve esistere in produzione.
  */
+import { Timestamp } from 'firebase-admin/firestore';
 import { ApiError, handler } from '@/lib/giro/http';
-import { avviaSessione, chiudiSessione, creaSessione } from '@/lib/giro/sessioni';
+import { apriTappa, chiudiGiro, chiudiTappa, creaGiro } from '@/lib/giro/sessioni';
 import { allieviRef, sessioniRef, type AllievoDoc, type SessioneDoc } from '@/lib/giro/store';
 
 export const dynamic = 'force-dynamic';
 
 function soloConEmulatore(): void {
-  if (!process.env.FIRESTORE_EMULATOR_HOST) {
-    throw new ApiError(404, 'NOT_FOUND', 'Rotta non disponibile');
-  }
+  if (!process.env.FIRESTORE_EMULATOR_HOST) throw new ApiError(404, 'NOT_FOUND', 'Rotta non disponibile');
 }
 
 function sessionId(body: Record<string, unknown>): string {
@@ -23,50 +22,115 @@ function sessionId(body: Record<string, unknown>): string {
   return id;
 }
 
+async function leggiSessione(id: string): Promise<SessioneDoc> {
+  const snap = await sessioniRef().doc(id).get();
+  if (!snap.exists) throw new ApiError(404, 'SESSION_NOT_FOUND', 'Gara inesistente');
+  return snap.data() as SessioneDoc;
+}
+
+/** Gli esercizi della tappa, con le soluzioni: servono ai test per consegnare giusto. */
+async function eserciziDi(id: string, tappa: number) {
+  const s = await leggiSessione(id);
+  return s.tappe[tappa]?.esercizi ?? [];
+}
+
 export const POST = handler(async (body) => {
   soloConEmulatore();
   const azione = typeof body.azione === 'string' ? body.azione : '';
 
   if (azione === 'crea') {
-    const creata = await creaSessione(body.classLabel ?? '3B', body.numTappe ?? 6);
-    const snap = await sessioniRef().doc(creata.id).get();
-    const sessione = snap.data() as SessioneDoc;
-    if (body.avvia === true) await avviaSessione(creata.id);
-    // Le soluzioni servono ai test per consegnare le risposte giuste.
-    return { ...creata, sessionId: creata.id, tappe: sessione.tappe };
+    // Di default una gara singola da 6 esercizi, come i test di prima del Giro.
+    const creata = await creaGiro(
+      body.classLabel ?? '3B',
+      body.tipo === 'giro'
+        ? { tipo: 'giro', temi: body.temi, migliori: body.migliori }
+        : { tipo: 'singola', km: body.km ?? 6 },
+    );
+    if (body.apri === true) await apriTappa(creata.id, 0, body.minuti);
+    return {
+      ...creata,
+      sessionId: creata.id,
+      esercizi: body.apri === true ? await eserciziDi(creata.id, 0) : [],
+    };
   }
 
-  if (azione === 'avvia') {
-    await avviaSessione(sessionId(body));
+  if (azione === 'creaVecchia') {
+    // Una gara nel formato di prima del Giro a tappe (gli esercizi al posto delle tappe),
+    // come quelle rimaste nel database vero: serve a provare che le pagine non si rompono.
+    const ref = sessioniRef().doc();
+    await ref.set({
+      code: 'VECC',
+      classLabel: '1Z',
+      status: 'running',
+      createdAt: Timestamp.now(),
+      startedAt: Timestamp.now(),
+      endedAt: null,
+      numTappe: 1,
+      tappe: [{ tipo: 'ripeti-n', consegna: 'Stampa 3 volte Ciao', outputAtteso: ['Ciao', 'Ciao', 'Ciao'] }],
+      arrivati: 0,
+      prossimoNumero: 1,
+    });
+    return { sessionId: ref.id };
+  }
+
+  if (azione === 'apri') {
+    const id = sessionId(body);
+    const tappa = typeof body.tappa === 'number' ? body.tappa : 0;
+    await apriTappa(id, tappa, body.minuti);
+    return { ok: true, esercizi: await eserciziDi(id, tappa) };
+  }
+
+  if (azione === 'chiudiTappa') {
+    await chiudiTappa(sessionId(body), typeof body.tappa === 'number' ? body.tappa : 0);
     return { ok: true };
   }
 
   if (azione === 'chiudi') {
-    await chiudiSessione(sessionId(body));
+    await chiudiGiro(sessionId(body));
+    return { ok: true };
+  }
+
+  if (azione === 'scadi') {
+    // Fa scadere il tempo della tappa aperta, senza aspettare dieci minuti veri.
+    const id = sessionId(body);
+    const s = await leggiSessione(id);
+    if (s.tappaAperta === null) throw new ApiError(409, 'NESSUNA_TAPPA', 'Nessuna tappa aperta');
+    const tappe = [...s.tappe];
+    tappe[s.tappaAperta] = { ...tappe[s.tappaAperta], scadenzaAt: Timestamp.fromMillis(Date.now() - 1000) };
+    await sessioniRef().doc(id).update({ tappe });
     return { ok: true };
   }
 
   if (azione === 'leggi') {
     const id = sessionId(body);
-    const [sessione, allievi] = await Promise.all([
-      sessioniRef().doc(id).get(),
-      allieviRef(id).get(),
-    ]);
-    if (!sessione.exists) throw new ApiError(404, 'SESSION_NOT_FOUND', 'Sessione inesistente');
-    const dati = sessione.data() as SessioneDoc;
+    const [dati, allievi] = await Promise.all([leggiSessione(id), allieviRef(id).get()]);
     return {
-      sessione: { status: dati.status, numTappe: dati.numTappe, arrivati: dati.arrivati, code: dati.code },
+      sessione: {
+        status: dati.status,
+        code: dati.code,
+        tappaAperta: dati.tappaAperta,
+        migliori: dati.migliori,
+        tappe: dati.tappe.map((t) => ({ tema: t.tema, stato: t.stato, km: t.km, durataSec: t.durataSec })),
+        generale: dati.generale,
+      },
       allievi: allievi.docs.map((d) => {
         const a = d.data() as AllievoDoc;
         return {
           id: d.id,
           name: a.name,
-          tappaCorrente: a.tappaCorrente,
+          numero: a.numero,
           erroriTotali: a.erroriTotali,
-          ordineArrivo: a.ordineArrivo,
-          arrivato: Boolean(a.finishedAt),
           tappe: Object.fromEntries(
-            Object.entries(a.tappe ?? {}).map(([k, v]) => [k, { errori: v.errori ?? 0, completata: Boolean(v.completedAt) }]),
+            Object.entries(a.tappe ?? {}).map(([k, p]) => [
+              k,
+              {
+                km: p.km ?? 0,
+                errori: p.errori ?? 0,
+                ordineArrivo: p.ordineArrivo ?? null,
+                posizione: p.posizione ?? null,
+                punti: p.punti ?? null,
+              },
+            ]),
           ),
         };
       }),
@@ -74,7 +138,7 @@ export const POST = handler(async (body) => {
   }
 
   if (azione === 'svuota') {
-    // Pulizia fra i test: cancella le sessioni create, con i loro allievi.
+    // Pulizia fra i test: cancella i Giri creati, con i loro allievi.
     const sessioni = await sessioniRef().get();
     for (const s of sessioni.docs) {
       const allievi = await s.ref.collection('players').get();

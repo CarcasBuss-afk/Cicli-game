@@ -22,7 +22,9 @@ export type TipoEsercizio =
   | 'caccia-errore' // un ciclo sbagliato da correggere
   | 'quante-righe' // dato il ciclo, dire quante righe stampa
   | 'accumulatore-visibile' // somma che cresce, stampata a ogni giro
-  | 'conta-giri'; // contatore conta += 1
+  | 'conta-giri' // contatore conta += 1
+  | 'fstring' // testo e numero insieme: f"{i}° giro", tabellina scritta
+  | 'conta-lettere'; // contare le lettere di una parola con un ciclo
 
 /** Il terreno dà il tono alla tappa (e il colore sulla LIM): 1 pianura, 2 collina, 3 montagna. */
 export type Terreno = 'pianura' | 'collina' | 'montagna';
@@ -114,7 +116,7 @@ const TERRENI: Record<1 | 2 | 3, Terreno> = { 1: 'pianura', 2: 'collina', 3: 'mo
 
 /* ------------------------------------------------------------------ generatori */
 
-type Difficolta = 1 | 2 | 3;
+export type Difficolta = 1 | 2 | 3;
 
 function numeriDiRange(inizio: number, fine: number, passo: number): number[] {
   const out: number[] = [];
@@ -439,6 +441,73 @@ function tappaContaGiri(rnd: () => number, difficolta: Difficolta): Esercizio {
   };
 }
 
+/**
+ * Testo e numero sulla stessa riga. I formati sono scelti perché **solo** la f-string li
+ * produca: `print("Giro", i)` scrive "Giro 1" con lo spazio, ma non "1° giro" né
+ * "Km 3/7", dove il numero è attaccato al testo. La tabellina invece si può scrivere
+ * anche con `print(7, "x", i, "=", 7 * i)`: va bene lo stesso, perché la lezione lì è
+ * usare `i` in un calcolo.
+ */
+function tappaFstring(rnd: () => number, difficolta: Difficolta): Esercizio {
+  const vincoli: Vincoli = { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 };
+  if (difficolta === 1) {
+    const n = intero(rnd, 3, 6);
+    const cosa = scegli(rnd, ['giro', 'posto', 'tentativo'] as const);
+    return {
+      tipo: 'fstring',
+      terreno: 'pianura',
+      consegna: 'Stampa queste righe con un ciclo e una f-string:',
+      outputAtteso: Array.from({ length: n }, (_, k) => `${k + 1}° ${cosa}`),
+      mostraOutput: true,
+      risposta: 'codice',
+      soluzione: `for i in range(1, ${n + 1}):\n    print(f"{i}° ${cosa}")`,
+      vincoli,
+    };
+  }
+  if (difficolta === 2) {
+    const n = intero(rnd, 4, 7);
+    return {
+      tipo: 'fstring',
+      terreno: 'collina',
+      consegna: 'Stampa il contachilometri della tappa con un ciclo e una f-string:',
+      outputAtteso: Array.from({ length: n }, (_, k) => `Km ${k + 1}/${n}`),
+      mostraOutput: true,
+      risposta: 'codice',
+      soluzione: `for i in range(1, ${n + 1}):\n    print(f"Km {i}/${n}")`,
+      vincoli,
+    };
+  }
+  const base = intero(rnd, 3, 9);
+  const fino = intero(rnd, 5, 8);
+  return {
+    tipo: 'fstring',
+    terreno: 'montagna',
+    consegna: `Stampa la tabellina del ${base} fino a ${base} x ${fino}, scritta per esteso:`,
+    outputAtteso: Array.from({ length: fino }, (_, k) => `${base} x ${k + 1} = ${base * (k + 1)}`),
+    mostraOutput: true,
+    risposta: 'codice',
+    soluzione: `for i in range(1, ${fino + 1}):\n    print(f"${base} x {i} = {${base} * i}")`,
+    vincoli,
+  };
+}
+
+/** Contare le lettere di una parola con un ciclo: stringa e accumulatore insieme. */
+function tappaContaLettere(rnd: () => number, difficolta: Difficolta): Esercizio {
+  const parola = scegli(rnd, PAROLE);
+  return {
+    tipo: 'conta-lettere',
+    terreno: TERRENI[difficolta],
+    consegna:
+      `Conta quante lettere ha la parola \`${parola}\` con un ciclo: usa una variabile \`conta\` ` +
+      'che parte da 0 e a ogni lettera aumenta di 1. Alla fine stampa solo il numero.',
+    outputAtteso: [String(parola.length)],
+    mostraOutput: false,
+    risposta: 'codice',
+    soluzione: `conta = 0\nfor lettera in "${parola}":\n    conta += 1\nprint(conta)`,
+    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
+  };
+}
+
 const GENERATORI: Record<TipoEsercizio, (rnd: () => number, d: Difficolta) => Esercizio> = {
   'ripeti-n': tappaRipetiN,
   'output-range': tappaOutputRange,
@@ -452,6 +521,8 @@ const GENERATORI: Record<TipoEsercizio, (rnd: () => number, d: Difficolta) => Es
   'quante-righe': tappaQuanteRighe,
   'accumulatore-visibile': tappaAccumulatoreVisibile,
   'conta-giri': tappaContaGiri,
+  fstring: tappaFstring,
+  'conta-lettere': tappaContaLettere,
 };
 
 export function generaEsercizio(tipo: TipoEsercizio, difficolta: Difficolta, seme: number): Esercizio {
@@ -460,9 +531,9 @@ export function generaEsercizio(tipo: TipoEsercizio, difficolta: Difficolta, sem
 
 /* --------------------------------------------------------------------- percorso */
 
-export const NUM_TAPPE_DEFAULT = 12;
-export const NUM_TAPPE_MIN = 4;
-export const NUM_TAPPE_MAX = 30;
+export const KM_MISTO_DEFAULT = 12;
+export const KM_MISTO_MIN = 4;
+export const KM_MISTO_MAX = 30;
 
 /**
  * Lo schema del percorso: partenza in pianura (ripetere una frase, poi una riga), gruppone
@@ -507,7 +578,7 @@ function schema(numTappe: number): Array<{ tipo: TipoEsercizio; difficolta: Diff
  * Genera il percorso di una sessione: `numTappe` tappe con parametri casuali derivati dal
  * seme. Stesso seme, stesso percorso.
  */
-export function generaPercorso(numTappe = NUM_TAPPE_DEFAULT, seme = Date.now()): Esercizio[] {
-  const quante = Math.max(NUM_TAPPE_MIN, Math.min(NUM_TAPPE_MAX, Math.round(numTappe)));
+export function generaPercorso(numTappe = KM_MISTO_DEFAULT, seme = Date.now()): Esercizio[] {
+  const quante = Math.max(KM_MISTO_MIN, Math.min(KM_MISTO_MAX, Math.round(numTappe)));
   return schema(quante).map((s, i) => generaEsercizio(s.tipo, s.difficolta, seme + i * 7919));
 }

@@ -36,6 +36,14 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] `/docente/sessione/[id]`: strada con i ciclisti, maglia rosa, cronaca, codice gigante in attesa, podio e riepilogo "Da rispiegare".
 - [x] 34 test: classifica (unitari), docente, regole Firestore.
 
+## Task 8 — Il Giro a tappe tematiche ✔
+- [x] Catalogo esteso: riga ripetuta, scala, caccia all'errore, quante righe, somma che cresce, conta i giri, f-string, conta le lettere.
+- [x] Hint delle tappe a output segreto che non rivelano la risposta; accumulo obbligatorio nelle tappe della somma.
+- [x] Numero di corsa e rientro da un altro PC; identità nel browser salvata per gara.
+- [x] Il Giro: tappe tematiche da 5 km con cronometro, una aperta alla volta, punti alla chiusura, generale con le migliori N, tappe aggiungibili; la gara singola diventa un Giro di una tappa.
+- [x] LIM: partenza, tappa dal vivo, risultati fra le tappe, fine del Giro. Pagina dell'allievo con cronometro, tempo scaduto, risultati.
+- [x] Test: 231 unitari, 51 sull'emulatore.
+
 ## Task 7 — Rifiniture
 - [x] Podio e riepilogo degli errori per tipo di tappa (fatti nel Task 6).
 - [x] README con istruzioni per la classe e per il deploy.
@@ -43,7 +51,7 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [ ] Prova generale con una classe: una gara vera, poi tarare numero di tappe e difficoltà.
 
 ### Idee per dopo
-- Suoni rifiniti e una musichetta di sottofondo per la LIM.
-- Modalità "a tempo" in stile PRINT RUSH, oltre alla corsa a tappe.
-- Esportazione dei risultati della gara (CSV) per il registro.
+- Maglia ciclamino per il più regolare; la tappa delle due soluzioni alla LIM (vedi PERCORSO.md).
+- Aggancio a lab-guardian per riconoscere l'allievo dalla postazione.
+- Esportazione dei risultati del Giro (CSV) per il registro.
 - Tappe sui cicli annidati, quando la classe ci arriva.

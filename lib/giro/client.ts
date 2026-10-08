@@ -148,28 +148,56 @@ export type RispostaJoin = {
   classLabel: string;
 };
 
+/** La tappa in corso, come la vede l'allievo: solo il chilometro da fare adesso. */
+export type TappaInCorso = {
+  indice: number;
+  tema: string;
+  nomeTema: string;
+  /** Chilometri della tappa. */
+  km: number;
+  kmFatti: number;
+  /** Secondi rimasti, calcolati dal server; null = senza limite di tempo. */
+  secondiRimasti: number | null;
+  scaduta: boolean;
+  /** Ha completato tutti i chilometri. */
+  finita: boolean;
+  /** Con che ordine ha finito (1 = primo); null se non ha finito. */
+  ordineArrivo: number | null;
+  /** Il chilometro da fare; null se ha finito o il tempo è scaduto. */
+  esercizio: EsercizioPubblico | null;
+};
+
 export type RispostaStatus = {
   sessionStatus: StatoSessione;
   name: string;
   numero: number | null;
   classLabel: string;
   numTappe: number;
-  tappaCorrente: number;
-  arrivato: boolean;
-  posizione: number | null;
+  tappeCorse: number;
+  /** Gara singola: una tappa mista sola, senza classifica generale. */
+  singola: boolean;
+  generale: { posizione: number; punti: number; corridori: number } | null;
   erroriTotali: number;
-  tappa: EsercizioPubblico | null;
+  tappa: TappaInCorso | null;
+  ultimaTappa: {
+    indice: number;
+    nomeTema: string;
+    km: number;
+    kmFatti: number;
+    posizione: number;
+    punti: number;
+  } | null;
 };
 
 export type RispostaSubmit =
   | {
       promosso: true;
       output: string[] | null;
-      tappaCorrente: number;
-      arrivato: boolean;
-      posizione: number | null;
+      kmFatti: number;
+      finita: boolean;
+      ordineArrivo: number | null;
       erroriTotali: number;
-      tappa: EsercizioPubblico | null;
+      esercizio: EsercizioPubblico | null;
     }
   | { promosso: false; hint: string; output: string[] | null; erroriTotali: number };
 
@@ -181,5 +209,6 @@ export const rientro = (code: string, numero: number) => chiamaApi<RispostaJoin>
 export const status = (i: Identita) =>
   chiamaApi<RispostaStatus>('status', { playerId: i.playerId, token: i.token });
 
-export const submit = (i: Identita, tappa: number, risposta: string) =>
-  chiamaApi<RispostaSubmit>('submit', { playerId: i.playerId, token: i.token, tappa, risposta });
+/** Consegna del chilometro `km` della tappa `tappa`. */
+export const submit = (i: Identita, tappa: number, km: number, risposta: string) =>
+  chiamaApi<RispostaSubmit>('submit', { playerId: i.playerId, token: i.token, tappa, km, risposta });

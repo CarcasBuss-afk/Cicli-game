@@ -149,7 +149,7 @@ function hintConfronto(prodotto: string[], atteso: string[]): string {
  * l'allievo se la farebbe dettare riga per riga. In queste tappe si dice **dove** guardare,
  * mai **che cosa** ci va.
  */
-const TIPI_SEGRETI: ReadonlySet<Esercizio['tipo']> = new Set(['ciclo-output', 'quante-righe', 'accumulatore', 'conta-giri']);
+const TIPI_SEGRETI: ReadonlySet<Esercizio['tipo']> = new Set(['ciclo-output', 'quante-righe', 'accumulatore', 'conta-giri', 'conta-lettere']);
 
 function hintSegreto(tappa: Esercizio, prodotto: string[], atteso: string[]): string {
   if (tappa.tipo === 'quante-righe') {

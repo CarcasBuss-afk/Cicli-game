@@ -7,9 +7,9 @@ import { valutaRisposta } from './hint';
 import {
   generaPercorso,
   generaEsercizio,
-  NUM_TAPPE_DEFAULT,
-  NUM_TAPPE_MAX,
-  NUM_TAPPE_MIN,
+  KM_MISTO_DEFAULT,
+  KM_MISTO_MAX,
+  KM_MISTO_MIN,
   esercizioPerAllievo,
   type TipoEsercizio,
 } from './esercizi';
@@ -27,6 +27,8 @@ const TIPI: TipoEsercizio[] = [
   'quante-righe',
   'accumulatore-visibile',
   'conta-giri',
+  'fstring',
+  'conta-lettere',
 ];
 
 describe('la soluzione di riferimento passa sempre', () => {
@@ -45,7 +47,7 @@ describe('la soluzione di riferimento passa sempre', () => {
 
   it('tutte le tappe di un percorso completo', () => {
     for (let seme = 1; seme <= 25; seme++) {
-      for (const tappa of generaPercorso(NUM_TAPPE_DEFAULT, seme * 31)) {
+      for (const tappa of generaPercorso(KM_MISTO_DEFAULT, seme * 31)) {
         const esito = valutaRisposta(tappa, tappa.soluzione);
         expect(esito.hint, `${tappa.tipo}: ${tappa.consegna}`).toBeNull();
       }
@@ -56,7 +58,7 @@ describe('la soluzione di riferimento passa sempre', () => {
 describe('le tappe sono sensate da mostrare in classe', () => {
   it('l\'output non è mai vuoto né troppo lungo', () => {
     for (let seme = 1; seme <= 30; seme++) {
-      for (const tappa of generaPercorso(NUM_TAPPE_DEFAULT, seme * 77)) {
+      for (const tappa of generaPercorso(KM_MISTO_DEFAULT, seme * 77)) {
         expect(tappa.outputAtteso.length, tappa.consegna).toBeGreaterThanOrEqual(1);
         expect(tappa.outputAtteso.length, tappa.consegna).toBeLessThanOrEqual(12);
       }
@@ -114,8 +116,8 @@ describe('percorso', () => {
   });
 
   it('il numero di tappe resta nei limiti', () => {
-    expect(generaPercorso(1, 1)).toHaveLength(NUM_TAPPE_MIN);
-    expect(generaPercorso(500, 1)).toHaveLength(NUM_TAPPE_MAX);
+    expect(generaPercorso(1, 1)).toHaveLength(KM_MISTO_MIN);
+    expect(generaPercorso(500, 1)).toHaveLength(KM_MISTO_MAX);
   });
 
   it('parte in pianura e arriva in montagna col tappone', () => {
@@ -223,5 +225,37 @@ describe('i generatori del catalogo esteso', () => {
       expect(pubblica.outputAtteso, tipo).toBeUndefined();
       expect('soluzione' in pubblica).toBe(false);
     }
+  });
+});
+
+describe('f-string e conta le lettere', () => {
+  it('i primi due livelli della f-string non si risolvono con print a più argomenti', () => {
+    for (const difficolta of [1, 2] as const) {
+      for (let seme = 1; seme <= 20; seme++) {
+        const tappa = generaEsercizio('fstring', difficolta, seme);
+        // L'alternativa senza f-string mette uno spazio fra testo e numero: non coincide.
+        const senzaFstring =
+          difficolta === 1
+            ? tappa.soluzione.replace(/print\(f"\{i\}° (\w+)"\)/, 'print(i, "° $1")')
+            : tappa.soluzione.replace(/print\(f"Km \{i\}\/(\d+)"\)/, 'print("Km", i, "/", $1)');
+        expect(senzaFstring, 'la sostituzione deve aver cambiato il codice').not.toBe(tappa.soluzione);
+        expect(valutaRisposta(tappa, senzaFstring).promosso, senzaFstring).toBe(false);
+      }
+    }
+  });
+
+  it('la tabellina si accetta anche senza f-string: la lezione è il calcolo con i', () => {
+    const tappa = generaEsercizio('fstring', 3, 4);
+    const base = Number(tappa.outputAtteso[0].split(' ')[0]);
+    const fino = tappa.outputAtteso.length;
+    const conVirgole = `for i in range(1, ${fino + 1}):\n    print(${base}, "x", i, "=", ${base} * i)`;
+    expect(valutaRisposta(tappa, conVirgole).promosso).toBe(true);
+  });
+
+  it('conta le lettere: il numero è il segreto, non va all\'allievo', () => {
+    const tappa = generaEsercizio('conta-lettere', 2, 9);
+    expect(esercizioPerAllievo(tappa).outputAtteso).toBeUndefined();
+    const parola = tappa.soluzione.match(/"(\w+)"/)![1];
+    expect(tappa.outputAtteso).toEqual([String(parola.length)]);
   });
 });

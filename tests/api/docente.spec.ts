@@ -1,124 +1,172 @@
-/* Test della parte docente: creazione e via dalla dashboard, vista LIM che si aggiorna in
- * tempo reale mentre un allievo corre, correzioni sul singolo allievo, e il muro di
- * protezione delle API senza accesso. */
+/* Test della parte docente: comporre un Giro dalla dashboard, guidarlo dalla LIM (via,
+ * tappa dal vivo, chiusura, risultati, classifica generale, migliori N, tappe aggiunte),
+ * le correzioni sul singolo allievo, la fine del Giro, e il muro delle API senza accesso. */
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
-type Tappa = { risposta: 'codice' | 'output'; soluzione: string };
+type Esercizio = { soluzione: string };
 
-/** Entra nell'area docente con l'accesso di prova (attivo solo con gli emulatori). */
 async function accediDocente(page: Page, dove = '/docente') {
   await page.goto(dove);
   await page.getByRole('button', { name: 'Accesso di prova (emulatori)' }).click();
 }
 
-async function creaGara(request: APIRequestContext, numTappe: number, avvia = false) {
-  const r = await request.post('/api/giro/test-setup', {
-    data: { azione: 'crea', classLabel: '3C', numTappe, avvia },
-  });
-  return (await r.json()) as { sessionId: string; code: string; numTappe: number; tappe: Tappa[] };
+async function setup(request: APIRequestContext, dati: Record<string, unknown>) {
+  return (await (await request.post('/api/giro/test-setup', { data: dati })).json()) as {
+    sessionId: string;
+    code: string;
+    esercizi: Esercizio[];
+  };
 }
 
-/** Fa correre un allievo via API, senza passare dall'interfaccia. */
-async function corri(request: APIRequestContext, code: string, nome: string, tappe: Tappa[], fino: number) {
-  const ingresso = await request.post('/api/giro/join', { data: { code, name: nome } });
-  const p = (await ingresso.json()) as { playerId: string; token: string };
-  for (let n = 0; n < fino; n++) {
+const creaGiro = (request: APIRequestContext, temi: string[]) =>
+  setup(request, { azione: 'crea', tipo: 'giro', classLabel: '3C', temi });
+
+async function entra(request: APIRequestContext, code: string, name: string) {
+  const r = await request.post('/api/giro/join', { data: { code, name } });
+  return (await r.json()) as { playerId: string; token: string; numero: number };
+}
+
+async function corri(
+  request: APIRequestContext,
+  p: { playerId: string; token: string },
+  tappa: number,
+  esercizi: Esercizio[],
+  fino: number,
+) {
+  for (let k = 0; k < fino; k++) {
     const r = await request.post('/api/giro/submit', {
-      data: { playerId: p.playerId, token: p.token, tappa: n, risposta: tappe[n].soluzione },
+      data: { playerId: p.playerId, token: p.token, tappa, km: k, risposta: esercizi[k].soluzione },
     });
     const esito = await r.json();
-    expect(esito.promosso, `tappa ${n}: ${esito.hint ?? esito.message}`).toBe(true);
+    expect(esito.promosso, JSON.stringify(esito)).toBe(true);
   }
-  return p;
 }
 
+const classifica = (page: Page) => page.getByRole('list', { name: 'classifica' }).locator('li');
+
 test.describe('dashboard', () => {
-  test('crea una gara, la avvia e la chiude', async ({ page }) => {
+  test('compone un Giro con le tappe proposte e lo chiude', async ({ page }) => {
     await accediDocente(page);
     await expect(page.getByRole('heading', { name: /gare/ })).toBeVisible();
 
+    // Di partenza sono spuntate le prime quattro tappe del programma
+    await expect(page.getByRole('checkbox', { checked: true })).toHaveCount(4);
+    await page.getByLabel(/La scala/).check();
+
     await page.getByPlaceholder('2A').fill('5F');
-    await page.getByRole('button', { name: 'Nuova gara' }).click();
+    await page.getByRole('button', { name: 'Crea il Giro' }).click();
 
     const riga = page.locator('article').filter({ hasText: 'classe 5F' }).first();
-    await expect(riga).toBeVisible();
-    await expect(riga.getByText('in attesa del via')).toBeVisible();
-    // Il codice proiettabile è di 4 caratteri, senza 0/O/1/I
+    await expect(riga).toContainText('Giro · 0/5 tappe corse');
+    await expect(riga).toContainText('non ancora partito');
     await expect(riga.locator('span').first()).toHaveText(/^[2-9A-HJ-NP-Z]{4}$/);
 
-    await riga.getByRole('button', { name: 'Via!' }).click();
-    await expect(riga.getByText('in corso')).toBeVisible();
-
+    page.on('dialog', (d) => d.accept());
     await riga.getByRole('button', { name: 'Chiudi' }).click();
-    await expect(riga.getByText('chiusa')).toBeVisible();
+    await expect(riga).toContainText('chiuso');
+  });
+
+  test('crea una gara singola', async ({ page }) => {
+    await accediDocente(page);
+    await page.getByRole('tab', { name: 'Gara singola' }).click();
+    await page.getByPlaceholder('2A').fill('1G');
+    await page.getByLabel('esercizi').fill('8');
+    await page.getByRole('button', { name: 'Crea la gara' }).click();
+    await expect(page.locator('article').filter({ hasText: 'classe 1G' }).first()).toContainText('gara singola');
   });
 });
 
 test.describe('vista LIM', () => {
-  test('mostra il codice grande prima del via e poi la corsa', async ({ page, request }) => {
-    const gara = await creaGara(request, 5);
-    await accediDocente(page, `/docente/sessione/${gara.sessionId}`);
+  test('partenza: codice grande, corridori con il numero, poi il via', async ({ page, request }) => {
+    const giro = await creaGiro(request, ['ripeti', 'contare']);
+    await accediDocente(page, `/docente/sessione/${giro.sessionId}`);
 
-    await expect(page.getByText(gara.code)).toBeVisible();
+    await expect(page.getByText(giro.code)).toBeVisible();
     await expect(page.getByText('Nessuno in griglia di partenza')).toBeVisible();
 
-    // Un allievo entra: compare in griglia senza ricaricare
-    await request.post('/api/giro/join', { data: { code: gara.code, name: 'Rosa' } });
-    // Compare nella lista dei corridori, con il numero di corsa da proiettare
+    await entra(request, giro.code, 'Rosa');
     const lista = page.getByRole('list', { name: 'corridori' });
     await expect(lista.locator('li').filter({ hasText: 'Rosa' })).toContainText('1');
-    await expect(page.getByText(/1 in griglia di partenza/)).toBeVisible();
 
-    await page.getByRole('button', { name: 'VIA!' }).click();
-    await expect(page.getByText('Rosa')).toBeVisible();
-    await expect(page.getByText(gara.code)).toHaveCount(0);
+    await page.getByRole('button', { name: /VIA! Tappa 1 · Ripetere/ }).click();
+    await expect(page.getByText('Tappa 1 · Ripetere')).toBeVisible();
+    await expect(page.getByLabel('tempo rimasto')).toContainText(/\d+:\d\d/);
+    await expect(classifica(page).filter({ hasText: 'Rosa' })).toContainText('0/5 km');
   });
 
-  test('la corsa si aggiorna entro due secondi dalla consegna', async ({ page, request }) => {
-    const gara = await creaGara(request, 6, true);
-    await accediDocente(page, `/docente/sessione/${gara.sessionId}`);
-    const p = await corri(request, gara.code, 'Gino', gara.tappe, 1);
+  test('la tappa si aggiorna entro due secondi dalla consegna', async ({ page, request }) => {
+    const giro = await creaGiro(request, ['ripeti']);
+    const { esercizi } = await setup(request, { azione: 'apri', sessionId: giro.sessionId, tappa: 0, minuti: 10 });
+    await accediDocente(page, `/docente/sessione/${giro.sessionId}`);
+    const gino = await entra(request, giro.code, 'Gino');
 
-    const riga = page.getByRole('list', { name: 'classifica' }).locator('li').filter({ hasText: 'Gino' });
-    await expect(riga.getByText(`1/${gara.numTappe}`)).toBeVisible({ timeout: 2000 });
+    const riga = classifica(page).filter({ hasText: 'Gino' });
+    await corri(request, gino, 0, esercizi, 1);
+    await expect(riga).toContainText('1/5 km', { timeout: 2000 });
 
-    // Avanza ancora: la LIM segue
     await request.post('/api/giro/submit', {
-      data: { playerId: p.playerId, token: p.token, tappa: 1, risposta: gara.tappe[1].soluzione },
+      data: { playerId: gino.playerId, token: gino.token, tappa: 0, km: 1, risposta: 'print("no")' },
     });
-    await expect(riga.getByText(`2/${gara.numTappe}`)).toBeVisible({ timeout: 2000 });
-
-    // Un errore compare nel conteggio
-    await request.post('/api/giro/submit', {
-      data: { playerId: p.playerId, token: p.token, tappa: 2, risposta: 'print("no")' },
-    });
-    await expect(riga.getByText('1 errore')).toBeVisible({ timeout: 2000 });
+    await expect(riga).toContainText('1 errore', { timeout: 2000 });
   });
 
-  test('ordina la classifica e mette la maglia rosa al primo', async ({ page, request }) => {
-    const gara = await creaGara(request, 6, true);
-    await corri(request, gara.code, 'Ultimo', gara.tappe, 1);
-    await corri(request, gara.code, 'Primo', gara.tappe, 4);
+  test('chiusa la tappa: ordine d\'arrivo, punti, generale e prossima tappa', async ({ page, request }) => {
+    const giro = await creaGiro(request, ['ripeti', 'contare']);
+    const { esercizi } = await setup(request, { azione: 'apri', sessionId: giro.sessionId, tappa: 0, minuti: 10 });
+    const ada = await entra(request, giro.code, 'Ada');
+    const bea = await entra(request, giro.code, 'Bea');
+    await corri(request, ada, 0, esercizi, 5);
+    await corri(request, bea, 0, esercizi, 2);
 
-    await accediDocente(page, `/docente/sessione/${gara.sessionId}`);
-    const righe = page.getByRole('list', { name: 'classifica' }).locator('li');
-    await expect(righe.first()).toContainText('Primo');
-    await expect(righe.first()).toContainText('maglia rosa');
-    await expect(righe.last()).toContainText('Ultimo');
+    await accediDocente(page, `/docente/sessione/${giro.sessionId}`);
+    await page.getByRole('button', { name: 'Chiudi la tappa' }).click();
+
+    await expect(page.getByText(/Tappa 1 · Ripetere: ordine d'arrivo/)).toBeVisible();
+    const arrivo = page.getByRole('list', { name: "ordine d'arrivo" });
+    await expect(arrivo.locator('li').first()).toContainText('Ada');
+    await expect(arrivo.locator('li').first()).toContainText('25 pt');
+
+    const generale = page.getByRole('list', { name: 'classifica generale' });
+    await expect(generale.locator('li').first()).toContainText('Ada');
+    await expect(generale.locator('li').first()).toContainText('maglia rosa');
+
+    await expect(page.getByRole('button', { name: /VIA! Tappa 2 · Contare con range/ })).toBeVisible();
   });
 
-  test('a gara chiusa mostra il podio e che cosa rispiegare', async ({ page, request }) => {
-    const gara = await creaGara(request, 6, true);
-    const p = await corri(request, gara.code, 'Bea', gara.tappe, 2);
-    // Qualche errore, così il riepilogo ha di che parlare
+  test('migliori N e tappa aggiunta dalla LIM', async ({ page, request }) => {
+    const giro = await creaGiro(request, ['ripeti']);
+    const { esercizi } = await setup(request, { azione: 'apri', sessionId: giro.sessionId, tappa: 0, minuti: 10 });
+    const ugo = await entra(request, giro.code, 'Ugo');
+    await corri(request, ugo, 0, esercizi, 1);
+    await setup(request, { azione: 'chiudiTappa', sessionId: giro.sessionId, tappa: 0 });
+
+    await accediDocente(page, `/docente/sessione/${giro.sessionId}`);
+    await page.getByLabel('tappe migliori').fill('3');
+    await page.getByRole('button', { name: 'Applica' }).click();
+    await expect.poll(async () => (await setup(request, { azione: 'leggi', sessionId: giro.sessionId })) as unknown as {
+      sessione: { migliori: number };
+    }).toMatchObject({ sessione: { migliori: 3 } });
+
+    await page.getByLabel('tappa da aggiungere').selectOption('scala');
+    await page.getByRole('button', { name: 'Aggiungi tappa' }).click();
+    await expect(page.getByRole('list', { name: 'piano del giro' })).toContainText('Tappa 2 · La scala');
+    await expect(page.getByRole('button', { name: /VIA! Tappa 2 · La scala/ })).toBeVisible();
+  });
+
+  test('fine del Giro: podio e che cosa rispiegare', async ({ page, request }) => {
+    const giro = await creaGiro(request, ['ripeti']);
+    const { esercizi } = await setup(request, { azione: 'apri', sessionId: giro.sessionId, tappa: 0, minuti: 10 });
+    const bea = await entra(request, giro.code, 'Bea');
+    await corri(request, bea, 0, esercizi, 2);
     for (let i = 0; i < 3; i++) {
       await request.post('/api/giro/submit', {
-        data: { playerId: p.playerId, token: p.token, tappa: 2, risposta: 'print("sbagliato")' },
+        data: { playerId: bea.playerId, token: bea.token, tappa: 0, km: 2, risposta: 'print("sbagliato")' },
       });
     }
-    await request.post('/api/giro/test-setup', { data: { azione: 'chiudi', sessionId: gara.sessionId } });
+    await setup(request, { azione: 'chiudi', sessionId: giro.sessionId });
 
-    await accediDocente(page, `/docente/sessione/${gara.sessionId}`);
+    await accediDocente(page, `/docente/sessione/${giro.sessionId}`);
+    await expect(page.getByText('Il podio del Giro')).toBeVisible();
     await expect(page.getByText('🥇')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Da rispiegare' })).toBeVisible();
   });
@@ -126,35 +174,45 @@ test.describe('vista LIM', () => {
 
 test.describe('correzioni sull\'allievo', () => {
   test('corregge il nome, lo rimanda indietro e lo elimina', async ({ page, request }) => {
-    const gara = await creaGara(request, 6, true);
-    await corri(request, gara.code, 'Mirko', gara.tappe, 3);
-    await accediDocente(page, `/docente/sessione/${gara.sessionId}`);
+    const giro = await creaGiro(request, ['ripeti']);
+    const { esercizi } = await setup(request, { azione: 'apri', sessionId: giro.sessionId, tappa: 0, minuti: 10 });
+    const mirko = await entra(request, giro.code, 'Mirko');
+    await corri(request, mirko, 0, esercizi, 3);
+    await accediDocente(page, `/docente/sessione/${giro.sessionId}`);
 
-    const riga = page.getByRole('list', { name: 'classifica' }).locator('li').filter({ hasText: 'Mirko' });
-    await expect(riga.getByText(`3/${gara.numTappe}`)).toBeVisible();
+    const riga = classifica(page).filter({ hasText: 'Mirko' });
+    await expect(riga).toContainText('3/5 km');
 
-    // Nome scritto male all'ingresso
     await riga.click();
     await riga.getByRole('textbox').fill('Mirco');
     await riga.getByRole('button', { name: 'Salva' }).click();
-    await expect(page.getByRole('list', { name: 'classifica' }).locator('li').filter({ hasText: 'Mirco' })).toBeVisible();
+    const corretta = classifica(page).filter({ hasText: 'Mirco' });
+    await expect(corretta).toBeVisible();
 
-    // Rimandato alla tappa 2: perde la terza
-    const rigaCorretta = page.getByRole('list', { name: 'classifica' }).locator('li').filter({ hasText: 'Mirco' });
-    await rigaCorretta.getByRole('spinbutton').fill('2');
-    await rigaCorretta.getByRole('button', { name: 'Rimanda' }).click();
-    await expect(rigaCorretta.getByText(`1/${gara.numTappe}`)).toBeVisible();
+    await corretta.getByRole('spinbutton').fill('2');
+    await corretta.getByRole('button', { name: 'Rimanda' }).click();
+    await expect(corretta).toContainText('1/5 km');
 
-    // Eliminato dalla gara
     page.on('dialog', (d) => d.accept());
-    await rigaCorretta.getByRole('button', { name: 'Elimina' }).click();
-    await expect(page.getByRole('list', { name: 'classifica' }).locator('li').filter({ hasText: 'Mirco' })).toHaveCount(0);
+    await corretta.getByRole('button', { name: 'Elimina' }).click();
+    await expect(classifica(page).filter({ hasText: 'Mirco' })).toHaveCount(0);
+  });
+});
+
+test.describe('gare create prima del Giro a tappe', () => {
+  test('la dashboard le segnala e la LIM spiega invece di rompersi', async ({ page, request }) => {
+    const { sessionId } = await setup(request, { azione: 'creaVecchia' });
+    await accediDocente(page);
+    await expect(page.locator('article').filter({ hasText: 'classe 1Z' }).first()).toContainText('versione precedente');
+
+    await page.goto(`/docente/sessione/${sessionId}`);
+    await expect(page.getByText(/versione di prima del Giro a tappe/)).toBeVisible();
   });
 });
 
 test.describe('protezione delle API', () => {
   test('senza accesso le rotte del docente rispondono 401', async ({ request }) => {
-    for (const rotta of ['accesso', 'sessioni', 'allievi']) {
+    for (const rotta of ['accesso', 'sessioni', 'allievi', 'tappe']) {
       const r = await request.post(`/api/docente/${rotta}`, { data: {} });
       expect(r.status(), rotta).toBe(401);
       expect((await r.json()).error).toBe('UNAUTHENTICATED');
@@ -162,10 +220,7 @@ test.describe('protezione delle API', () => {
   });
 
   test('con un token inventato rispondono 401', async ({ request }) => {
-    const r = await request.post('/api/docente/sessioni', {
-      headers: { Authorization: 'Bearer non-è-un-token' },
-      data: {},
-    });
+    const r = await request.post('/api/docente/tappe', { headers: { Authorization: 'Bearer non-è-un-token' }, data: {} });
     expect(r.status()).toBe(401);
     expect((await r.json()).error).toBe('INVALID_TOKEN');
   });

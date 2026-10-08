@@ -13,31 +13,47 @@ costa solo tempo, e porta sempre un suggerimento che dice che cosa guardare.
 
 ## Come si gioca in classe
 
-1. Il docente apre `/docente`, accede con Google e crea una gara (classe e numero di tappe).
-2. Apre la **vista LIM** e proietta: il codice di 4 caratteri riempie lo schermo.
-3. Gli allievi aprono il sito, scrivono codice e nome, e aspettano in griglia di partenza.
-4. Il docente preme **VIA!** e la corsa comincia.
-5. Alla chiusura la LIM mostra il podio e il riquadro **Da rispiegare**: i tipi di tappa
-   ordinati per errori, cioè che cosa è conviene riprendere la lezione dopo.
+Un **Giro** dura settimane ed è fatto di **tappe**: gare brevi (10 minuti, 5 esercizi detti
+**chilometri**) su un argomento solo, che il docente apre quando ha spiegato
+quell'argomento. In ogni tappa conta chi fa più chilometri; alla chiusura si prendono punti,
+e la classifica generale somma le migliori N tappe di ciascuno. Gli errori non tolgono
+niente: costano solo tempo.
 
-Il percorso è generato a caso a ogni gara (stesso per tutti gli allievi della stessa
-gara, così è equa): rigiocandolo, la classe non ha le risposte a memoria.
+1. Il docente crea il Giro da `/docente`, scegliendo le tappe del programma.
+2. Proietta la **vista LIM**: codice del Giro, lista dei corridori con il numero di corsa.
+3. Gli allievi entrano col codice e il nome la prima volta, col codice e il numero di corsa
+   dalle volte dopo (anche da un altro PC).
+4. Il docente sceglie la durata e preme **VIA!**; alla fine **chiude la tappa** e la LIM
+   mostra ordine d'arrivo, punti e generale con la maglia rosa.
+5. A fine Giro: podio e riquadro **Da rispiegare**, con i tipi di esercizio ordinati per
+   errori.
 
-## I tipi di tappa
+Gli esercizi sono generati a caso all'apertura di ogni tappa, uguali per tutti: rigiocando,
+la classe non ha le risposte a memoria. La gara di un'ora sola, come all'inizio, c'è ancora:
+**Gara singola**.
 
-| Tipo | Che cosa chiede |
+## Le tappe e gli esercizi
+
+| Tappa | Che cosa allena |
 |---|---|
-| `ripeti-n` | stampare N volte una frase |
-| `output-range` | dato l'output, scrivere il ciclo |
-| `completa-range` | completare i numeri di `range` in un ciclo già impostato |
-| `ciclo-output` | letto il ciclo, scrivere che cosa stampa |
-| `ciclo-stringa` | scorrere le lettere di una parola |
-| `accumulatore` | sommare con `totale += i` (il tappone) |
+| Ripetere | il `for` come "fai N volte" |
+| Contare con range | da 0 a N, da A a B, completare range |
+| Il passo | il terzo numero di `range`, il conto alla rovescia |
+| Leggere il codice | quante righe stampa, che cosa stampa |
+| Testo e numero | f-string dentro il ciclo |
+| La scala | disegni di asterischi: la variabile come valore |
+| Cronometro | esercizi facili già visti, conta la velocità |
+| Caccia all'errore | correggere un ciclo sbagliato |
+| Accumulatore | la somma che cresce, contare i giri, la somma finale |
+| Cicli su una parola | `for lettera in "parola"` |
 
 La correzione non confronta il testo del codice: lo **esegue** in un micro-interprete
 (`lib/giro/interprete.ts`) e confronta l'output. Così ogni soluzione corretta vale
 (`range(5)` o `range(0, 5)`, nome della variabile libero) e dagli scarti nascono gli hint.
 Controlli anti-furbo impediscono di vincere con i `print` scritti a mano.
+
+Il progetto completo, con il catalogo degli esercizi e le decisioni prese, è in
+`PERCORSO.md`.
 
 ## Sviluppo
 

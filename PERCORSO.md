@@ -3,9 +3,10 @@
 Raccolta delle decisioni prese nel brainstorming. È il piano di contenuto e di struttura
 per la versione del gioco spalmata su più lezioni.
 
-**Stato (9 ottobre 2026)**: gli esercizi del catalogo sono costruiti (tutti tranne le
-f-string e "conta le lettere"), il numero di corsa pure. **Manca la struttura a tappe
-tematiche**: oggi il gioco fa ancora **una gara sola** con un percorso misto.
+**Stato (9 ottobre 2026)**: **costruito.** Il Giro a tappe tematiche funziona: tappe da 5
+chilometri con il cronometro, punti, classifica generale con le migliori N, numero di corsa
+per rientrare da qualunque PC, e tutti gli esercizi del catalogo. La gara singola di prima
+esiste ancora come Giro di una tappa sola. Restano aperte solo le idee della sezione 10.
 
 ## 1. L'idea di fondo
 
@@ -29,24 +30,29 @@ ogni tappa.
 
 Non "chi vince più tappe": premierebbe solo il primo, e chi arriva sempre secondo dopo due
 tappe smette di spingere. Si usa la **classifica a punti**, che è anche la soluzione del
-Giro vero: ogni tappa assegna punti a scalare (15 al primo, 12 al secondo, 10 al terzo…) e
-la generale è la somma. Il primo vale di più, ma anche il sesto porta a casa qualcosa.
+Giro vero: ogni tappa assegna punti a scalare e la generale è la somma.
 
-Volendo due maglie: **rosa** a chi ha più punti, **ciclamino** a chi è più regolare.
+**Tabella adottata**: 25, 20, 16, 13, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, e **1 punto a
+chiunque abbia fatto almeno un chilometro**. Una tabella che si fermasse al decimo, con
+venticinque allievi, lascerebbe a zero metà classe a ogni tappa. A parità di punti in
+generale vince chi ha vinto più tappe.
+
+La generale somma le **migliori N tappe** di ciascuno (N deciso dal docente, anche a Giro
+iniziato; vuoto = tutte). La **maglia rosa** va al primo della generale. La maglia
+ciclamino (la più regolare) è rimasta un'idea: vedi sezione 10.
 
 Dentro la singola tappa la classifica è quella che il gioco ha già: chi ha completato più
 esercizi, a parità chi ci è arrivato prima.
 
 ## 3. Regole di una tappa
 
-- **Durata**: un tempo deciso alla creazione (es. sette minuti), più il pulsante "chiudi
-  tappa" per il docente, che serve quando sono tutti fermi.
-- **Esercizi dentro la tappa**: cinque o sei dello stesso tipo, a difficoltà crescente,
-  con numeri sempre diversi.
-- **Come chiamarli**: restando nel tema, i **chilometri** della tappa ("sei al km 4 di 6").
-  In alternativa "prove". Serve una parola perché "tappa" ora indica la gara breve.
-- **Assenti**: chi manca perde una tappa. O lo si accetta, oppure la generale conta solo le
-  migliori N tappe di ciascuno (anche questo è un meccanismo da ciclismo).
+- **Durata**: 10 minuti proposti (5 per la cronometro), che il docente cambia quando apre
+  la tappa, o toglie del tutto; più il pulsante "chiudi la tappa" per finire prima.
+- **Esercizi dentro la tappa**: **5**, dello stesso argomento, a difficoltà che non scende
+  mai, con numeri generati all'apertura e uguali per tutti.
+- **Si chiamano chilometri** ("Km 3 di 5").
+- **Assenti**: la generale conta le **migliori N tappe** di ciascuno.
+- **Una tappa aperta alla volta**: aprire la successiva chiude da sola quella in corso.
 
 ## 4. Il catalogo degli esercizi
 
@@ -120,16 +126,20 @@ L'altro iterabile: il `for` non scorre più numeri.
 | Esercizio | Esempio | Soluzione | |
 |---|---|---|---|
 | Lettera per riga | `pedale` | `for lettera in "pedale"` | ✔ |
-| Conta le lettere | quante lettere ha | stringa + accumulatore | ○ |
+| Conta le lettere | quante lettere ha | stringa + accumulatore | ✔ |
 
-### D. Testo e numero insieme — in attesa delle f-string
+### D. Testo e numero insieme — le f-string
 
-Da aprire solo quando la classe avrà fatto le f-string.
+La classe le ha fatte. I formati sono scelti perché **solo** la f-string li produca:
+`print("Giro", i)` scrive "Giro 1" con lo spazio, ma non "1° giro" né "Km 3/7", dove il
+numero è attaccato al testo. La tabellina invece si può scrivere anche con `print(7, "x",
+i, "=", 7 * i)` e va bene lo stesso: lì la lezione è usare `i` in un calcolo.
 
 | Esercizio | Esempio | Soluzione | |
 |---|---|---|---|
-| Numerare le righe | `Giro 1 … Giro 5` | `print(f"Giro {i}")` | ○ |
-| Tabellina scritta | `7 x 1 = 7`, `7 x 2 = 14` | f-string con calcolo | ○ |
+| Numerare le righe | `1° giro … 5° giro` | `print(f"{i}° giro")` | ✔ |
+| Contachilometri | `Km 1/5 … Km 5/5` | `print(f"Km {i}/5")` | ✔ |
+| Tabellina scritta | `7 x 1 = 7`, `7 x 2 = 14` | f-string con calcolo | ✔ |
 
 ## 5. L'ordine proposto del Giro
 
@@ -139,14 +149,16 @@ Da aprire solo quando la classe avrà fatto le f-string.
 | 2 | Contare con `range` (da 0 a N, da A a B, completa) | no, pronta |
 | 3 | Il passo, avanti e indietro | no, pronta |
 | 4 | Leggere il codice: che cosa stampa | no, pronta |
-| 5 | La scala di asterischi | no, pronta |
-| 6 | Cronometro (ripasso veloce delle tappe 1-3) | formato nuovo |
-| 7 | Caccia all'errore | no, pronta |
-| 8 | Accumulatore: somma visibile, poi somma finale | no, pronta |
-| 9 | Cicli su una parola | no, pronta |
+| 5 | Testo e numero (f-string) | no, pronta |
+| 6 | La scala di asterischi | no, pronta |
+| 7 | Cronometro (ripasso veloce delle tappe 1-3), 5 minuti | no, pronta |
+| 8 | Caccia all'errore | no, pronta |
+| 9 | Accumulatore: somma che cresce, conta i giri, somma finale | no, pronta |
+| 10 | Cicli su una parola: lettere e conta le lettere | no, pronta |
 
-Gli esercizi di **tutte** le tappe esistono: manca solo la struttura che le tiene insieme.
-La cronometro (6) è un formato, non un tipo di esercizio: riusa quelli delle tappe 1-3.
+Tutte le tappe sono costruite (i piani dei 5 chilometri stanno in `TEMI`, in
+`lib/giro/giro.ts`). La cronometro è un formato, non un tipo di esercizio: riusa quelli
+delle tappe 1-3 e dura 5 minuti.
 
 **Nella gara singola di oggi** il percorso misto usa solo i tipi che si risolvono con
 `range` e `print`: ripeti, riga ripetuta, scrivi il ciclo, completa, che cosa stampa,
@@ -200,19 +212,21 @@ In alternativa si può vincolare la consegna ("usando `range(1, 11)`"): è legit
 scritto. Richiederebbe di insegnare al micro-interprete a contare gli argomenti di `range`
 — oggi sa già contare i `for` e le righe del corpo.
 
-## 8. Che cosa comporta costruirlo
+## 8. Che cosa è stato costruito
 
-Il motore non si tocca: micro-interprete, hint, editor e LIM restano come sono. Cambia la
+Il motore non è cambiato: micro-interprete, hint ed editor sono gli stessi. È cambiata la
 struttura sopra.
 
-- **Modello dati**: una sessione non è più una lista di esercizi ma un **Giro** con N
-  tappe, ognuna con il suo argomento, la sua durata, il suo stato e la sua classifica, più
-  la generale a punti.
-- **Dashboard**: comporre il Giro scegliendo le tappe, poi aprire e chiudere una tappa alla
-  volta.
-- **LIM**: due classifiche (tappa e generale), il cronometro della tappa.
-- ~~Generatori nuovi~~: **fatti** — scala, caccia all'errore, accumulatore visibile, riga
-  ripetuta, quante righe stampa, conta i giri.
+- **Modello dati**: un documento di gara è un **Giro** con le sue tappe (tema, chilometri,
+  stato, durata, esercizi generati all'apertura), la tappa aperta, N e la classifica
+  generale fotografata dal server. Ogni allievo ha i suoi progressi per tappa.
+- **Punti fissati sul server alla chiusura della tappa**, non calcolati al volo: così la
+  pagina dell'allievo non deve leggere tutta la classe ogni dieci secondi.
+- **Dashboard**: si compone il Giro scegliendo le tappe, oppure si crea la gara singola.
+- **LIM**: partenza col codice e i numeri di corsa, tappa dal vivo col cronometro, risultati
+  e generale fra le tappe, "aggiungi tappa", fine del Giro con podio e "Da rispiegare".
+- **Pagina dell'allievo**: cronometro calcolato dal server (l'orologio dei PC d'aula non è
+  affidabile), tempo scaduto, risultato della tappa e posizione in generale.
 
 ## 9. L'identità attraverso le settimane — **deciso e fatto**
 
@@ -256,9 +270,17 @@ Tre cose da pesare prima di farlo:
 - **Privacy**: oggi il Giro conserva solo il nome di battesimo. Agganciarsi significa
   conservare identificatori degli allievi: da decidere apposta, non per inerzia.
 
-## 10. Decisioni ancora aperte
+## 10. Decisioni prese e idee per dopo
 
-- **Le f-string: le hanno fatte?** Decide se la famiglia D entra adesso o dopo.
-- **Quanti esercizi e quanti minuti per tappa**, almeno come punto di partenza.
-- **Gli esercizi dentro la tappa si chiamano "chilometri" o "prove"?**
-- **Assenti**: si accetta la tappa persa, o la generale conta le migliori N?
+**Prese con il docente**: le f-string la classe le ha fatte; 5 esercizi e 10 minuti per
+tappa, con la durata modificabile e la chiusura anticipata; gli esercizi si chiamano
+chilometri; la generale conta le migliori N tappe.
+
+**Idee rimaste fuori, da valutare dopo le prime prove in classe**:
+
+- **Maglia ciclamino** per il più regolare (per esempio la media delle posizioni).
+- **La tappa delle due soluzioni** (sezione 6): mostrare alla LIM due soluzioni diverse e
+  giuste dello stesso esercizio.
+- **Aggancio a lab-guardian** per riconoscere l'allievo dalla postazione (sezione 9).
+- **Tarare la difficoltà** dei piani di ciascuna tappa dopo aver visto quanti chilometri fa
+  davvero la classe in dieci minuti.
