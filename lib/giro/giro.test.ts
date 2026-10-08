@@ -9,6 +9,7 @@ import {
   KM_PER_TAPPA,
   PUNTI,
   puntiPerPosizione,
+  rinumeraDopoCancellazione,
   TEMI,
   TEMI_DEL_GIRO,
   type CorridoreGenerale,
@@ -145,5 +146,24 @@ describe('classifica generale', () => {
     const c = classificaGenerale([generale('Nuovo', []), generale('Ada', [5])], null);
     expect(c.map((r) => r.name)).toEqual(['Ada', 'Nuovo']);
     expect(c[1].punti).toBe(0);
+  });
+});
+
+describe('cancellare una tappa', () => {
+  it('la voce della tappa tolta sparisce e quelle dopo scalano di uno', () => {
+    const progressi = { '0': 'prima', '1': 'seconda', '2': 'terza', '3': 'quarta' };
+    expect(rinumeraDopoCancellazione(progressi, 1)).toEqual({ '0': 'prima', '1': 'terza', '2': 'quarta' });
+  });
+
+  it('chi era assente nella tappa tolta non perde niente', () => {
+    expect(rinumeraDopoCancellazione({ '0': 'a', '2': 'c' }, 1)).toEqual({ '0': 'a', '1': 'c' });
+  });
+
+  it('togliere l\'ultima tappa lascia le altre come sono', () => {
+    expect(rinumeraDopoCancellazione({ '0': 'a', '1': 'b' }, 1)).toEqual({ '0': 'a' });
+  });
+
+  it('una mappa vuota resta vuota', () => {
+    expect(rinumeraDopoCancellazione({}, 0)).toEqual({});
   });
 });

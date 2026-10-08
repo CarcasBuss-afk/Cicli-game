@@ -137,6 +137,20 @@ Fra una tappa e l'altra, nel riquadro **Il Giro** della LIM, scegli il tema dal 
 range, il passo, leggere il codice, testo e numero (f-string), la scala, cronometro, caccia
 all'errore, accumulatore, cicli su una parola.
 
+### Cancellare una tappa
+
+Nel riquadro **Il Giro** della LIM ogni tappa ha una ✕. Cosa succede dipende dalla tappa:
+
+| Tappa | Che cosa succede |
+|---|---|
+| Ancora da correre | sparisce dal piano |
+| Già chiusa | spariscono anche i suoi punti, e la classifica generale si ricalcola |
+| In corso | finisce subito senza punti. Durante la tappa c'è anche il link **annulla questa tappa**, per quando si apre quella sbagliata |
+
+Le tappe dopo scalano di un numero, e i risultati degli allievi le seguono. Chiede sempre
+conferma prima di cancellare. L'ultima tappa rimasta non si cancella: per finire, si chiude
+il Giro.
+
 ### Alla fine del Giro
 
 **Chiudi il Giro** (in alto a destra della LIM). Compaiono il **podio del Giro**, la

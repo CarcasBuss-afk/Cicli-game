@@ -270,3 +270,20 @@ export function classificaGenerale(corridori: CorridoreGenerale[], migliori: num
   });
   return righe.map((r, i) => ({ ...r, posizione: i + 1 }));
 }
+
+/* ------------------------------------------------------------ cancellare una tappa */
+
+/**
+ * Rinumera una mappa per indice di tappa dopo la cancellazione della tappa `tolta`: la
+ * sua voce sparisce, quelle dopo scalano di uno. I progressi degli allievi sono salvati
+ * per numero di tappa, quindi senza questo i punti della tappa 3 finirebbero alla 2.
+ */
+export function rinumeraDopoCancellazione<T>(perTappa: Record<string, T>, tolta: number): Record<string, T> {
+  const out: Record<string, T> = {};
+  for (const [chiave, valore] of Object.entries(perTappa ?? {})) {
+    const t = Number(chiave);
+    if (!Number.isInteger(t) || t === tolta) continue;
+    out[String(t > tolta ? t - 1 : t)] = valore;
+  }
+  return out;
+}

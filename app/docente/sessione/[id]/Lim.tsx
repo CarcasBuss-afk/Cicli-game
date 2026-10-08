@@ -209,6 +209,16 @@ export function Lim({ sessionId }: { sessionId: string }) {
   );
 }
 
+/** Conferma prima di cancellare una tappa: il messaggio dice che cosa succede davvero. */
+function confermaCancellazione(tappa: TappaLim, indice: number): boolean {
+  const nome = `la tappa ${indice + 1} · ${tappa.nome}`;
+  if (tappa.stato === 'chiusa') {
+    return confirm(`Cancellare ${nome}? I suoi punti verranno tolti a tutti e la classifica generale ricalcolata.`);
+  }
+  if (tappa.stato === 'in-corso') return confirm(`Annullare ${nome}? Finisce subito e non assegna punti.`);
+  return confirm(`Togliere ${nome} dal Giro?`);
+}
+
 /* ---------------------------------------------------------------------- partenza */
 
 function Partenza({
@@ -230,6 +240,11 @@ function Partenza({
         <ListaCorridori allievi={allievi} />
       )}
       <ApriTappa giro={giro} indice={0} azione={azione} grande />
+      {giro.tappe.length > 1 && (
+        <div className="w-full max-w-md">
+          <PianoGiro giro={giro} azione={azione} />
+        </div>
+      )}
     </section>
   );
 }
@@ -339,6 +354,16 @@ function TappaInCorso({
           >
             {scaduta ? 'TEMPO!' : `⏱ ${formattaSecondi(secondi)}`}
           </p>
+        )}
+        {!singola && (
+          <button
+            onClick={() => {
+              if (confermaCancellazione(tappa, indice)) void azione('tappe', { azione: 'elimina', tappa: indice });
+            }}
+            className="text-sm text-(--color-testo-tenue) underline"
+          >
+            annulla questa tappa
+          </button>
         )}
         <button
           onClick={() => void azione('tappe', { azione: 'chiudi', tappa: indice })}
@@ -573,8 +598,23 @@ function PianoGiro({
       <h2 className="mb-2 font-bold text-(--color-testo-tenue)">Il Giro</h2>
       <ol aria-label="piano del giro" className="flex flex-col gap-1">
         {giro.tappe.map((t, i) => (
-          <li key={i} className={t.stato === 'chiusa' ? 'text-(--color-testo-tenue)' : ''}>
-            {segno[t.stato]} Tappa {i + 1} · {t.nome}
+          <li key={i} className={`flex items-center gap-2 ${t.stato === 'chiusa' ? 'text-(--color-testo-tenue)' : ''}`}>
+            <span>
+              {segno[t.stato]} Tappa {i + 1} · {t.nome}
+            </span>
+            {/* Un Giro deve avere almeno una tappa: l'ultima non si toglie. */}
+            {giro.tappe.length > 1 && (
+              <button
+                onClick={() => {
+                  if (confermaCancellazione(t, i)) void azione('tappe', { azione: 'elimina', tappa: i });
+                }}
+                aria-label={`cancella la tappa ${i + 1}`}
+                title="Cancella questa tappa"
+                className="ml-auto rounded px-2 text-(--color-testo-tenue) hover:bg-red-500/10 hover:text-red-300"
+              >
+                ✕
+              </button>
+            )}
           </li>
         ))}
       </ol>

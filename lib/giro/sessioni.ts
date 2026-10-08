@@ -11,6 +11,7 @@ import {
   generaTappa,
   infoTema,
   KM_PER_TAPPA,
+  rinumeraDopoCancellazione,
   type Tema,
 } from './giro';
 import { ApiError } from './http';
@@ -333,6 +334,53 @@ export async function aggiungiTappa(sessionId: string, tema: unknown): Promise<v
     if (sessione.tappe.length >= TAPPE_MAX) throw new ApiError(400, 'INVALID_BODY', `Al massimo ${TAPPE_MAX} tappe`);
     tx.update(ref, {
       tappe: [...sessione.tappe, tappaDaCorrere(tema, KM_PER_TAPPA, infoTema(tema).durataMinuti * 60)],
+    });
+  });
+}
+
+/**
+ * Cancella una tappa, in qualunque stato:
+ * - **da correre**: sparisce dal piano;
+ * - **chiusa**: spariscono anche i suoi punti, e la generale si ricalcola;
+ * - **in corso**: finisce senza punti (serve quando si è aperta la tappa sbagliata).
+ * Le tappe dopo scalano di un numero, e con loro i progressi salvati sugli allievi, che
+ * sono indicizzati per tappa: tutto nella stessa transazione, altrimenti i punti della
+ * tappa 3 finirebbero alla 2.
+ */
+export async function eliminaTappa(sessionId: string, indiceGrezzo: unknown): Promise<void> {
+  await getDb().runTransaction(async (tx) => {
+    const { ref, sessione } = await leggiGiro(tx, sessionId);
+    if (sessione.status === 'closed') throw new ApiError(409, 'SESSION_CLOSED', 'Il Giro è chiuso');
+    const indice = indiceTappa(indiceGrezzo, sessione);
+    if (sessione.tappe.length <= 1) {
+      throw new ApiError(400, 'ULTIMA_TAPPA', "Il Giro deve avere almeno una tappa: per finirlo, chiudi il Giro");
+    }
+    const allievi = await leggiAllievi(tx, sessionId);
+
+    const aggiornati = allievi.map((a) => {
+      const prima = a.dati.tappe ?? {};
+      const tolta = prima[String(indice)];
+      const tocca = tolta !== undefined || Object.keys(prima).some((k) => Number(k) > indice);
+      const dati: AllievoDoc = {
+        ...a.dati,
+        tappe: rinumeraDopoCancellazione(prima, indice),
+        // Gli errori di una tappa cancellata non devono pesare sul conto finale.
+        erroriTotali: Math.max(0, (a.dati.erroriTotali ?? 0) - (tolta?.errori ?? 0)),
+      };
+      return { ...a, dati, tocca };
+    });
+    for (const a of aggiornati) {
+      if (a.tocca) tx.update(a.ref, { tappe: a.dati.tappe, erroriTotali: a.dati.erroriTotali });
+    }
+
+    const aperta = sessione.tappaAperta;
+    const tappaAperta =
+      aperta === null || aperta === undefined || aperta === indice ? null : aperta > indice ? aperta - 1 : aperta;
+    tx.update(ref, {
+      tappe: sessione.tappe.filter((_, i) => i !== indice),
+      tappaAperta,
+      arrivati: rinumeraDopoCancellazione(sessione.arrivati ?? {}, indice),
+      generale: calcolaGenerale(sessione.migliori, aggiornati),
     });
   });
 }

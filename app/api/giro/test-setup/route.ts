@@ -7,7 +7,7 @@
  */
 import { Timestamp } from 'firebase-admin/firestore';
 import { ApiError, handler } from '@/lib/giro/http';
-import { apriTappa, chiudiGiro, chiudiTappa, creaGiro } from '@/lib/giro/sessioni';
+import { apriTappa, chiudiGiro, chiudiTappa, creaGiro, eliminaTappa } from '@/lib/giro/sessioni';
 import { allieviRef, sessioniRef, type AllievoDoc, type SessioneDoc } from '@/lib/giro/store';
 
 export const dynamic = 'force-dynamic';
@@ -82,6 +82,11 @@ export const POST = handler(async (body) => {
 
   if (azione === 'chiudiTappa') {
     await chiudiTappa(sessionId(body), typeof body.tappa === 'number' ? body.tappa : 0);
+    return { ok: true };
+  }
+
+  if (azione === 'eliminaTappa') {
+    await eliminaTappa(sessionId(body), body.tappa);
     return { ok: true };
   }
 

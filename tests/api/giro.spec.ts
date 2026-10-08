@@ -268,6 +268,102 @@ test.describe('Giro a tappe', () => {
   });
 });
 
+test.describe('cancellare una tappa', () => {
+  const leggi = async (request: APIRequestContext, sessionId: string) =>
+    (await chiama(request, 'test-setup', { azione: 'leggi', sessionId })).corpo;
+  const elimina = (request: APIRequestContext, sessionId: string, tappa: number) =>
+    chiama(request, 'test-setup', { azione: 'eliminaTappa', sessionId, tappa });
+
+  test('una tappa ancora da correre sparisce dal piano', async ({ request }) => {
+    const giro = await creaGiro(request, ['ripeti', 'contare', 'passo']);
+    await elimina(request, giro.sessionId, 1);
+    const { sessione } = await leggi(request, giro.sessionId);
+    expect(sessione.tappe.map((t: { tema: string }) => t.tema)).toEqual(['ripeti', 'passo']);
+  });
+
+  test('una tappa chiusa: via i suoi punti, e le tappe dopo restano agli allievi giusti', async ({ request }) => {
+    const giro = await creaGiro(request, ['ripeti', 'contare', 'passo']);
+    const ada = await entra(request, giro.code, 'Ada');
+    const bea = await entra(request, giro.code, 'Bea');
+
+    // Tappa 1: vince Ada (con due errori); tappa 2: vince Bea
+    const t1 = await apri(request, giro.sessionId, 0, 10);
+    for (let e = 0; e < 2; e++) {
+      await chiama(request, 'submit', { playerId: ada.playerId, token: ada.token, tappa: 0, km: 0, risposta: 'print(0)' });
+    }
+    await corri(request, ada, 0, t1, 0, 5);
+    await corri(request, bea, 0, t1, 0, 3);
+    const t2 = await apri(request, giro.sessionId, 1, 10);
+    await corri(request, bea, 1, t2, 0, 5);
+    await corri(request, ada, 1, t2, 0, 2);
+    await chiama(request, 'test-setup', { azione: 'chiudiTappa', sessionId: giro.sessionId, tappa: 1 });
+
+    // Si cancella la tappa 1: resta solo quella che ha vinto Bea, ora diventata la prima
+    const esito = await elimina(request, giro.sessionId, 0);
+    expect(esito.stato, JSON.stringify(esito.corpo)).toBe(200);
+
+    const { sessione, allievi } = await leggi(request, giro.sessionId);
+    expect(sessione.tappe.map((t: { tema: string }) => t.tema)).toEqual(['contare', 'passo']);
+    const perNome = Object.fromEntries(allievi.map((a: { name: string }) => [a.name, a]));
+    expect(perNome.Bea.tappe).toEqual({ '0': expect.objectContaining({ km: 5, posizione: 1, punti: 25 }) });
+    expect(perNome.Ada.tappe).toEqual({ '0': expect.objectContaining({ km: 2, posizione: 2, punti: 20 }) });
+    // Gli errori fatti nella tappa cancellata non pesano più
+    expect(perNome.Ada.erroriTotali).toBe(0);
+
+    expect(sessione.generale.map((r: { name: string; punti: number }) => [r.name, r.punti])).toEqual([
+      ['Bea', 25],
+      ['Ada', 20],
+    ]);
+
+    // Anche l'allievo vede il risultato giusto, col nome giusto della tappa
+    const s = await stato(request, bea);
+    expect(s.corpo.ultimaTappa).toMatchObject({ indice: 0, nomeTema: 'Contare con range', posizione: 1 });
+  });
+
+  test('una tappa in corso si annulla: finisce senza punti', async ({ request }) => {
+    const giro = await creaGiro(request, ['ripeti', 'contare']);
+    const ivo = await entra(request, giro.code, 'Ivo');
+    const t1 = await apri(request, giro.sessionId, 0, 10);
+    await corri(request, ivo, 0, t1, 0, 2);
+    await elimina(request, giro.sessionId, 0);
+
+    const s = await stato(request, ivo);
+    expect(s.corpo.tappa).toBeNull();
+    const { sessione, allievi } = await leggi(request, giro.sessionId);
+    expect(sessione.tappaAperta).toBeNull();
+    expect(sessione.tappe.map((t: { tema: string }) => t.tema)).toEqual(['contare']);
+    expect(allievi[0].tappe).toEqual({});
+
+    // La tappa rimasta, ora la prima, parte da zero
+    const t = await apri(request, giro.sessionId, 0, 10);
+    expect((await stato(request, ivo)).corpo.tappa).toMatchObject({ tema: 'contare', kmFatti: 0 });
+    await corri(request, ivo, 0, t, 0, 1);
+  });
+
+  test('cancellando una tappa prima di quella aperta, la corsa continua senza intoppi', async ({ request }) => {
+    const giro = await creaGiro(request, ['ripeti', 'contare']);
+    const ugo = await entra(request, giro.code, 'Ugo');
+    const t2 = await apri(request, giro.sessionId, 1, 10);
+    await corri(request, ugo, 1, t2, 0, 1);
+    await elimina(request, giro.sessionId, 0);
+
+    // La tappa aperta ora è la prima, e i chilometri già fatti ci sono ancora
+    expect((await stato(request, ugo)).corpo.tappa).toMatchObject({ indice: 0, tema: 'contare', kmFatti: 1 });
+    await corri(request, ugo, 0, t2, 1, 2);
+  });
+
+  test('l\'ultima tappa non si cancella, e un Giro chiuso non si tocca', async ({ request }) => {
+    const gara = await creaGara(request);
+    const ultima = await elimina(request, gara.sessionId, 0);
+    expect(ultima.stato).toBe(400);
+    expect(ultima.corpo.error).toBe('ULTIMA_TAPPA');
+
+    const giro = await creaGiro(request, ['ripeti', 'contare']);
+    await chiama(request, 'test-setup', { azione: 'chiudi', sessionId: giro.sessionId });
+    expect((await elimina(request, giro.sessionId, 0)).stato).toBe(409);
+  });
+});
+
 test.describe('numero di corsa e rientro', () => {
   test('i numeri si assegnano in ordine di iscrizione', async ({ request }) => {
     const gara = await creaGara(request);

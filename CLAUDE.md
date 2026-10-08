@@ -65,6 +65,7 @@ Logica pura in `lib/giro/giro.ts` (la usano il server e la LIM).
 - **Tempo**: lo calcola il server (`secondiRimasti`), perché l'orologio dei PC d'aula non è affidabile. Dopo la scadenza le consegne sono rifiutate (`TEMPO_SCADUTO`); i punti si fissano alla chiusura.
 - **Punti e generale si fissano sul server alla chiusura della tappa**: posizione e punti sul documento di ogni allievo che ha corso la tappa, e la classifica generale fotografata sul documento del Giro (`generale`). Così la pagina dell'allievo non deve leggere tutti gli allievi a ogni richiesta di stato. Si ricalcola anche quando il docente cambia N o corregge un allievo.
 - **Chi non ha consegnato niente in una tappa** non ha la voce per quella tappa: niente posizione, niente punti. È quello che le "migliori N" compensano.
+- **Cancellare una tappa** rinumera le successive: i progressi degli allievi sono salvati per indice di tappa, quindi vanno rinumerati nella stessa transazione (`rinumeraDopoCancellazione` in `giro.ts`), altrimenti i punti finirebbero alla tappa sbagliata.
 - **Ordine d'arrivo sul momento**: chi finisce tutti i chilometri riceve subito "sei arrivato N°" (contatore `arrivati` per tappa sul Giro, in transazione).
 
 ## Il mini-editor (pagina allievo)
@@ -153,12 +154,12 @@ Docente (`/api/docente/*`, `Authorization: Bearer <ID token>`, email in `TEACHER
 | Route | Azioni |
 |---|---|
 | `sessioni` | `elenco`; `crea` `{classLabel, tipo: 'giro', temi, migliori}` oppure `{classLabel, tipo: 'singola', km}`; `chiudi` (il Giro) |
-| `tappe` | `apri` `{tappa, minuti}` (null = senza limite); `chiudi` `{tappa}`; `aggiungi` `{tema}`; `migliori` `{migliori}` |
+| `tappe` | `apri` `{tappa, minuti}` (null = senza limite); `chiudi` `{tappa}`; `aggiungi` `{tema}`; `elimina` `{tappa}` (in qualunque stato: le tappe dopo scalano di numero e con loro i progressi degli allievi, i punti della tappa tolta spariscono, la generale si ricalcola; l'ultima tappa non si toglie); `migliori` `{migliori}` |
 | `allievi` | `rinomina` `{name}`; `elimina`; `rimanda` `{tappa, km}` (azzera da quel km in poi e ricalcola i punti se la tappa è chiusa) |
 
 `/api/giro/test-setup` esiste **solo per i test**: risponde 404 se non è impostato `FIRESTORE_EMULATOR_HOST`. Prepara Giri, apre e chiude tappe, fa scadere il tempo, e restituisce anche le soluzioni: non deve mai funzionare in produzione.
 
-Errori: HTTP 4xx/5xx con `{error, message}` in italiano. Codici: `INVALID_BODY`, `INVALID_NAME`, `SESSION_NOT_FOUND` (404), `DUPLICATE_PLAYER` (409), `PLAYER_NOT_FOUND` (404), `UNAUTHORIZED` (401), `SESSION_NOT_RUNNING` (403, Giro non partito o chiuso), `INVALID_TAPPA` (400), `TAPPA_NON_APERTA` (409), `TEMPO_SCADUTO` (403), `TAPPA_FINITA` (403, ha già fatto tutti i km), `INVALID_KM` (400 fuori range, 409 non è il km corrente), `TAPPA_CHIUSA` (409, riaprire una tappa corsa), `SESSION_CLOSED` (409), `RATE_LIMITED` (429), `INTERNAL` (500).
+Errori: HTTP 4xx/5xx con `{error, message}` in italiano. Codici: `INVALID_BODY`, `INVALID_NAME`, `SESSION_NOT_FOUND` (404), `DUPLICATE_PLAYER` (409), `PLAYER_NOT_FOUND` (404), `UNAUTHORIZED` (401), `SESSION_NOT_RUNNING` (403, Giro non partito o chiuso), `INVALID_TAPPA` (400), `TAPPA_NON_APERTA` (409), `TEMPO_SCADUTO` (403), `TAPPA_FINITA` (403, ha già fatto tutti i km), `INVALID_KM` (400 fuori range, 409 non è il km corrente), `TAPPA_CHIUSA` (409, riaprire una tappa corsa), `ULTIMA_TAPPA` (400, cancellare l'unica tappa), `SESSION_CLOSED` (409), `RATE_LIMITED` (429), `INTERNAL` (500).
 
 ## Pagine
 

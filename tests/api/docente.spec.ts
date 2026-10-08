@@ -89,8 +89,9 @@ test.describe('vista LIM', () => {
     await expect(lista.locator('li').filter({ hasText: 'Rosa' })).toContainText('1');
 
     await page.getByRole('button', { name: /VIA! Tappa 1 · Ripetere/ }).click();
-    await expect(page.getByText('Tappa 1 · Ripetere')).toBeVisible();
+    // Il cronometro e "Chiudi la tappa" ci sono solo a tappa in corso: è la prova del cambio di schermata.
     await expect(page.getByLabel('tempo rimasto')).toContainText(/\d+:\d\d/);
+    await expect(page.getByRole('button', { name: 'Chiudi la tappa' })).toBeVisible();
     await expect(classifica(page).filter({ hasText: 'Rosa' })).toContainText('0/5 km');
   });
 
@@ -169,6 +170,31 @@ test.describe('vista LIM', () => {
     await expect(page.getByText('Il podio del Giro')).toBeVisible();
     await expect(page.getByText('🥇')).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Da rispiegare' })).toBeVisible();
+  });
+});
+
+test.describe('cancellare una tappa dalla LIM', () => {
+  test('prima del via, dal piano del Giro', async ({ page, request }) => {
+    const giro = await creaGiro(request, ['ripeti', 'contare', 'passo']);
+    await accediDocente(page, `/docente/sessione/${giro.sessionId}`);
+    const piano = page.getByRole('list', { name: 'piano del giro' });
+    await expect(piano.locator('li')).toHaveCount(3);
+
+    page.on('dialog', (d) => d.accept());
+    await page.getByRole('button', { name: 'cancella la tappa 2' }).click();
+    await expect(piano.locator('li')).toHaveCount(2);
+    await expect(piano).toContainText('Tappa 2 · Il passo');
+  });
+
+  test('durante la tappa, se si è aperta quella sbagliata', async ({ page, request }) => {
+    const giro = await creaGiro(request, ['ripeti', 'contare']);
+    await setup(request, { azione: 'apri', sessionId: giro.sessionId, tappa: 0, minuti: 10 });
+    await accediDocente(page, `/docente/sessione/${giro.sessionId}`);
+    await expect(page.getByText('Tappa 1 · Ripetere')).toBeVisible();
+
+    page.on('dialog', (d) => d.accept());
+    await page.getByRole('button', { name: 'annulla questa tappa' }).click();
+    await expect(page.getByRole('button', { name: /VIA! Tappa 1 · Contare con range/ })).toBeVisible();
   });
 });
 
