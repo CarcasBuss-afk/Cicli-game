@@ -64,7 +64,10 @@ test.describe('vista LIM', () => {
 
     // Un allievo entra: compare in griglia senza ricaricare
     await request.post('/api/giro/join', { data: { code: gara.code, name: 'Rosa' } });
-    await expect(page.getByText(/1 in griglia: Rosa/)).toBeVisible();
+    // Compare nella lista dei corridori, con il numero di corsa da proiettare
+    const lista = page.getByRole('list', { name: 'corridori' });
+    await expect(lista.locator('li').filter({ hasText: 'Rosa' })).toContainText('1');
+    await expect(page.getByText(/1 in griglia di partenza/)).toBeVisible();
 
     await page.getByRole('button', { name: 'VIA!' }).click();
     await expect(page.getByText('Rosa')).toBeVisible();

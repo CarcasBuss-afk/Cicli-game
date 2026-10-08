@@ -14,9 +14,11 @@ import {
   allieviRef,
   caricaContesto,
   componiPlayerId,
+  sessioniRef,
   trovaSessioneAttiva,
   type AllievoDoc,
   type Contesto,
+  type SessioneDoc,
 } from './store';
 import { tappaPerAllievo, type Tappa } from './tappe';
 import { generaToken, hashToken } from './token';
@@ -67,19 +69,27 @@ export async function join(body: Record<string, unknown>) {
   const nameKey = chiaveNome(name);
   const token = generaToken();
   const ref = allieviRef(sessione.id).doc();
+  const sessioneRef = sessioniRef().doc(sessione.id);
 
-  await getDb().runTransaction(async (tx) => {
+  const numero = await getDb().runTransaction(async (tx) => {
+    // Tutte le letture prima di qualunque scrittura, come vuole Firestore.
     const doppioni = await tx.get(allieviRef(sessione.id).where('nameKey', '==', nameKey).limit(1));
+    const snap = await tx.get(sessioneRef);
+    const dati = snap.data() as SessioneDoc | undefined;
+    if (!dati) throw new ApiError(404, 'SESSION_NOT_FOUND', 'Gara inesistente');
     if (!doppioni.empty) {
       throw new ApiError(
         409,
         'DUPLICATE_PLAYER',
-        `C'è già un «${name}» in gara: aggiungi l'iniziale del cognome, per esempio «${name} B.»`,
+        `C'è già un «${name}» in gara: se sei tu, rientra con il tuo numero di corsa; se no, aggiungi l'iniziale del cognome, per esempio «${name} B.»`,
       );
     }
+    // Le gare create prima dei numeri di corsa non hanno il contatore: si riparte da 1.
+    const assegnato = dati.prossimoNumero ?? 1;
     tx.set(ref, {
       name,
       nameKey,
+      numero: assegnato,
       tokenHash: hashToken(token),
       createdAt: FieldValue.serverTimestamp(),
       tappaCorrente: 0,
@@ -88,12 +98,60 @@ export async function join(body: Record<string, unknown>) {
       finishedAt: null,
       ordineArrivo: null,
     } satisfies Omit<AllievoDoc, 'createdAt'> & { createdAt: FieldValue });
+    tx.update(sessioneRef, { prossimoNumero: assegnato + 1 });
+    return assegnato;
   });
 
   return {
     playerId: componiPlayerId(sessione.id, ref.id),
     token,
     name,
+    numero,
+    sessionStatus: sessione.data.status,
+    numTappe: sessione.data.numTappe,
+    classLabel: sessione.data.classLabel,
+  };
+}
+
+/* ---------------------------------------------------------------------- rientro */
+
+/**
+ * Rientro da un altro PC con il numero di corsa. Il browser di quella postazione non ha
+ * memoria dell'allievo, quindi l'identità la ritrova il server.
+ *
+ * Il token viene rigenerato: quello vecchio, rimasto sul PC precedente, smette di valere.
+ * È voluto — un allievo corre da una postazione alla volta.
+ */
+export async function rientro(body: Record<string, unknown>) {
+  const code = typeof body.code === 'string' ? body.code.trim().toUpperCase() : '';
+  if (!code) throw new ApiError(400, 'INVALID_BODY', 'Manca il codice della gara');
+  limita(`rientro:${code}`);
+
+  const grezzo = typeof body.numero === 'number' ? body.numero : Number(String(body.numero ?? '').trim());
+  if (!Number.isInteger(grezzo) || grezzo < 1) {
+    throw new ApiError(400, 'INVALID_BODY', 'Il numero di corsa è un numero intero: guarda la lista alla LIM');
+  }
+
+  const sessione = await trovaSessioneAttiva(code);
+  if (!sessione) {
+    throw new ApiError(404, 'SESSION_NOT_FOUND', 'Codice inesistente o gara chiusa: controlla il codice alla LIM');
+  }
+
+  const trovati = await allieviRef(sessione.id).where('numero', '==', grezzo).limit(1).get();
+  if (trovati.empty) {
+    throw new ApiError(404, 'PLAYER_NOT_FOUND', `Nessun corridore con il numero ${grezzo}: controlla la lista alla LIM`);
+  }
+
+  const doc = trovati.docs[0];
+  const allievo = doc.data() as AllievoDoc;
+  const token = generaToken();
+  await doc.ref.update({ tokenHash: hashToken(token) });
+
+  return {
+    playerId: componiPlayerId(sessione.id, doc.id),
+    token,
+    name: allievo.name,
+    numero: allievo.numero,
     sessionStatus: sessione.data.status,
     numTappe: sessione.data.numTappe,
     classLabel: sessione.data.classLabel,
@@ -108,6 +166,7 @@ export async function status(body: Record<string, unknown>) {
   return {
     sessionStatus: ctx.sessione.status,
     name: ctx.allievo.name,
+    numero: ctx.allievo.numero ?? null,
     classLabel: ctx.sessione.classLabel,
     numTappe: ctx.sessione.numTappe,
     tappaCorrente: ctx.allievo.tappaCorrente,

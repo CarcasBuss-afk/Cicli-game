@@ -65,6 +65,7 @@ export function Lim({ sessionId }: { sessionId: string }) {
             return {
               id: d.id,
               name: a.name ?? '?',
+              numero: typeof a.numero === 'number' ? a.numero : null,
               tappaCorrente: a.tappaCorrente ?? 0,
               erroriTotali: a.erroriTotali ?? 0,
               finishedAt: data(a.finishedAt),
@@ -158,11 +159,11 @@ export function Lim({ sessionId }: { sessionId: string }) {
           <p className="font-mono text-[9rem] leading-none font-black tracking-[0.1em] text-(--color-rosa)">
             {sessione.code}
           </p>
-          <p className="text-3xl">
-            {allievi.length === 0
-              ? 'Nessuno in griglia di partenza'
-              : `${allievi.length} in griglia: ${ordinati.map((a) => a.name).join(', ')}`}
-          </p>
+          {allievi.length === 0 ? (
+            <p className="text-3xl">Nessuno in griglia di partenza</p>
+          ) : (
+            <ListaCorridori allievi={allievi} />
+          )}
         </section>
       )}
 
@@ -189,6 +190,9 @@ export function Lim({ sessionId }: { sessionId: string }) {
                       <span className="rounded-md bg-(--color-rosa) px-2 py-0.5 text-sm font-black text-white uppercase">
                         maglia rosa
                       </span>
+                    )}
+                    {a.numero !== null && (
+                      <span className="font-mono text-xl text-(--color-testo-tenue)">{a.numero}</span>
                     )}
                     <span className="text-2xl font-bold">{a.name}</span>
                     <span className="text-xl text-(--color-testo-tenue)">
@@ -251,6 +255,32 @@ export function Lim({ sessionId }: { sessionId: string }) {
         </div>
       )}
     </main>
+  );
+}
+
+/**
+ * La lista dei corridori con il loro numero, da proiettare prima del via: è da qui che
+ * gli allievi leggono il numero che serve a rientrare da un altro computer.
+ */
+function ListaCorridori({ allievi }: { allievi: AllievoLim[] }) {
+  const perNumero = [...allievi].sort((a, b) => (a.numero ?? 0) - (b.numero ?? 0));
+  return (
+    <div className="w-full">
+      <p className="mb-3 text-2xl text-(--color-testo-tenue)">
+        {allievi.length} in griglia di partenza · il numero serve per rientrare da un altro PC
+      </p>
+      <ul
+        aria-label="corridori"
+        className="mx-auto grid max-w-5xl grid-cols-2 gap-x-8 gap-y-1 text-left sm:grid-cols-3 lg:grid-cols-4"
+      >
+        {perNumero.map((a) => (
+          <li key={a.id} className="flex items-baseline gap-3 text-2xl">
+            <span className="w-10 text-right font-mono font-black text-(--color-rosa)">{a.numero ?? '–'}</span>
+            <span>{a.name}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

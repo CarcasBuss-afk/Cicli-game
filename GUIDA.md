@@ -82,9 +82,12 @@ autorizzato.
 ### Quando arrivano
 
 5. Gli allievi aprono il sito, scrivono **il codice** e **il loro nome**. Li vedi comparire
-   in griglia di partenza alla LIM.
+   in griglia di partenza alla LIM, ciascuno con il suo **numero di corsa**.
    - Se in classe ci sono due allievi con lo stesso nome, al secondo il sito chiede da
      solo di aggiungere l'iniziale del cognome ("Luca B.").
+   - Alla tappa successiva, chi è già iscritto **non riscrive il nome**: entra con il
+     codice della gara e il suo numero, scegliendo "Ho già un numero". La lista con i
+     numeri è proiettata alla LIM prima del via: non devono ricordarsela.
 6. Quando ci sono tutti, premi **VIA!**.
 
 ### Durante la gara
@@ -100,8 +103,10 @@ Toccando la riga di un allievo si aprono le correzioni:
 | Ha superato una tappa per sbaglio, o vuoi fargliela rifare | *Rimanda alla tappa N* |
 | Si è iscritto due volte / iscritto per errore | *Elimina* |
 
-Se un allievo chiude il browser o ricarica la pagina, riprende da dove era: il suo posto
-è salvato nel browser di **quel** PC.
+Se un allievo chiude il browser o ricarica la pagina, riprende da dove era. Se invece si
+sposta **su un altro PC**, rientra con il suo numero di corsa: il browser nuovo non lo
+conosce, ma il server sì. Rientrando, la sessione aperta sul PC di prima si chiude — un
+allievo corre da una postazione alla volta.
 
 ### Alla fine
 
@@ -118,10 +123,10 @@ numeri diversi, quindi non si può vincere a memoria.
 
 ## Cose da sapere
 
-**Se un allievo cambia PC** (o il browser dimentica i dati) non può rientrare con lo
-stesso nome: il sistema lo considera un doppione. Deve entrare con un nome leggermente
-diverso e ricomincia da capo, oppure lo elimini dalla LIM e lo fai rientrare, sempre
-ripartendo da zero. Finché restano al loro posto non è un problema.
+**Il numero di corsa si può indovinare.** Con venticinque allievi, provare il numero di un
+compagno è alla portata di chiunque. Il danno però è a una classifica di un gioco, tu dalla
+LIM vedi subito se qualcuno fa un balzo strano, e hai i pulsanti per correggere o rimandare
+indietro un allievo. Se un giorno diventasse un problema vero, si può stringere.
 
 **Se cade la rete** le pagine degli allievi non si rompono: riprovano da sole e mostrano
 "Connessione al server persa". Quando la rete torna, si riprende.

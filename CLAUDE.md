@@ -65,7 +65,7 @@ LIM docente: /docente ◀──────── client SDK + onSnapshot ──
 1. **Firestore scritto solo dal server** (Admin SDK). Regole: nessun accesso ai client tranne lettura di `giroSessions/**` per il docente autenticato (custom claim `teacher`).
 2. **Validazione solo lato server**: output atteso e generatori mai nel bundle client. L'allievo manda il codice, il server risponde promosso/hint. (Eccezione: per `output-range` l'output atteso È la consegna mostrata; per `ciclo-output` invece è segreto.)
 3. **Stesso progetto Firebase dell'escape room**, collezioni separate con prefisso proprio (`giroSessions`). Le regole dell'escape room non si toccano: si estende `firestore.rules` di questo repo con il blocco nuovo e si ripubblica (coordinarsi: un solo file di regole per progetto — copiare il blocco `escapeSessions` esistente e aggiungere il nostro).
-4. **Identità dell'allievo in `localStorage`** (`giro:<sessionId>` → `{playerId, token, name}`): se ricarica la pagina riprende la gara dov'era.
+4. **Identità dell'allievo**: sul server il **numero di corsa** (`numero`, progressivo nella gara, come il dorsale dei ciclisti), perché in laboratorio gli allievi cambiano PC e il browser non ha memoria di loro. Nel `localStorage` resta solo una scorciatoia **per gara** (`giro:gara:<sessionId>` più `giro:ultimo`): una chiave sola veniva sovrascritta dall'allievo della classe dopo.
 5. **Errori di rete**: mai crash. Timeout 10 s, retry, messaggio "Connessione persa, chiama il prof".
 6. **Rate limiting** per `playerId` (in memoria, come l'escape room): max ~30 submit/minuto.
 7. Niente soluzioni, output attesi o parametri delle tappe future nelle risposte API: l'allievo riceve **solo la tappa corrente**.
@@ -80,6 +80,7 @@ giroSessions/{sessionId}
   createdAt, startedAt, endedAt: Timestamp
   numTappe: number              // default 12
   arrivati: number              // quanti hanno tagliato: dà l'ordine d'arrivo
+  prossimoNumero: number        // prossimo numero di corsa da assegnare (parte da 1)
   seme: number                  // seme del percorso, per rigenerarlo identico
   tappe: Array<Tappa>           // generate alla creazione, uguali per tutti (lib/giro/tappe.ts):
                                 // tipo, terreno, consegna, outputAtteso, mostraOutput,
@@ -88,6 +89,7 @@ giroSessions/{sessionId}
 giroSessions/{sessionId}/players/{playerId}
   name: string                  // nome di battesimo, normalizzato come nell'escape room
   nameKey: string               // minuscolo, per rifiutare i doppioni nella sessione
+  numero: number                // numero di corsa, unico nella gara: serve a rientrare da un altro PC
   tokenHash: string             // sha256 del token restituito all'allievo
   createdAt: Timestamp
   tappaCorrente: number         // 0-based; == numTappe → arrivato
@@ -105,15 +107,16 @@ Allievo (`/api/giro/*`, tutte POST, body JSON, auth `playerId` + `token` via sha
 
 | Route | Body | Risposta | Note |
 |---|---|---|---|
-| `join` | `{code, name}` | `{playerId, token, name, sessionStatus, numTappe, classLabel}` | sessione `waiting` o `running`; il codice si può scrivere in minuscolo; nomi normalizzati (trim, spazi, iniziali maiuscole) e doppioni rifiutati: a parità di nome il messaggio suggerisce «Luca B.», e il punto dell'iniziale è ammesso |
-| `status` | `{playerId, token}` | `{sessionStatus, name, classLabel, numTappe, tappaCorrente, arrivato, posizione, erroriTotali, tappa}` | funziona in qualunque stato della sessione (la pagina deve poter mostrare "aspetta il via" e "gara chiusa"); `tappa` è la tappa pubblica corrente, `null` se la gara non è `running` o se l'allievo è arrivato |
+| `join` | `{code, name}` | `{playerId, token, name, numero, sessionStatus, numTappe, classLabel}` | sessione `waiting` o `running`; il codice si può scrivere in minuscolo; nomi normalizzati (trim, spazi, iniziali maiuscole) e doppioni rifiutati: a parità di nome il messaggio suggerisce «Luca B.», e il punto dell'iniziale è ammesso |
+| `status` | `{playerId, token}` | `{sessionStatus, name, numero, classLabel, numTappe, tappaCorrente, arrivato, posizione, erroriTotali, tappa}` | funziona in qualunque stato della sessione (la pagina deve poter mostrare "aspetta il via" e "gara chiusa"); `tappa` è la tappa pubblica corrente, `null` se la gara non è `running` o se l'allievo è arrivato |
 | `submit` | `{playerId, token, tappa, risposta}` | promosso: `{promosso: true, output, tappaCorrente, arrivato, posizione, erroriTotali, tappa}`; bocciato: `{promosso: false, hint, output, erroriTotali}` | `tappa` è l'indice 0-based e deve essere esattamente `tappaCorrente`. **Una risposta sbagliata non è un errore HTTP**: è il gioco normale e torna 200 con l'hint. Tutto in una transazione: completamento della tappa, conteggio errori, `ordineArrivo` al traguardo |
+| `rientro` | `{code, numero}` | come `join` | Rientro da un altro PC con il numero di corsa. Il token viene **rigenerato**: quello rimasto sul PC di prima smette di valere, così un allievo corre da una postazione alla volta |
 
 Docente (`/api/docente/*`, `Authorization: Bearer <ID token>`, email in `TEACHER_EMAILS`): crea sessione (genera il percorso), avvia, chiudi, correggi nome, elimina allievo, azzera tappa. Stesso impianto di auth dell'escape room (claim `teacher` auto-assegnato al primo accesso).
 
 `/api/giro/test-setup` esiste **solo per i test**: risponde 404 se non è impostato `FIRESTORE_EMULATOR_HOST`. Prepara una gara e restituisce anche le soluzioni, perciò non deve mai funzionare in produzione.
 
-Errori: HTTP 4xx/5xx con `{error, message}` in italiano. Codici: `INVALID_BODY`, `INVALID_NAME`, `SESSION_NOT_FOUND` (404), `DUPLICATE_PLAYER` (409), `UNAUTHORIZED` (401), `SESSION_NOT_RUNNING` (403, waiting o closed), `INVALID_TAPPA` (400 se fuori percorso, 409 se non è la tappa corrente), `ALREADY_FINISHED` (403), `RATE_LIMITED` (429), `INTERNAL` (500).
+Errori: HTTP 4xx/5xx con `{error, message}` in italiano. Codici: `INVALID_BODY`, `INVALID_NAME`, `SESSION_NOT_FOUND` (404), `DUPLICATE_PLAYER` (409), `PLAYER_NOT_FOUND` (404, numero di corsa inesistente), `UNAUTHORIZED` (401), `SESSION_NOT_RUNNING` (403, waiting o closed), `INVALID_TAPPA` (400 se fuori percorso, 409 se non è la tappa corrente), `ALREADY_FINISHED` (403), `RATE_LIMITED` (429), `INTERNAL` (500).
 
 ## Pagine
 

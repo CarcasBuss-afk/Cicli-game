@@ -159,6 +159,7 @@ export default function Gara() {
         <p className="text-xl text-(--color-testo-tenue)">
           Sei in griglia di partenza con la classe {stato.classLabel}.
         </p>
+        {stato.numero !== null && <NumeroDiCorsa numero={stato.numero} />}
         <p className="text-xl font-bold">Aspetta il via del prof.</p>
         <p className="text-sm text-(--color-testo-tenue)">
           Il percorso è di {stato.numTappe} tappe. La pagina parte da sola.
@@ -211,7 +212,12 @@ export default function Gara() {
       {/* Intestazione: chi sei, dove sei nel percorso */}
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="font-bold">{stato.name}</p>
+          <p className="font-bold">
+            {stato.name}
+            {stato.numero !== null && (
+              <span className="ml-2 font-mono text-(--color-rosa)">n. {stato.numero}</span>
+            )}
+          </p>
           <p className="text-sm text-(--color-testo-tenue)">classe {stato.classLabel}</p>
         </div>
         <div className="text-right">
@@ -333,6 +339,19 @@ export default function Gara() {
 
 const BOTTONE =
   'rounded-lg bg-(--color-rosa) px-5 py-2.5 text-lg font-bold text-white hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40';
+
+/** Il numero di corsa, come il dorsale dei ciclisti: serve a rientrare da un altro PC. */
+function NumeroDiCorsa({ numero }: { numero: number }) {
+  return (
+    <div className="my-2 rounded-2xl border-2 border-(--color-rosa) bg-(--color-rosa)/10 px-8 py-4">
+      <p className="text-sm text-(--color-testo-tenue)">Il tuo numero di corsa</p>
+      <p className="font-mono text-6xl font-black text-(--color-rosa)">{numero}</p>
+      <p className="mt-1 text-sm text-(--color-testo-tenue)">
+        Serve per rientrare se cambi computer
+      </p>
+    </div>
+  );
+}
 
 /** Il percorso come fila di caselle: quelle fatte sono accese. */
 function Percorso({ fatte, totale }: { fatte: number; totale: number }) {

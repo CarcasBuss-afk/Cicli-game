@@ -76,6 +76,7 @@ export async function creaSessione(
     numTappe: percorso.length,
     tappe: percorso.map(senzaUndefined),
     arrivati: 0,
+    prossimoNumero: 1,
     seme,
   });
   return { id: ref.id, code, numTappe: percorso.length };

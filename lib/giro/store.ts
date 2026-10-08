@@ -22,6 +22,8 @@ export type SessioneDoc = {
   tappe: Tappa[];
   /** Quanti allievi hanno già tagliato il traguardo: dà l'ordine d'arrivo. */
   arrivati: number;
+  /** Prossimo numero di corsa da assegnare a chi si iscrive. Parte da 1. */
+  prossimoNumero: number;
   /** Seme usato per generare il percorso: serve a rigenerarlo identico se serve. */
   seme: number;
 };
@@ -30,6 +32,11 @@ export type AllievoDoc = {
   name: string;
   /** Nome normalizzato per riconoscere i doppioni nella sessione. */
   nameKey: string;
+  /**
+   * Numero di corsa, come il dorsale dei ciclisti: assegnato all'iscrizione e unico
+   * nella gara. Serve a rientrare da un altro PC, dove il browser non ha memoria.
+   */
+  numero: number;
   tokenHash: string;
   createdAt: Timestamp;
   /** Indice (0-based) della tappa da fare adesso; == numTappe significa arrivato. */

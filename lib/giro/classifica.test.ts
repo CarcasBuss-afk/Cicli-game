@@ -15,6 +15,7 @@ const t = (minuti: number) => new Date(2026, 0, 1, 10, minuti, 0);
 function allievo(parziale: Partial<AllievoLim> & { name: string }): AllievoLim {
   return {
     id: parziale.name.toLowerCase(),
+    numero: null,
     tappaCorrente: 0,
     tappe: {},
     erroriTotali: 0,

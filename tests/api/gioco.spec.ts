@@ -146,6 +146,44 @@ test.describe('attesa e ripresa', () => {
     await expect(page.getByText('Omar')).toBeVisible();
   });
 
+  test('cambiando PC si rientra con il numero di corsa', async ({ page, browser, request }) => {
+    const gara = await creaGara(request, 5);
+    await entra(page, gara.code, 'Rino');
+
+    // Il numero è scritto in pagina: è quello che l'allievo legge dalla LIM
+    const numero = (await page.getByText(/n\. \d+/).first().innerText()).replace(/\D/g, '');
+    expect(numero).not.toBe('');
+
+    await consegna(page, gara.tappe[0].soluzione, gara.tappe[0].risposta);
+    await expect(page.getByText(/Tappa 2\b/)).toBeVisible();
+
+    // Un altro PC: browser nuovo, nessuna memoria di questo allievo
+    const altroPc = await browser.newContext();
+    const altraPagina = await altroPc.newPage();
+    await altraPagina.goto('/');
+    await altraPagina.locator('form[data-pronto="1"]').waitFor();
+    await altraPagina.getByPlaceholder('K7QX').fill(gara.code);
+    await altraPagina.getByRole('tab', { name: 'Ho già un numero' }).click();
+    await altraPagina.getByRole('spinbutton').fill(numero);
+    await altraPagina.getByRole('button', { name: 'Torna in gara' }).click();
+
+    // Riprende dalla tappa dov'era, con il suo nome
+    await expect(altraPagina.getByText(/Tappa 2\b/)).toBeVisible();
+    await expect(altraPagina.getByText('Rino')).toBeVisible();
+    await altroPc.close();
+  });
+
+  test('un numero che non esiste lo dice', async ({ page, request }) => {
+    const gara = await creaGara(request, 4);
+    await page.goto('/');
+    await page.locator('form[data-pronto="1"]').waitFor();
+    await page.getByPlaceholder('K7QX').fill(gara.code);
+    await page.getByRole('tab', { name: 'Ho già un numero' }).click();
+    await page.getByRole('spinbutton').fill('42');
+    await page.getByRole('button', { name: 'Torna in gara' }).click();
+    await expect(page.getByText(/Nessun corridore con il numero 42/)).toBeVisible();
+  });
+
   test('senza registrazione la gara rimanda all\'ingresso', async ({ page }) => {
     await page.goto('/gara');
     await expect(page.getByRole('button', { name: 'Al via!' })).toBeVisible();
@@ -155,8 +193,8 @@ test.describe('attesa e ripresa', () => {
     const gara = await creaGara(request, 4);
     await entra(page, gara.code, 'Elsa');
     await page.goto('/');
-    await expect(page.getByText('Stavi già correndo come')).toBeVisible();
-    await page.getByRole('button', { name: 'Riprendi la gara' }).click();
+    await expect(page.getByText('Su questo computer stava correndo')).toBeVisible();
+    await page.getByRole('button', { name: 'Sono io, riprendi' }).click();
     await expect(page.getByText(/Tappa 1\b/)).toBeVisible();
   });
 });

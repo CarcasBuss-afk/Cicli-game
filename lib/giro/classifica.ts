@@ -13,6 +13,8 @@ export type TappaFatta = { completedAt: Date | null; errori: number };
 export type AllievoLim = {
   id: string;
   name: string;
+  /** Numero di corsa; null per le gare create prima che esistesse. */
+  numero: number | null;
   tappaCorrente: number;
   tappe: Record<string, TappaFatta>;
   erroriTotali: number;

@@ -67,31 +67,57 @@ export function messaggioErrore(e: unknown): string {
 
 /* ------------------------------------------------------------------ identità */
 
-const CHIAVE = 'giro:allievo';
+/* L'identità è salvata **per gara**: in laboratorio lo stesso PC passa fra classi diverse,
+ * e con una chiave sola l'ultimo arrivato cancellava l'identità del precedente.
+ * `giro:ultimo` ricorda qual era l'ultima gara aperta su questo computer: è solo un
+ * suggerimento, l'allievo vede il nome e può dire che non è lui. */
+const CHIAVE_ULTIMO = 'giro:ultimo';
+const chiaveGara = (sessionId: string) => `giro:gara:${sessionId}`;
 
 export type Identita = {
   playerId: string;
   token: string;
   name: string;
+  numero: number | null;
   numTappe: number;
 };
+
+/** La gara a cui appartiene un playerId ("<gara>.<allievo>"). */
+const garaDi = (playerId: string) => playerId.split('.')[0] ?? '';
 
 /** Il localStorage può essere bloccato (navigazione in incognito): mai lasciar cadere la pagina. */
 export function salvaIdentita(i: Identita): void {
   try {
-    localStorage.setItem(CHIAVE, JSON.stringify(i));
+    const gara = garaDi(i.playerId);
+    localStorage.setItem(chiaveGara(gara), JSON.stringify(i));
+    localStorage.setItem(CHIAVE_ULTIMO, gara);
   } catch {
-    // Pazienza: l'allievo dovrà rientrare se ricarica la pagina.
+    // Pazienza: l'allievo rientrerà con il numero di corsa.
+  }
+}
+
+function leggiPerGara(sessionId: string): Identita | null {
+  try {
+    const grezzo = localStorage.getItem(chiaveGara(sessionId));
+    if (!grezzo) return null;
+    const i = JSON.parse(grezzo) as Partial<Identita>;
+    if (typeof i.playerId !== 'string' || typeof i.token !== 'string' || typeof i.name !== 'string') return null;
+    return {
+      playerId: i.playerId,
+      token: i.token,
+      name: i.name,
+      numero: typeof i.numero === 'number' ? i.numero : null,
+      numTappe: Number(i.numTappe) || 0,
+    };
+  } catch {
+    return null;
   }
 }
 
 export function leggiIdentita(): Identita | null {
   try {
-    const grezzo = localStorage.getItem(CHIAVE);
-    if (!grezzo) return null;
-    const i = JSON.parse(grezzo) as Partial<Identita>;
-    if (typeof i.playerId !== 'string' || typeof i.token !== 'string' || typeof i.name !== 'string') return null;
-    return { playerId: i.playerId, token: i.token, name: i.name, numTappe: Number(i.numTappe) || 0 };
+    const ultimo = localStorage.getItem(CHIAVE_ULTIMO);
+    return ultimo ? leggiPerGara(ultimo) : null;
   } catch {
     return null;
   }
@@ -99,7 +125,9 @@ export function leggiIdentita(): Identita | null {
 
 export function dimenticaIdentita(): void {
   try {
-    localStorage.removeItem(CHIAVE);
+    const ultimo = localStorage.getItem(CHIAVE_ULTIMO);
+    if (ultimo) localStorage.removeItem(chiaveGara(ultimo));
+    localStorage.removeItem(CHIAVE_ULTIMO);
   } catch {
     // niente da fare
   }
@@ -113,6 +141,8 @@ export type RispostaJoin = {
   playerId: string;
   token: string;
   name: string;
+  /** Il numero di corsa assegnato: serve a rientrare da un altro PC. */
+  numero: number;
   sessionStatus: StatoSessione;
   numTappe: number;
   classLabel: string;
@@ -121,6 +151,7 @@ export type RispostaJoin = {
 export type RispostaStatus = {
   sessionStatus: StatoSessione;
   name: string;
+  numero: number | null;
   classLabel: string;
   numTappe: number;
   tappaCorrente: number;
@@ -143,6 +174,9 @@ export type RispostaSubmit =
   | { promosso: false; hint: string; output: string[] | null; erroriTotali: number };
 
 export const join = (code: string, name: string) => chiamaApi<RispostaJoin>('join', { code, name });
+
+/** Rientro da un altro PC con il numero di corsa. */
+export const rientro = (code: string, numero: number) => chiamaApi<RispostaJoin>('rientro', { code, numero });
 
 export const status = (i: Identita) =>
   chiamaApi<RispostaStatus>('status', { playerId: i.playerId, token: i.token });

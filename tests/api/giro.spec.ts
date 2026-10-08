@@ -225,6 +225,76 @@ test.describe('ingresso', () => {
   });
 });
 
+test.describe('numero di corsa e rientro', () => {
+  test('i numeri si assegnano in ordine di iscrizione', async ({ request }) => {
+    const gara = await creaGara(request);
+    const primo = await entra(request, gara.code, 'Ada');
+    const secondo = await entra(request, gara.code, 'Bruno');
+    const terzo = await entra(request, gara.code, 'Carla');
+    expect([primo, secondo, terzo].map((p) => (p as unknown as { numero: number }).numero)).toEqual([1, 2, 3]);
+  });
+
+  test('col numero si rientra da un altro PC e si riprende da dove si era', async ({ request }) => {
+    const gara = await creaGara(request, { numTappe: 5, avvia: true });
+    const p = (await entra(request, gara.code, 'Dino')) as unknown as { playerId: string; token: string; numero: number };
+
+    // Fa due tappe, poi "cambia computer": il browser nuovo non sa niente di lui
+    for (let n = 0; n < 2; n++) {
+      await chiama(request, 'submit', { playerId: p.playerId, token: p.token, tappa: n, risposta: gara.tappe[n].soluzione });
+    }
+
+    const nuovo = await chiama(request, 'rientro', { code: gara.code, numero: p.numero });
+    expect(nuovo.stato, JSON.stringify(nuovo.corpo)).toBe(200);
+    expect(nuovo.corpo.name).toBe('Dino');
+    expect(nuovo.corpo.playerId).toBe(p.playerId);
+    expect(nuovo.corpo.token).not.toBe(p.token); // token nuovo per la postazione nuova
+
+    const stato = await chiama(request, 'status', { playerId: nuovo.corpo.playerId, token: nuovo.corpo.token });
+    expect(stato.corpo.tappaCorrente).toBe(2);
+    expect(stato.corpo.numero).toBe(p.numero);
+  });
+
+  test('il rientro invalida la sessione sul PC di prima', async ({ request }) => {
+    const gara = await creaGara(request, { avvia: true });
+    const p = (await entra(request, gara.code, 'Ennio')) as unknown as { playerId: string; token: string; numero: number };
+    await chiama(request, 'rientro', { code: gara.code, numero: p.numero });
+
+    const vecchio = await chiama(request, 'status', { playerId: p.playerId, token: p.token });
+    expect(vecchio.stato).toBe(401);
+  });
+
+  test('numero inesistente o non valido', async ({ request }) => {
+    const gara = await creaGara(request);
+    await entra(request, gara.code, 'Fabio');
+
+    const inesistente = await chiama(request, 'rientro', { code: gara.code, numero: 99 });
+    expect(inesistente.stato).toBe(404);
+    expect(inesistente.corpo.error).toBe('PLAYER_NOT_FOUND');
+
+    for (const numero of [0, -3, 'sette', null, undefined]) {
+      const esito = await chiama(request, 'rientro', { code: gara.code, numero });
+      expect(esito.stato, `numero ${numero}`).toBe(400);
+    }
+  });
+
+  test('rientro con un codice gara sbagliato', async ({ request }) => {
+    const esito = await chiama(request, 'rientro', { code: 'ZZZZ', numero: 1 });
+    expect(esito.stato).toBe(404);
+    expect(esito.corpo.error).toBe('SESSION_NOT_FOUND');
+  });
+
+  test('i numeri di gare diverse non si confondono', async ({ request }) => {
+    const unaGara = await creaGara(request);
+    const altraGara = await creaGara(request);
+    await entra(request, unaGara.code, 'Gino');
+    await entra(request, altraGara.code, 'Gino'); // stesso nome, gara diversa: si può
+
+    const rientroUno = await chiama(request, 'rientro', { code: unaGara.code, numero: 1 });
+    const rientroDue = await chiama(request, 'rientro', { code: altraGara.code, numero: 1 });
+    expect(rientroUno.corpo.playerId).not.toBe(rientroDue.corpo.playerId);
+  });
+});
+
 test.describe('autenticazione', () => {
   test('token sbagliato', async ({ request }) => {
     const gara = await creaGara(request, { avvia: true });

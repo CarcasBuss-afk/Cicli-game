@@ -191,7 +191,49 @@ struttura sopra.
 - **Generatori nuovi**: scala, caccia all'errore, accumulatore visibile, riga ripetuta,
   quante righe stampa, conta i giri.
 
-## 9. Decisioni ancora aperte
+## 9. L'identità attraverso le settimane — **deciso e fatto**
+
+I dati sono sempre stati al sicuro (stanno su Firestore, non nel browser). Il problema era
+un altro: **come fa un allievo a dimostrare di essere lui la settimana dopo**, visto che in
+laboratorio cambia PC e il browser di quella postazione non lo conosce.
+
+**Soluzione adottata: il numero di corsa**, come il dorsale dei ciclisti. All'iscrizione il
+server assegna un numero progressivo; per rientrare da qualunque computer bastano il codice
+della gara e quel numero. Nessun dato personale in più, niente password. La lista dei
+corridori con i numeri si proietta alla LIM prima del via, così non c'è niente da
+ricordare. Rientrando, la postazione precedente viene scollegata: un allievo corre da un
+PC alla volta.
+
+Limite accettato: **il numero si indovina**. In una classe è un imbroglio possibile ma
+pubblico — si vede dalla LIM e si corregge. Se diventasse un problema, si stringe.
+
+Sistemato nell'occasione anche un difetto: l'identità nel browser stava sotto **una chiave
+sola**, quindi due allievi di classi diverse sullo stesso PC si sovrascrivevano. Ora è
+salvata per gara.
+
+### Più avanti: agganciarsi a lab-guardian
+
+In `lab_guardian` esiste già l'infrastruttura che risolverebbe tutto meglio: gli allievi
+hanno **account Firebase veri** con `uid` stabile (progetto `lab-guardian-scuola`), c'è
+l'anagrafica `students/{uid}` con nome, cognome e classe, e la collezione `sessions`
+registra **chi è connesso su quale PC** — la dashboard lo mostra già accanto a ogni
+postazione. Il sistema sa già chi è seduto lì.
+
+La via più elegante sarebbe: l'allievo sceglie la sua postazione e il Giro chiede a
+lab-guardian chi è connesso lì. Zero password, zero numeri, identità forte perché deriva
+dal login del gate.
+
+Tre cose da pesare prima di farlo:
+
+- **Accoppiamento**: il Giro funzionerebbe solo in laboratorio, con agente e gate attivi.
+  Per questo il numero di corsa resta comunque: due porte, una sola stanza.
+- **Due progetti Firebase diversi** (`html-css-attivita` e `lab-guardian-scuola`), con in
+  più la trappola nota che in quel progetto `firebase-admin/auth` è rotto per il conflitto
+  jose/jwks-rsa (là usano le REST Identity Toolkit).
+- **Privacy**: oggi il Giro conserva solo il nome di battesimo. Agganciarsi significa
+  conservare identificatori degli allievi: da decidere apposta, non per inerzia.
+
+## 10. Decisioni ancora aperte
 
 - **Le f-string: le hanno fatte?** Decide se la famiglia D entra adesso o dopo.
 - **Quanti esercizi e quanti minuti per tappa**, almeno come punto di partenza.
