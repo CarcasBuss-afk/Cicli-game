@@ -198,3 +198,77 @@ test.describe("l'Officina", () => {
     expect(r.stato).toBe(404);
   });
 });
+
+/* ------------------------------------------------------------ la pagina dell'allievo */
+
+import type { Page } from '@playwright/test';
+
+/** Digita il codice riga per riga seguendo l'indentazione automatica dell'editor. */
+async function digita(page: Page, codice: string) {
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Delete');
+  let rientro = 0;
+  for (const riga of codice.split('\n')) {
+    const spazi = riga.match(/^\s*/)![0].length;
+    if (spazi < rientro) await page.keyboard.press('Backspace');
+    await page.keyboard.type(riga.trim(), { delay: 8 });
+    await page.keyboard.press('Enter');
+    rientro = riga.trim().endsWith(':') ? spazi + 4 : spazi;
+  }
+}
+
+async function accedi(page: Page, email: string) {
+  await page.goto('/officina');
+  await page.getByLabel('email di prova').fill(email);
+  await page.getByRole('button', { name: 'Accesso di prova (emulatori)' }).click();
+}
+
+test.describe("l'Officina nella pagina dell'allievo", () => {
+  test('entra con il codice, apre il compito, lavora, chiede al tutor, riprende da dove era', async ({ page, request }) => {
+    const { classe, fasi, luca } = await scenario(request);
+    const nuova = `nadia.${Date.now()}@scuola.it`;
+
+    // Un'allieva nuova entra con il codice.
+    await accedi(page, nuova);
+    await expect(page.getByText('Per cominciare, il codice della classe')).toBeVisible();
+    await page.getByPlaceholder('K7QX').fill(classe.codice);
+    await page.getByRole('button', { name: 'Entra' }).click();
+    await expect(page.getByText('Classe 2A')).toBeVisible();
+    await expect(page.getByRole('link', { name: /Il salvadanaio/ })).toContainText('Da cominciare');
+
+    // Luca, che era già dentro, apre il compito.
+    await page.getByRole('button', { name: 'esci' }).click();
+    await accedi(page, luca.email);
+    await page.getByRole('link', { name: /Il salvadanaio/ }).click();
+    await expect(page.getByText('Fase 1 di 5', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Compito di realtà/ })).toBeVisible();
+    await expect(page.getByLabel('voto')).toHaveText('10');
+
+    // Una consegna sbagliata: hint, niente punti persi.
+    await digita(page, 'for i in range(3):\n    print(i)');
+    await page.getByRole('button', { name: 'Esegui ▶' }).click();
+    await expect(page.getByRole('status')).toBeVisible();
+
+    // Il tutor, con conferma del costo.
+    await page.getByLabel('domanda al tutor').fill('Non capisco perché stampa dei numeri invece delle settimane, puoi spiegarmelo bene?');
+    await page.getByRole('button', { name: 'Chiedi al tutor' }).click();
+    await expect(page.getByText('il voto passa da 10 a 9')).toBeVisible();
+    await page.getByRole('button', { name: /Sì, manda/ }).click();
+    await expect(page.getByLabel('conversazione con il tutor').locator('li')).toHaveCount(1);
+    await expect(page.getByLabel('voto')).toHaveText('9');
+
+    // La fase 1 giusta, poi si ricarica: si riparte dalla fase 2 con il codice e la conversazione.
+    await digita(page, fasi[0].soluzione);
+    await page.getByRole('button', { name: 'Esegui ▶' }).click();
+    await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();
+    await page.reload();
+    await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();
+    await expect(page.locator('.cm-content')).toContainText('Settimana');
+    await expect(page.getByLabel('conversazione con il tutor').locator('li')).toHaveCount(1);
+
+    // Nell'elenco lo stato è aggiornato.
+    await page.getByRole('link', { name: '← i miei compiti' }).click();
+    await expect(page.getByRole('link', { name: /Il salvadanaio/ })).toContainText('Fase 2 di 5');
+  });
+});
