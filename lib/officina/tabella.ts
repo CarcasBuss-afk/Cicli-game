@@ -1,13 +1,13 @@
-/* La tabella della classe per la dashboard dell'Officina: allievi × compiti, con fasi,
- * domande al tutor e voto; e il CSV per il registro. Funzioni pure, girano nel browser
- * del docente sui dati che arrivano da Firestore in tempo reale. */
-import { FASI_PER_COMPITO, votoLavoro } from './regole';
+/* La tabella della classe per la dashboard dell'Officina: allievi × compiti del percorso,
+ * con fasi, domande al tutor, voto e media; e il CSV per il registro. Funzioni pure,
+ * girano nel browser del docente sui dati che arrivano da Firestore in tempo reale. */
+import { schedaProgetto } from '../giro/progetti';
+import { mediaVoti, PERCORSO, percorsoDi, type VoceCompito } from './regole';
 
 export type LavoroVisto = {
   fasi: number;
   consigli: number;
   errori: number;
-  votoDocente: number | null;
   finitoAt: Date | null;
   ultimoAt: Date | null;
   codice: Record<string, string>;
@@ -22,56 +22,27 @@ export type AllievoVisto = {
   lavori: Record<string, LavoroVisto>;
 };
 
-export type CompitoVisto = {
-  id: string;
-  progetto: string;
-  titolo: string;
-  scadenzaAt: Date | null;
-  ritirato: boolean;
-};
+export type RigaTabella = { uid: string; nome: string; email: string; voci: VoceCompito[]; media: number | null };
 
-export type CellaTabella = {
-  compitoId: string;
-  /** null se l'allievo non ha mai aperto il compito. */
-  lavoro: LavoroVisto | null;
-  fasi: number;
-  consigli: number;
-  finito: boolean;
-  scaduto: boolean;
-  /** Il voto da mostrare: fissato (finito/scaduto) o proposto in corso d'opera; null se non ha cominciato e non è scaduto. */
-  voto: number | null;
-  /** Vero se il voto è quello scritto dal docente. */
-  aMano: boolean;
-};
+/** I titoli dei compiti del percorso, nell'ordine. */
+export const TITOLI_PERCORSO = PERCORSO.map((id) => ({ id, titolo: schedaProgetto(id, 1).titolo }));
 
-export type RigaTabella = { uid: string; nome: string; email: string; celle: CellaTabella[] };
-
-function cella(compito: CompitoVisto, lavoro: LavoroVisto | undefined, ora: Date): CellaTabella {
-  const fasi = lavoro?.fasi ?? 0;
-  const consigli = lavoro?.consigli ?? 0;
-  const finito = fasi >= FASI_PER_COMPITO;
-  const scaduto = compito.scadenzaAt !== null && ora >= compito.scadenzaAt;
-  const aMano = typeof lavoro?.votoDocente === 'number';
-  const voto =
-    aMano || finito || scaduto || fasi > 0 ? votoLavoro({ fasi, consigli, finito, votoDocente: lavoro?.votoDocente ?? null }) : null;
-  return { compitoId: compito.id, lavoro: lavoro ?? null, fasi, consigli, finito, scaduto, voto, aMano };
-}
-
-/** Una riga per allievo, in ordine alfabetico, con una cella per compito non ritirato. */
-export function tabellaClasse(allievi: AllievoVisto[], compiti: CompitoVisto[], ora = new Date()): RigaTabella[] {
-  const attivi = compiti.filter((c) => !c.ritirato);
+/** Una riga per allievo, in ordine alfabetico, con il percorso e la media. */
+export function tabellaClasse(allievi: AllievoVisto[]): RigaTabella[] {
   return [...allievi]
     .sort((a, b) => a.nome.localeCompare(b.nome, 'it'))
-    .map((a) => ({ uid: a.uid, nome: a.nome, email: a.email, celle: attivi.map((c) => cella(c, a.lavori?.[c.id], ora)) }));
+    .map((a) => {
+      const voci = percorsoDi(a.lavori ?? {});
+      return { uid: a.uid, nome: a.nome, email: a.email, voci, media: mediaVoti(voci) };
+    });
 }
 
-/** Il CSV della classe: una colonna per compito con fasi, domande e voto. Punto e virgola per Excel in italiano. */
-export function csvClasse(righe: RigaTabella[], compiti: CompitoVisto[]): string {
-  const attivi = compiti.filter((c) => !c.ritirato);
+/** Il CSV della classe: tre colonne per compito più la media. Punto e virgola per Excel in italiano. */
+export function csvClasse(righe: RigaTabella[]): string {
   const pulisci = (v: string) => (/[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
-  const testa = ['Nome', 'Email', ...attivi.flatMap((c) => [`${c.titolo} · fasi`, `${c.titolo} · domande`, `${c.titolo} · voto`])];
+  const testa = ['Nome', 'Email', ...TITOLI_PERCORSO.flatMap((c) => [`${c.titolo} · fasi`, `${c.titolo} · domande`, `${c.titolo} · voto`]), 'Media'];
   const corpo = righe.map((r) =>
-    [pulisci(r.nome), r.email, ...r.celle.flatMap((x) => [x.fasi, x.consigli, x.voto ?? ''])].join(';'),
+    [pulisci(r.nome), r.email, ...r.voci.flatMap((v) => [v.fasi, v.consigli, v.voto ?? '']), r.media ?? ''].join(';'),
   );
   return [testa.join(';'), ...corpo].join('\n') + '\n';
 }

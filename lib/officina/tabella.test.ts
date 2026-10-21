@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { csvClasse, tabellaClasse, type AllievoVisto, type CompitoVisto, type LavoroVisto } from './tabella';
+import { PERCORSO } from './regole';
+import { csvClasse, tabellaClasse, TITOLI_PERCORSO, type AllievoVisto, type LavoroVisto } from './tabella';
 
-const lavoro = (fasi: number, consigli: number, votoDocente: number | null = null): LavoroVisto => ({
+const lavoro = (fasi: number, consigli: number): LavoroVisto => ({
   fasi,
   consigli,
   errori: 0,
-  votoDocente,
   finitoAt: null,
   ultimoAt: null,
   codice: {},
@@ -13,40 +13,40 @@ const lavoro = (fasi: number, consigli: number, votoDocente: number | null = nul
   tutor: [],
 });
 
-const compiti: CompitoVisto[] = [
-  { id: 'c1', progetto: 'salvadanaio', titolo: 'Il salvadanaio', scadenzaAt: null, ritirato: false },
-  { id: 'c2', progetto: 'allenamento', titolo: "La tabella d'allenamento", scadenzaAt: new Date(2020, 0, 1), ritirato: false },
-  { id: 'c3', progetto: 'salvadanaio', titolo: 'Ritirato', scadenzaAt: null, ritirato: true },
-];
+const [primo, secondo] = PERCORSO;
 
 const classe: AllievoVisto[] = [
-  { uid: 'u2', nome: 'Marco', email: 'marco@scuola.it', lavori: { c1: lavoro(5, 2), c2: lavoro(2, 0) } },
-  { uid: 'u1', nome: 'Anna', email: 'anna@scuola.it', lavori: { c1: lavoro(3, 1, 7) } },
+  { uid: 'u2', nome: 'Marco', email: 'marco@scuola.it', lavori: { [primo]: lavoro(5, 2), [secondo]: lavoro(2, 0) } },
+  { uid: 'u1', nome: 'Anna', email: 'anna@scuola.it', lavori: { [primo]: lavoro(5, 0), [secondo]: lavoro(5, 3) } },
   { uid: 'u3', nome: 'Zoe', email: 'zoe@scuola.it', lavori: {} },
 ];
 
 describe('la tabella della classe', () => {
-  const righe = tabellaClasse(classe, compiti, new Date(2026, 9, 21));
+  const righe = tabellaClasse(classe);
 
-  it('allievi in ordine, una cella per compito non ritirato', () => {
+  it('allievi in ordine, una voce per compito del percorso, con la media', () => {
     expect(righe.map((r) => r.nome)).toEqual(['Anna', 'Marco', 'Zoe']);
-    expect(righe[0].celle.map((c) => c.compitoId)).toEqual(['c1', 'c2']);
+    expect(righe[0].voci).toHaveLength(PERCORSO.length);
+    expect(righe[0].media).toBe(8.5); // 10 e 7
+    expect(righe[1].media).toBe(8); // solo il primo è finito
+    expect(righe[2].media).toBeNull();
   });
 
-  it('il voto: finito, in corso, a mano, scaduto, mai cominciato', () => {
+  it('gli stati: finito, in corso, bloccato, da cominciare', () => {
     const [anna, marco, zoe] = righe;
-    expect(marco.celle[0]).toMatchObject({ fasi: 5, consigli: 2, finito: true, voto: 8, aMano: false });
-    expect(marco.celle[1]).toMatchObject({ fasi: 2, scaduto: true, voto: 4 });
-    expect(anna.celle[0]).toMatchObject({ fasi: 3, voto: 7, aMano: true });
-    // Non cominciato e non scaduto: niente voto. Non cominciato e scaduto: il pavimento.
-    expect(zoe.celle[0]).toMatchObject({ lavoro: null, voto: null });
-    expect(zoe.celle[1]).toMatchObject({ lavoro: null, scaduto: true, voto: 2 });
+    expect(marco.voci[0]).toMatchObject({ stato: 'finito', voto: 8 });
+    expect(marco.voci[1]).toMatchObject({ stato: 'in-corso', fasi: 2, voto: null });
+    expect(anna.voci[2]?.stato ?? 'da-cominciare').toBe('da-cominciare');
+    expect(zoe.voci[0].stato).toBe('da-cominciare');
+    expect(zoe.voci[1].stato).toBe('bloccato');
   });
 
-  it('il CSV ha tre colonne per compito', () => {
-    const csv = csvClasse(righe, compiti);
+  it('il CSV ha tre colonne per compito e la media in fondo', () => {
+    const csv = csvClasse(righe);
     const [testa, anna] = csv.trim().split('\n');
-    expect(testa).toBe("Nome;Email;Il salvadanaio · fasi;Il salvadanaio · domande;Il salvadanaio · voto;La tabella d'allenamento · fasi;La tabella d'allenamento · domande;La tabella d'allenamento · voto");
-    expect(anna).toBe('Anna;anna@scuola.it;3;1;7;0;0;2');
+    expect(testa.startsWith(`Nome;Email;${TITOLI_PERCORSO[0].titolo} · fasi;${TITOLI_PERCORSO[0].titolo} · domande;${TITOLI_PERCORSO[0].titolo} · voto;`)).toBe(true);
+    expect(testa.endsWith(';Media')).toBe(true);
+    expect(anna.startsWith('Anna;anna@scuola.it;5;0;10;5;3;7;')).toBe(true);
+    expect(anna.endsWith(';8.5')).toBe(true);
   });
 });

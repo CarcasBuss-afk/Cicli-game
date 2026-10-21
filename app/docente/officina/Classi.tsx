@@ -1,5 +1,6 @@
 'use client';
-/* L'Officina per il docente: le classi (in tempo reale), crearne una nuova. */
+/* L'Officina per il docente: le classi (in tempo reale), crearne una nuova. Gli allievi
+ * scelgono la classe da soli al primo accesso: niente codice da dettare. */
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore';
@@ -8,7 +9,7 @@ import { Accesso } from '../Accesso';
 import { chiamaDocente } from '../api';
 import { useDocente } from '../useDocente';
 
-type Classe = { id: string; nome: string; codice: string; chiusa: boolean; compiti: number };
+type Classe = { id: string; nome: string; chiusa: boolean };
 
 export function Classi() {
   const { stato, messaggio, accediGoogle, accediProva, esci, utente } = useDocente();
@@ -21,19 +22,7 @@ export function Classi() {
     if (stato !== 'ok') return;
     return onSnapshot(
       query(collection(getClientDb(), 'officinaClassi'), orderBy('createdAt', 'desc')),
-      (snap) =>
-        setClassi(
-          snap.docs.map((d) => {
-            const c = d.data();
-            return {
-              id: d.id,
-              nome: c.nome ?? '?',
-              codice: c.codice ?? '',
-              chiusa: Boolean(c.chiusa),
-              compiti: ((c.compiti ?? []) as Array<{ ritirato?: boolean }>).filter((k) => !k.ritirato).length,
-            };
-          }),
-        ),
+      (snap) => setClassi(snap.docs.map((d) => ({ id: d.id, nome: d.data().nome ?? '?', chiusa: Boolean(d.data().chiusa) }))),
       (e) => setErrore(`Lettura delle classi non riuscita: ${e.message}`),
     );
   }, [stato]);
@@ -61,7 +50,7 @@ export function Classi() {
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-black text-(--color-giallo)">🔧 L&apos;Officina · classi</h1>
-          <p className="text-sm text-(--color-testo-tenue)">I compiti di realtà, in autonomia, con l&apos;account della scuola.</p>
+          <p className="text-sm text-(--color-testo-tenue)">I compiti di realtà, in autonomia, con l&apos;account della scuola. Qui si guarda e basta.</p>
         </div>
         <div className="flex items-center gap-3 text-sm text-(--color-testo-tenue)">
           <Link href="/docente" className="underline">
@@ -92,7 +81,7 @@ export function Classi() {
         >
           Crea la classe
         </button>
-        <p className="text-sm text-(--color-testo-tenue)">Gli allievi entrano una volta con il codice e poi basta l&apos;account.</p>
+        <p className="text-sm text-(--color-testo-tenue)">Gli allievi la scelgono da soli al primo accesso.</p>
       </form>
 
       {errore && (
@@ -105,12 +94,9 @@ export function Classi() {
         {classi.length === 0 && <p className="text-(--color-testo-tenue)">Nessuna classe: creane una qui sopra.</p>}
         {classi.map((c) => (
           <article key={c.id} className="flex flex-wrap items-center gap-4 rounded-xl border border-(--color-bordo) bg-(--color-fondo-card) p-4">
-            <span className="rounded-lg bg-black/40 px-3 py-2 font-mono text-2xl tracking-widest text-(--color-giallo)">{c.codice}</span>
             <div className="min-w-32">
-              <p className="font-bold">classe {c.nome}</p>
-              <p className="text-sm text-(--color-testo-tenue)">
-                {c.chiusa ? 'chiusa' : `${c.compiti} ${c.compiti === 1 ? 'compito assegnato' : 'compiti assegnati'}`}
-              </p>
+              <p className="text-lg font-bold">classe {c.nome}</p>
+              {c.chiusa && <p className="text-sm text-(--color-testo-tenue)">chiusa</p>}
             </div>
             <Link
               href={`/docente/officina/${c.id}`}

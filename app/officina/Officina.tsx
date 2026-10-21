@@ -1,31 +1,21 @@
 'use client';
-/* L'Officina vista dall'allievo: le sue classi e i compiti assegnati, con lo stato di
- * ciascuno. Da qui si entra in una classe con il codice e si apre un compito. */
+/* L'Officina vista dall'allievo: il percorso dei compiti di realtà, uno sotto l'altro,
+ * sbloccati uno alla volta, con la media dei voti. La prima volta si sceglie la classe. */
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { chiamaOfficina, messaggioErrore, type CompitoInElenco } from '@/lib/officina/client';
+import { chiamaOfficina, messaggioErrore, type CompitoInElenco, type Percorso } from '@/lib/officina/client';
 import { AccessoAllievo } from './Accesso';
 import { useAllievo } from './useAllievo';
 
-type Classe = { id: string; nome: string; chiusa: boolean; compiti: CompitoInElenco[] };
-
 export function Officina() {
   const { stato, io, messaggio, accediGoogle, accediProva, esci, ricarica } = useAllievo();
-  const [classi, setClassi] = useState<Classe[]>([]);
-  const [codice, setCodice] = useState('');
+  const [percorsi, setPercorsi] = useState<Percorso[]>([]);
   const [errore, setErrore] = useState('');
-  const [occupato, setOccupato] = useState(false);
 
   const carica = useCallback(async () => {
     if (!io) return;
     try {
-      const tutte = await Promise.all(
-        io.classi.map(async (c) => {
-          const r = await chiamaOfficina<{ compiti: CompitoInElenco[] }>('compiti', { classeId: c.id });
-          return { ...c, compiti: r.compiti };
-        }),
-      );
-      setClassi(tutte);
+      setPercorsi(await Promise.all(io.classi.map((c) => chiamaOfficina<Percorso>('compiti', { classeId: c.id }))));
       setErrore('');
     } catch (e) {
       setErrore(messaggioErrore(e));
@@ -35,21 +25,6 @@ export function Officina() {
   useEffect(() => {
     void carica();
   }, [carica]);
-
-  async function entra(e: React.FormEvent) {
-    e.preventDefault();
-    setOccupato(true);
-    setErrore('');
-    try {
-      await chiamaOfficina('entra', { codice });
-      setCodice('');
-      await ricarica();
-    } catch (err) {
-      setErrore(messaggioErrore(err));
-    } finally {
-      setOccupato(false);
-    }
-  }
 
   if (stato !== 'ok' || !io) {
     return <AccessoAllievo stato={stato} messaggio={messaggio} accediGoogle={accediGoogle} accediProva={accediProva} esci={esci} />;
@@ -69,55 +44,36 @@ export function Officina() {
         </button>
       </header>
 
-      {classi.map((c) => (
-        <section key={c.id} className="flex flex-col gap-2 rounded-2xl border border-(--color-bordo) bg-(--color-fondo-card) p-4">
-          <h2 className="text-lg font-bold">
-            Classe {c.nome}
-            {c.chiusa && <span className="ml-2 text-sm font-normal text-(--color-testo-tenue)">(chiusa)</span>}
-          </h2>
-          {c.compiti.length === 0 ? (
-            <p className="text-(--color-testo-tenue)">Nessun compito assegnato per ora.</p>
-          ) : (
-            <ul aria-label={`compiti di ${c.nome}`} className="flex flex-col gap-2">
-              {c.compiti.map((k) => (
+      {io.classi.length === 0 ? (
+        <ScegliClasse onScelta={ricarica} />
+      ) : (
+        percorsi.map((p) => (
+          <section key={p.classe.id} className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 className="text-lg font-bold">
+                Classe {p.classe.nome}
+                {p.classe.chiusa && <span className="ml-2 text-sm font-normal text-(--color-testo-tenue)">(chiusa)</span>}
+              </h2>
+              <p className="text-(--color-testo-tenue)">
+                Media dei voti{' '}
+                <span className="font-mono text-2xl font-black text-(--color-giallo)" aria-label="media">
+                  {p.media ?? '–'}
+                </span>
+              </p>
+            </div>
+            <ol aria-label={`percorso di ${p.classe.nome}`} className="flex flex-col gap-2">
+              {p.compiti.map((k, i) => (
                 <li key={k.id}>
-                  <Link
-                    href={`/officina/${c.id}/${k.id}`}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-(--color-bordo) px-4 py-3 hover:border-(--color-giallo)"
-                  >
-                    <span className="font-bold">{k.titolo}</span>
-                    <StatoCompito k={k} />
-                  </Link>
+                  <VoceCompito k={k} numero={i + 1} classeId={p.classe.id} />
                 </li>
               ))}
-            </ul>
-          )}
-        </section>
-      ))}
-
-      <form onSubmit={entra} className="flex flex-col gap-2 rounded-2xl border border-(--color-bordo) p-4">
-        <label className="text-sm text-(--color-testo-tenue)" htmlFor="codice">
-          {classi.length === 0 ? 'Per cominciare, il codice della classe che ti ha dato il prof:' : 'Entrare in un\'altra classe:'}
-        </label>
-        <div className="flex gap-2">
-          <input
-            id="codice"
-            value={codice}
-            onChange={(e) => setCodice(e.target.value.toUpperCase())}
-            placeholder="K7QX"
-            maxLength={8}
-            autoComplete="off"
-            className="w-32 rounded-lg border border-(--color-bordo) bg-black/40 px-3 py-2 font-mono text-xl uppercase outline-none focus:border-(--color-giallo)"
-          />
-          <button
-            type="submit"
-            disabled={occupato || codice.length < 4}
-            className="rounded-lg bg-(--color-giallo) px-4 py-2 font-bold text-black hover:brightness-110 disabled:opacity-40"
-          >
-            Entra
-          </button>
-        </div>
-      </form>
+            </ol>
+            <p className="text-sm text-(--color-testo-tenue)">
+              I compiti si sbloccano uno alla volta. Il voto è 10 meno le domande al tutor, mai sotto 5: puoi chiedere aiuto quanto vuoi.
+            </p>
+          </section>
+        ))
+      )}
 
       {errore && (
         <p role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-3 text-red-200">
@@ -128,25 +84,108 @@ export function Officina() {
   );
 }
 
-function StatoCompito({ k }: { k: CompitoInElenco }) {
-  if (k.finito) {
-    return (
-      <span className="text-(--color-verde)">
-        Finito · voto <b className="font-mono text-lg">{k.voto}</b>
+function VoceCompito({ k, numero, classeId }: { k: CompitoInElenco; numero: number; classeId: string }) {
+  const bloccato = k.stato === 'bloccato';
+  const dentro = (
+    <>
+      <span className="flex items-baseline gap-3">
+        <span className="w-6 text-right font-mono text-(--color-testo-tenue)">{numero}.</span>
+        <span className="font-bold">{k.titolo}</span>
       </span>
-    );
-  }
-  if (k.scaduto) {
-    return (
-      <span className="text-(--color-testo-tenue)">
-        Scaduto · {k.fasi}/{k.fasiTotali} fasi · voto <b className="font-mono text-lg">{k.voto}</b>
-      </span>
-    );
+      <Stato k={k} />
+    </>
+  );
+  const classe = 'flex flex-wrap items-center justify-between gap-2 rounded-xl border px-4 py-3';
+  if (bloccato) {
+    return <div className={`${classe} border-(--color-bordo) text-(--color-testo-tenue) opacity-60`}>{dentro}</div>;
   }
   return (
-    <span className="text-(--color-testo-tenue)">
-      {k.fasi === 0 ? 'Da cominciare' : `Fase ${k.fasi + 1} di ${k.fasiTotali}`}
-      {k.scadenzaAt !== null && ` · entro il ${new Date(k.scadenzaAt).toLocaleDateString('it-IT')}`}
-    </span>
+    <Link href={`/officina/${classeId}/${k.id}`} className={`${classe} border-(--color-bordo) bg-(--color-fondo-card) hover:border-(--color-giallo)`}>
+      {dentro}
+    </Link>
+  );
+}
+
+function Stato({ k }: { k: CompitoInElenco }) {
+  switch (k.stato) {
+    case 'finito':
+      return (
+        <span className="text-(--color-verde)">
+          Finito · voto <b className="font-mono text-lg">{k.voto}</b>
+        </span>
+      );
+    case 'in-corso':
+      return (
+        <span className="text-(--color-giallo)">
+          Fase {k.fasi + 1} di {k.fasiTotali} · continua →
+        </span>
+      );
+    case 'da-cominciare':
+      return <span className="text-(--color-giallo)">Comincia →</span>;
+    default:
+      return <span>🔒 si sblocca quando finisci il precedente</span>;
+  }
+}
+
+/** La prima volta: la classe si sceglie da un elenco, niente codice da dettare. */
+function ScegliClasse({ onScelta }: { onScelta: () => Promise<void> }) {
+  const [classi, setClassi] = useState<Array<{ id: string; nome: string }>>([]);
+  const [scelta, setScelta] = useState('');
+  const [errore, setErrore] = useState('');
+  const [occupato, setOccupato] = useState(false);
+
+  useEffect(() => {
+    chiamaOfficina<{ classi: Array<{ id: string; nome: string }> }>('classi')
+      .then((r) => setClassi(r.classi))
+      .catch((e) => setErrore(messaggioErrore(e)));
+  }, []);
+
+  async function entra(e: React.FormEvent) {
+    e.preventDefault();
+    setOccupato(true);
+    setErrore('');
+    try {
+      await chiamaOfficina('entra', { classeId: scelta });
+      await onScelta();
+    } catch (err) {
+      setErrore(messaggioErrore(err));
+    } finally {
+      setOccupato(false);
+    }
+  }
+
+  return (
+    <form onSubmit={entra} className="flex flex-col gap-3 rounded-2xl border border-(--color-bordo) bg-(--color-fondo-card) p-5">
+      <label htmlFor="classe" className="font-bold">
+        Per cominciare, dimmi in che classe sei:
+      </label>
+      {classi.length === 0 ? (
+        <p className="text-(--color-testo-tenue)">Il prof non ha ancora creato nessuna classe.</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          <select
+            id="classe"
+            value={scelta}
+            onChange={(e) => setScelta(e.target.value)}
+            className="rounded-lg border border-(--color-bordo) bg-black/40 px-3 py-2 text-lg outline-none focus:border-(--color-giallo)"
+          >
+            <option value="">— scegli —</option>
+            {classi.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.nome}
+              </option>
+            ))}
+          </select>
+          <button type="submit" disabled={occupato || !scelta} className="rounded-lg bg-(--color-giallo) px-4 py-2 font-bold text-black hover:brightness-110 disabled:opacity-40">
+            Entra
+          </button>
+        </div>
+      )}
+      {errore && (
+        <p role="alert" className="text-red-300">
+          {errore}
+        </p>
+      )}
+    </form>
   );
 }

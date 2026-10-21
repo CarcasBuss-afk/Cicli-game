@@ -6,6 +6,7 @@ import type { EsercizioPubblico } from '@/lib/giro/esercizi';
 import type { RigaSchermo } from '@/lib/giro/interprete';
 import type { SchedaProgetto } from '@/lib/giro/progetti';
 import { getClientAuth } from '@/lib/firebaseClient';
+import type { StatoCompito } from './regole';
 
 export class ErroreOfficina extends Error {
   constructor(
@@ -48,22 +49,28 @@ export type Io = { uid: string; email: string; nome: string; classi: Array<{ id:
 
 export type CompitoInElenco = {
   id: string;
-  progetto: string;
   titolo: string;
-  scadenzaAt: number | null;
-  scaduto: boolean;
+  stato: StatoCompito;
   fasi: number;
   fasiTotali: number;
   consigli: number;
-  finito: boolean;
-  /** Il voto, quando è fissato (finito o scaduto); altrimenti null. */
+  /** Solo a compito finito. */
   voto: number | null;
   votoSeFinisci: number;
 };
 
+export type Percorso = { classe: { id: string; nome: string; chiusa: boolean }; compiti: CompitoInElenco[]; media: number | null };
+
 export type Scambio = { fase: number; domanda: string; risposta: string };
 
-export type CompitoAperto = Omit<CompitoInElenco, 'titolo'> & {
+export type CompitoAperto = {
+  id: string;
+  fasi: number;
+  fasiTotali: number;
+  consigli: number;
+  finito: boolean;
+  voto: number | null;
+  votoSeFinisci: number;
   scheda: SchedaProgetto;
   esercizio: EsercizioPubblico | null;
   codice: Record<string, string>;

@@ -147,10 +147,9 @@ export const POST = handler(async (body) => {
   if (azione === 'fasiOfficina') {
     // Le fasi di un compito dell'Officina per un allievo, con le soluzioni: dal suo seme.
     const uid = typeof body.uid === 'string' ? body.uid : '';
-    const compitoId = typeof body.compitoId === 'string' ? body.compitoId : '';
     const progetto = body.progetto;
     if (!eProgetto(progetto)) throw new ApiError(400, 'INVALID_BODY', 'Progetto sconosciuto');
-    return { fasi: generaCronoscalata(progetto, semeDa(`${uid}|${compitoId}`)) };
+    return { fasi: generaCronoscalata(progetto, semeDa(`${uid}|${progetto}`)) };
   }
 
   if (azione === 'svuota') {

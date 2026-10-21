@@ -1,7 +1,7 @@
-/* Le azioni del docente nell'Officina: classi e compiti assegnati, correzioni. */
+/* Le azioni del docente nell'Officina: classi e allievi. Il resto è monitoraggio (onSnapshot). */
 import { handlerDocente } from '@/lib/giro/docenteHandler';
 import { ApiError } from '@/lib/giro/http';
-import { assegnaCompito, chiudiClasse, correggiVoto, creaClasse, modificaCompito, rimuoviAllievo } from '@/lib/officina/docenteService';
+import { chiudiClasse, creaClasse, rimuoviAllievo } from '@/lib/officina/docenteService';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,12 +12,6 @@ export const POST = handlerDocente(async (body, docente) => {
       return creaClasse(body, docente);
     case 'chiudiClasse':
       return chiudiClasse(body);
-    case 'assegna':
-      return assegnaCompito(body);
-    case 'modificaCompito':
-      return modificaCompito(body);
-    case 'voto':
-      return correggiVoto(body);
     case 'rimuoviAllievo':
       return rimuoviAllievo(body);
     default:

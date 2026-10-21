@@ -1,4 +1,4 @@
-/* Le API dell'allievo nell'Officina: entrare in una classe, vedere i compiti, lavorare su
+/* Le API dell'allievo nell'Officina: scegliere la classe, vedere il percorso, lavorare su
  * un compito fase per fase, chiedere al tutor. L'allievo è riconosciuto dall'account
  * Google della scuola (auth.ts); i parametri del compito sono suoi (regole.ts).
  *
@@ -10,22 +10,18 @@ import { esercizioPerAllievo, type Esercizio } from '@/lib/giro/esercizi';
 import { ApiError } from '@/lib/giro/http';
 import { valutaRisposta } from '@/lib/giro/hint';
 import { esegui } from '@/lib/giro/interprete';
-import { generaCronoscalata, schedaProgetto } from '@/lib/giro/progetti';
+import { eProgetto, generaCronoscalata, schedaProgetto, type Progetto } from '@/lib/giro/progetti';
 import { richiestaAmmessa } from '@/lib/giro/rateLimit';
 import type { Utente } from './auth';
-import { FASI_PER_COMPITO, semeDa, votoLavoro, votoSeFinisce } from './regole';
+import { FASI_PER_COMPITO, mediaVoti, percorsoDi, semeDa, votoSeFinisce } from './regole';
 import {
   allieviRef,
   appartenenzeRef,
   classiRef,
   lavoroVuoto,
-  ms,
-  scaduto,
-  trovaClassePerCodice,
   type AllievoOfficinaDoc,
   type AppartenenzaDoc,
   type ClasseDoc,
-  type CompitoDoc,
   type LavoroDoc,
 } from './store';
 import { chiediTutor } from './tutor';
@@ -54,17 +50,27 @@ export async function io(_body: Record<string, unknown>, utente: Utente) {
   return { uid: utente.uid, email: utente.email, nome: utente.nome, classi: classi.filter((c) => c !== null) };
 }
 
+/** Le classi aperte fra cui scegliere la propria: niente codice da dettare. */
+export async function classi() {
+  const snap = await classiRef().where('chiusa', '==', false).get();
+  return {
+    classi: snap.docs
+      .map((d) => ({ id: d.id, nome: (d.data() as ClasseDoc).nome }))
+      .sort((a, b) => a.nome.localeCompare(b.nome, 'it')),
+  };
+}
+
 /* -------------------------------------------------------------------- entra */
 
-/** Entra in una classe con il codice: una volta sola, poi l'account basta. */
+/** Entra nella classe scelta: una volta sola, poi l'account basta. */
 export async function entra(body: Record<string, unknown>, utente: Utente) {
   limita(utente);
-  const codice = testo(body.codice, 8).toUpperCase();
-  if (!codice) throw new ApiError(400, 'INVALID_BODY', 'Manca il codice della classe');
-  const classe = await trovaClassePerCodice(codice);
-  if (!classe) throw new ApiError(404, 'CLASSE_NON_TROVATA', 'Codice inesistente: chiedilo al prof');
+  const classeId = testo(body.classeId, 64);
+  if (!classeId) throw new ApiError(400, 'INVALID_BODY', 'Scegli la classe');
+  const classe = (await classiRef().doc(classeId).get()).data() as ClasseDoc | undefined;
+  if (!classe || classe.chiusa) throw new ApiError(404, 'CLASSE_NON_TROVATA', 'Classe inesistente o chiusa');
 
-  const allievoRef = allieviRef(classe.id).doc(utente.uid);
+  const allievoRef = allieviRef(classeId).doc(utente.uid);
   await getDb().runTransaction(async (tx) => {
     const esistente = await tx.get(allievoRef);
     if (!esistente.exists) {
@@ -78,11 +84,11 @@ export async function entra(body: Record<string, unknown>, utente: Utente) {
     }
     tx.set(
       appartenenzeRef().doc(utente.uid),
-      { nome: utente.nome, email: utente.email, classi: FieldValue.arrayUnion(classe.id) },
+      { nome: utente.nome, email: utente.email, classi: FieldValue.arrayUnion(classeId) },
       { merge: true },
     );
   });
-  return { classeId: classe.id, nome: classe.dati.nome };
+  return { classeId, nome: classe.nome };
 }
 
 /* ------------------------------------------------------------------ contesto */
@@ -103,69 +109,56 @@ async function contesto(body: Record<string, unknown>, utente: Utente, tx?: Fire
   const [c, a] = tx ? await tx.getAll(classeRef, allievoRef) : await getDb().getAll(classeRef, allievoRef);
   const classe = c.data() as ClasseDoc | undefined;
   const allievo = a.data() as AllievoOfficinaDoc | undefined;
-  if (!classe || !allievo) throw new ApiError(404, 'CLASSE_NON_TROVATA', 'Non sei in questa classe: entra con il codice');
+  if (!classe || !allievo) throw new ApiError(404, 'CLASSE_NON_TROVATA', 'Non sei in questa classe: scegli la tua classe');
   return { classeId, classe, allievo, allievoRef };
 }
 
-function compitoDi(classe: ClasseDoc, compitoId: string): CompitoDoc {
-  const compito = classe.compiti.find((c) => c.id === compitoId && !c.ritirato);
-  if (!compito) throw new ApiError(404, 'COMPITO_NON_TROVATO', 'Questo compito non c\'è più');
-  return compito;
+const semeDi = (uid: string, progetto: Progetto) => semeDa(`${uid}|${progetto}`);
+
+function fasiDi(progetto: Progetto, uid: string): Esercizio[] {
+  return generaCronoscalata(progetto, semeDi(uid, progetto));
 }
 
-const semeDi = (uid: string, compitoId: string) => semeDa(`${uid}|${compitoId}`);
-
-function fasiDi(compito: CompitoDoc, uid: string): Esercizio[] {
-  return generaCronoscalata(compito.progetto, semeDi(uid, compito.id));
-}
-
-/** Lo stato di un lavoro visto dall'allievo (senza esercizi). */
-function riassunto(compito: CompitoDoc, lavoro: LavoroDoc | undefined) {
-  const l = lavoro ?? lavoroVuoto();
-  const finito = l.fasi >= FASI_PER_COMPITO;
-  return {
-    id: compito.id,
-    progetto: compito.progetto,
-    scadenzaAt: ms(compito.scadenzaAt),
-    scaduto: scaduto(compito),
-    fasi: l.fasi,
-    fasiTotali: FASI_PER_COMPITO,
-    consigli: l.consigli,
-    finito,
-    // Il voto si vede quando è fissato: finito, scaduto, oppure scritto a mano dal docente.
-    voto:
-      finito || scaduto(compito) || typeof l.votoDocente === 'number'
-        ? votoLavoro({ fasi: l.fasi, consigli: l.consigli, finito, votoDocente: l.votoDocente })
-        : null,
-    votoSeFinisci: votoSeFinisce(l.consigli),
-  };
+/** Il compito richiesto, se è nel percorso e sbloccato per questo allievo. */
+function compitoAperto(allievo: AllievoOfficinaDoc, compitoId: string) {
+  if (!eProgetto(compitoId)) throw new ApiError(404, 'COMPITO_NON_TROVATO', 'Compito inesistente');
+  const voce = percorsoDi(allievo.lavori ?? {}).find((v) => v.id === compitoId);
+  if (!voce) throw new ApiError(404, 'COMPITO_NON_TROVATO', 'Compito inesistente');
+  if (voce.stato === 'bloccato') throw new ApiError(403, 'BLOCCATO', 'Questo compito si sblocca quando finisci il precedente');
+  return { progetto: compitoId, voce, lavoro: allievo.lavori?.[compitoId] ?? lavoroVuoto() };
 }
 
 /* ------------------------------------------------------------------ compiti */
 
-/** I compiti assegnati alla classe, con lo stato del lavoro di questo allievo. */
+/** Il percorso dell'allievo: tutti i compiti con lo stato, e la media. */
 export async function compiti(body: Record<string, unknown>, utente: Utente) {
   const ctx = await contesto(body, utente);
-  const assegnati = ctx.classe.compiti.filter((c) => !c.ritirato);
+  const voci = percorsoDi(ctx.allievo.lavori ?? {});
   return {
     classe: { id: ctx.classeId, nome: ctx.classe.nome, chiusa: ctx.classe.chiusa },
-    compiti: assegnati.map((c) => ({ ...riassunto(c, ctx.allievo.lavori?.[c.id]), titolo: schedaProgetto(c.progetto, 1).titolo })),
+    compiti: voci.map((v) => ({ ...v, fasiTotali: FASI_PER_COMPITO, titolo: schedaProgetto(v.id, 1).titolo, votoSeFinisci: votoSeFinisce(v.consigli) })),
+    media: mediaVoti(voci),
   };
 }
 
 /** Il compito aperto: scheda, fase da fare, codice da cui ripartire, conversazione col tutor. */
 export async function compito(body: Record<string, unknown>, utente: Utente) {
   const ctx = await contesto(body, utente);
-  const c = compitoDi(ctx.classe, testo(body.compitoId, 64));
-  const lavoro = ctx.allievo.lavori?.[c.id] ?? lavoroVuoto();
-  const fasi = fasiDi(c, utente.uid);
-  const stato = riassunto(c, lavoro);
-  const esercizio = !stato.finito && !stato.scaduto ? fasi[lavoro.fasi] : undefined;
+  const { progetto, voce, lavoro } = compitoAperto(ctx.allievo, testo(body.compitoId, 64));
+  const fasi = fasiDi(progetto, utente.uid);
+  const finito = voce.stato === 'finito';
+  const esercizio = !finito ? fasi[lavoro.fasi] : undefined;
   // Si riparte dall'ultima consegna, giusta o no; altrimenti dal codice della fase prima.
   const daCui = lavoro.bozza || (lavoro.fasi > 0 ? lavoro.codice?.[String(lavoro.fasi - 1)] : '') || '';
   return {
-    ...stato,
-    scheda: schedaProgetto(c.progetto, semeDi(utente.uid, c.id)),
+    id: progetto,
+    fasi: lavoro.fasi,
+    fasiTotali: FASI_PER_COMPITO,
+    consigli: lavoro.consigli,
+    finito,
+    voto: voce.voto,
+    votoSeFinisci: votoSeFinisce(lavoro.consigli),
+    scheda: schedaProgetto(progetto, semeDi(utente.uid, progetto)),
     esercizio: esercizio ? { ...esercizioPerAllievo(esercizio), codiceIniziale: daCui || undefined } : null,
     codice: lavoro.codice ?? {},
     tutor: (lavoro.tutor ?? []).map((s) => ({ fase: s.fase + 1, domanda: s.domanda, risposta: s.risposta })),
@@ -179,15 +172,13 @@ function intero(v: unknown): number {
   return typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : Number.NaN;
 }
 
-/** Controlli comuni a consegna e tutor: classe aperta, compito in corso, fase giusta. */
+/** Controlli comuni a consegna e tutor: classe aperta, compito sbloccato e non finito. */
 function lavoroInCorso(ctx: Contesto, body: Record<string, unknown>, uid: string) {
   if (ctx.classe.chiusa) throw new ApiError(403, 'CLASSE_CHIUSA', 'La classe è chiusa');
-  const c = compitoDi(ctx.classe, testo(body.compitoId, 64));
-  if (scaduto(c)) throw new ApiError(403, 'SCADUTO', 'Il compito è scaduto: non si consegna più');
-  const lavoro = ctx.allievo.lavori?.[c.id] ?? lavoroVuoto();
-  if (lavoro.fasi >= FASI_PER_COMPITO) throw new ApiError(403, 'FINITO', 'Hai già finito questo compito!');
-  const fasi = fasiDi(c, uid);
-  return { c, lavoro, fasi, esercizio: fasi[lavoro.fasi] };
+  const { progetto, voce, lavoro } = compitoAperto(ctx.allievo, testo(body.compitoId, 64));
+  if (voce.stato === 'finito') throw new ApiError(403, 'FINITO', 'Hai già finito questo compito!');
+  const fasi = fasiDi(progetto, uid);
+  return { progetto, lavoro, fasi, esercizio: fasi[lavoro.fasi] };
 }
 
 /**
@@ -199,53 +190,34 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
   const codice = typeof body.codice === 'string' ? body.codice.slice(0, 6000) : '';
   return getDb().runTransaction(async (tx) => {
     const ctx = await contesto(body, utente, tx);
-    const { c, lavoro, fasi, esercizio } = lavoroInCorso(ctx, body, utente.uid);
+    const { progetto, lavoro, fasi, esercizio } = lavoroInCorso(ctx, body, utente.uid);
     const f = intero(body.fase);
     if (f !== lavoro.fasi) {
       throw new ApiError(409, 'FASE_SBAGLIATA', `Stai consegnando la fase ${f + 1} ma sei alla fase ${lavoro.fasi + 1}: ricarica la pagina`);
     }
-    const base = `lavori.${c.id}`;
     const valutazione = valutaRisposta(esercizio, codice);
+    const salva = (dati: Partial<LavoroDoc>) =>
+      tx.set(ctx.allievoRef, { lavori: { [progetto]: { ...lavoro, ...dati, ultimoAt: Timestamp.now() } } }, { merge: true });
+
     if (!valutazione.promosso) {
-      tx.set(
-        ctx.allievoRef,
-        {
-          lavori: {
-            [c.id]: {
-              ...lavoro,
-              bozza: codice,
-              errori: lavoro.errori + 1,
-              erroriFase: { ...lavoro.erroriFase, [String(f)]: (lavoro.erroriFase?.[String(f)] ?? 0) + 1 },
-              ultimoAt: Timestamp.now(),
-            },
-          },
-        },
-        { merge: true },
-      );
+      salva({
+        bozza: codice,
+        errori: lavoro.errori + 1,
+        erroriFase: { ...lavoro.erroriFase, [String(f)]: (lavoro.erroriFase?.[String(f)] ?? 0) + 1 },
+      });
       return { promosso: false, hint: valutazione.hint, output: valutazione.output, schermo: valutazione.schermo, errori: lavoro.errori + 1 };
     }
 
     const nuoveFasi = f + 1;
     const finito = nuoveFasi >= FASI_PER_COMPITO;
     const ora = Timestamp.now();
-    tx.set(
-      ctx.allievoRef,
-      {
-        lavori: {
-          [c.id]: {
-            ...lavoro,
-            fasi: nuoveFasi,
-            fasiAt: { ...lavoro.fasiAt, [String(f)]: ora },
-            codice: { ...lavoro.codice, [String(f)]: codice },
-            bozza: '',
-            ultimoAt: ora,
-            finitoAt: finito ? ora : (lavoro.finitoAt ?? null),
-          },
-        },
-      },
-      { merge: true },
-    );
-    void base;
+    salva({
+      fasi: nuoveFasi,
+      fasiAt: { ...lavoro.fasiAt, [String(f)]: ora },
+      codice: { ...lavoro.codice, [String(f)]: codice },
+      bozza: '',
+      finitoAt: finito ? ora : (lavoro.finitoAt ?? null),
+    });
     const seguente = finito ? undefined : fasi[nuoveFasi];
     return {
       promosso: true,
@@ -253,7 +225,7 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
       schermo: valutazione.schermo,
       fasi: nuoveFasi,
       finito,
-      voto: finito ? votoLavoro({ fasi: nuoveFasi, consigli: lavoro.consigli, finito: true, votoDocente: lavoro.votoDocente }) : null,
+      voto: finito ? votoSeFinisce(lavoro.consigli) : null,
       votoSeFinisci: votoSeFinisce(lavoro.consigli),
       esercizio: seguente ? { ...esercizioPerAllievo(seguente), codiceIniziale: codice } : null,
     };
@@ -262,19 +234,19 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
 
 /* -------------------------------------------------------------------- tutor */
 
-/** Una domanda al tutor: costa un punto. La chiamata al modello sta fuori dalla transazione. */
+/** Una domanda al tutor: costa un punto (fino al pavimento, poi è gratis ma si conta). */
 export async function tutor(body: Record<string, unknown>, utente: Utente) {
   limita(utente);
   const domanda = typeof body.domanda === 'string' ? body.domanda.replace(/\r\n?/g, '\n').trim().slice(0, MAX_DOMANDA_TUTOR) : '';
   const codice = typeof body.codice === 'string' ? body.codice.slice(0, 6000) : '';
 
   const ctx = await contesto(body, utente);
-  const { c, lavoro, esercizio } = lavoroInCorso(ctx, body, utente.uid);
+  const { progetto, lavoro, esercizio } = lavoroInCorso(ctx, body, utente.uid);
   const esito = esegui(codice, esercizio.prove?.[0] ? { risposte: esercizio.prove[0].risposte } : {});
   const valutazione = codice.trim() ? valutaRisposta(esercizio, codice) : null;
   const risposta = await chiediTutor(
     {
-      scheda: schedaProgetto(c.progetto, semeDi(utente.uid, c.id)),
+      scheda: schedaProgetto(progetto, semeDi(utente.uid, progetto)),
       fase: lavoro.fasi + 1,
       fasiTotali: FASI_PER_COMPITO,
       esercizio,
@@ -290,11 +262,11 @@ export async function tutor(body: Record<string, unknown>, utente: Utente) {
   const consigli = await getDb().runTransaction(async (tx) => {
     const snap = await tx.get(ctx.allievoRef);
     const fresco = snap.data() as AllievoOfficinaDoc | undefined;
-    const attuale = fresco?.lavori?.[c.id] ?? lavoroVuoto();
+    const attuale = fresco?.lavori?.[progetto] ?? lavoroVuoto();
     const scambio = { fase: lavoro.fasi, domanda, risposta, at: Timestamp.now() };
     tx.set(
       ctx.allievoRef,
-      { lavori: { [c.id]: { ...attuale, bozza: codice || attuale.bozza, consigli: attuale.consigli + 1, tutor: [...(attuale.tutor ?? []), scambio] } } },
+      { lavori: { [progetto]: { ...attuale, bozza: codice || attuale.bozza, consigli: attuale.consigli + 1, tutor: [...(attuale.tutor ?? []), scambio] } } },
       { merge: true },
     );
     return attuale.consigli + 1;

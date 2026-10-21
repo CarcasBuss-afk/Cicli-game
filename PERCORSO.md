@@ -384,25 +384,33 @@ Giro), dominio limitato a `OFFICINA_DOMINIO`. Il server verifica l'ID token a og
 Si conservano **uid, email istituzionale e nome** dell'allievo: decisione presa apposta,
 vale solo per l'Officina (collezioni `officina*`), non per il Giro.
 
-**Classi.** Il docente crea la classe e ottiene un codice; l'allievo entra una volta con
-Google + codice e da lì è nella classe per sempre (`officinaAllievi/{uid}` ricorda le sue
-classi, così non servono query di gruppo).
+**Classi.** Il docente crea la classe; l'allievo al primo accesso **la sceglie da un
+elenco** (niente codice da proiettare o dettare) e da lì è dentro per sempre
+(`officinaAllievi/{uid}` ricorda le sue classi, così non servono query di gruppo).
 
-**Compiti.** Il docente **assegna** un progetto alla classe, con scadenza facoltativa, e lo
-può ritirare. Ogni allievo ha **i suoi parametri** (seme da uid + compito): il vicino non
+**Il percorso.** Non si assegna niente: tutti vedono **lo stesso elenco di compiti**, i
+progetti nell'ordine didattico, uno sotto l'altro, e **si sbloccano uno alla volta**: il
+seguente si apre quando il precedente è finito. Si va avanti a oltranza, al proprio ritmo,
+senza scadenze. Ogni allievo ha **i suoi parametri** (seme da uid + progetto): il vicino non
 copia i numeri. Si lavora fase per fase come nella Cronoscalata; l'ultima consegna, giusta
 o no, resta come bozza e alla riapertura l'editor riparte da lì.
 
 **Il tutor.** Sonnet 5.5 (`TUTOR_MODEL`), conversazione vera (la storia del compito entra
 come messaggi: «non ho capito» ha un senso), domanda fino a 6000 caratteri, risposta fino a
 un paragrafo pieno. Regola "mai codice" e filtro identici al gregario; può spiegare un
-concetto con un esempio della vita. **1 punto a domanda, pavimento 5** per chi finisce.
+concetto con un esempio della vita.
 
-**Voto.** Finito: 10 − domande (min 5). Scaduto senza finire: proporzionale alle fasi, meno
-le domande (min 2). Il docente può **scriverlo a mano** (`votoDocente`) e tornare indietro.
+**Voto.** Solo a compito finito: 10 − domande al tutor, **mai sotto 5**; arrivati a 5 gli
+aiuti restano possibili. Un compito in corso non ha voto e non pesa sulla media. L'allievo
+vede la **media dei voti** dei compiti finiti.
 
-**Dashboard** (`/docente/officina`): classi → tabella allievi × compiti (fasi, domande,
-voto), il lavoro di ciascuno (codice fase per fase, conversazione col tutor), CSV.
+**Dashboard** (`/docente/officina`): **solo monitoraggio**. Classi → tabella allievi ×
+compiti del percorso (fasi, domande, voto, media), il lavoro di ciascuno (codice fase per
+fase, bozza, conversazione col tutor), CSV. Niente da proiettare: non è una gara.
+
+*(Prima versione, 21 ottobre: codice di classe, compiti assegnati con scadenza, voto del
+docente a mano. Tolti lo stesso giorno su richiesta del docente, a favore di questo modello
+più semplice.)*
 
 ### Il terzo progetto: lo scontrino del bar, con `input()`
 

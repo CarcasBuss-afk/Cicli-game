@@ -123,16 +123,16 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
           <h1 className="text-2xl font-black">{c.scheda.titolo}</h1>
         </div>
         <p className="text-2xl font-black">
-          {c.finito ? 'Finito' : c.scaduto ? 'Scaduto' : `Fase ${fase}`}
-          {!c.finito && !c.scaduto && <span className="text-base font-normal text-(--color-testo-tenue)"> di {c.fasiTotali}</span>}
+          {c.finito ? 'Finito' : `Fase ${fase}`}
+          {!c.finito && <span className="text-base font-normal text-(--color-testo-tenue)"> di {c.fasiTotali}</span>}
         </p>
       </header>
 
       <Fasi fatte={c.fasi} totale={c.fasiTotali} />
 
-      {(c.finito || c.scaduto) && (
+      {c.finito && (
         <section className="rounded-2xl border border-(--color-giallo)/50 bg-(--color-giallo)/10 p-5 text-center">
-          <p className="text-sm text-(--color-testo-tenue)">{c.finito ? 'Programma finito! Il tuo voto' : 'Il compito è scaduto. Il tuo voto'}</p>
+          <p className="text-sm text-(--color-testo-tenue)">Programma finito! Il tuo voto</p>
           <p className="font-mono text-6xl font-black text-(--color-giallo)">{c.voto}</p>
           <p className="text-(--color-testo-tenue)">
             {c.fasi} {c.fasi === 1 ? 'fase' : 'fasi'} su {c.fasiTotali} · {c.consigli} {c.consigli === 1 ? 'domanda' : 'domande'} al tutor
@@ -199,7 +199,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
         </section>
       )}
 
-      <TutorChat scambi={c.tutor} votoSeFinisci={c.votoSeFinisci} onChiedi={chiedi} attivo={!c.finito && !c.scaduto} />
+      <TutorChat scambi={c.tutor} votoSeFinisci={c.votoSeFinisci} onChiedi={chiedi} attivo={!c.finito} />
 
       {errore && (
         <section role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-200">

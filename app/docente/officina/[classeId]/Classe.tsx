@@ -1,30 +1,26 @@
 'use client';
-/* Una classe dell'Officina, in tempo reale: il codice, i compiti assegnati (assegnare,
- * scadenza, ritirare), la tabella allievi × compiti con fasi, domande e voto, il lavoro di
- * ciascuno (codice fase per fase, conversazione col tutor, voto a mano), il CSV. */
+/* Una classe dell'Officina, in tempo reale, solo per guardare: la tabella allievi × compiti
+ * del percorso con fasi, domande e voto, la media, il lavoro di ciascuno (codice fase per
+ * fase, conversazione col tutor), il CSV. */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { collection, doc, onSnapshot, type Timestamp } from 'firebase/firestore';
 import { getClientDb } from '@/lib/firebaseClient';
-import { ELENCO_PROGETTI, schedaProgetto, type Progetto } from '@/lib/giro/progetti';
-import { FASI_PER_COMPITO } from '@/lib/officina/regole';
-import { csvClasse, tabellaClasse, type AllievoVisto, type CellaTabella, type CompitoVisto, type LavoroVisto } from '@/lib/officina/tabella';
+import { FASI_PER_COMPITO, type VoceCompito } from '@/lib/officina/regole';
+import { csvClasse, tabellaClasse, TITOLI_PERCORSO, type AllievoVisto, type LavoroVisto } from '@/lib/officina/tabella';
 import { Accesso } from '../../Accesso';
 import { chiamaDocente } from '../../api';
 import { useDocente } from '../../useDocente';
 
-type ClasseDati = { nome: string; codice: string; chiusa: boolean; compiti: CompitoVisto[] };
+type ClasseDati = { nome: string; chiusa: boolean };
 
 const data = (t: unknown): Date | null => (t && typeof (t as Timestamp).toDate === 'function' ? (t as Timestamp).toDate() : null);
-
-const titoloDi = (progetto: string) => schedaProgetto(progetto as Progetto, 1).titolo;
 
 function lavoroDa(grezzo: Record<string, unknown>): LavoroVisto {
   return {
     fasi: (grezzo.fasi as number) ?? 0,
     consigli: (grezzo.consigli as number) ?? 0,
     errori: (grezzo.errori as number) ?? 0,
-    votoDocente: typeof grezzo.votoDocente === 'number' ? grezzo.votoDocente : null,
     finitoAt: data(grezzo.finitoAt),
     ultimoAt: data(grezzo.ultimoAt),
     codice: (grezzo.codice as Record<string, string>) ?? {},
@@ -47,13 +43,6 @@ function scarica(nome: string, contenuto: string) {
   URL.revokeObjectURL(url);
 }
 
-/** Per l'input datetime-local: la data in ora locale, senza secondi. */
-function perInput(d: Date | null): string {
-  if (!d) return '';
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-}
-
 export function Classe({ classeId }: { classeId: string }) {
   const { stato, messaggio, accediGoogle, accediProva } = useDocente();
   const [classe, setClasse] = useState<ClasseDati | null>(null);
@@ -71,18 +60,7 @@ export function Classe({ classeId }: { classeId: string }) {
           setErrore('Classe inesistente');
           return;
         }
-        setClasse({
-          nome: d.nome,
-          codice: d.codice,
-          chiusa: Boolean(d.chiusa),
-          compiti: ((d.compiti ?? []) as Array<Record<string, unknown>>).map((c) => ({
-            id: c.id as string,
-            progetto: c.progetto as string,
-            titolo: titoloDi(c.progetto as string),
-            scadenzaAt: data(c.scadenzaAt),
-            ritirato: Boolean(c.ritirato),
-          })),
-        });
+        setClasse({ nome: d.nome, chiusa: Boolean(d.chiusa) });
       },
       (e) => setErrore(`Lettura della classe non riuscita: ${e.message}`),
     );
@@ -122,14 +100,13 @@ export function Classe({ classeId }: { classeId: string }) {
     [classeId],
   );
 
-  const righe = useMemo(() => (classe ? tabellaClasse(allievi, classe.compiti) : []), [allievi, classe]);
-  const attivi = useMemo(() => classe?.compiti.filter((c) => !c.ritirato) ?? [], [classe]);
+  const righe = useMemo(() => tabellaClasse(allievi), [allievi]);
 
   if (stato !== 'ok') return <Accesso stato={stato} messaggio={messaggio} accediGoogle={accediGoogle} accediProva={accediProva} />;
   if (!classe) return <main className="p-8 text-(--color-testo-tenue)">{errore || 'Un attimo…'}</main>;
 
   const dettaglio = aperta ? allievi.find((a) => a.uid === aperta.uid) : undefined;
-  const compitoAperto = aperta ? attivi.find((c) => c.id === aperta.compitoId) : undefined;
+  const compitoAperto = aperta ? TITOLI_PERCORSO.find((c) => c.id === aperta.compitoId) : undefined;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-6xl flex-col gap-5 p-4 sm:p-6">
@@ -143,12 +120,9 @@ export function Classe({ classeId }: { classeId: string }) {
             {classe.chiusa && <span className="ml-2 text-base font-normal text-(--color-testo-tenue)">(chiusa)</span>}
           </h1>
         </div>
-        <p className="text-(--color-testo-tenue)">
-          codice per entrare <span className="ml-2 rounded-lg bg-black/40 px-3 py-1 font-mono text-3xl font-black tracking-widest text-(--color-giallo)">{classe.codice}</span>
-        </p>
         <div className="flex gap-2">
           <button
-            onClick={() => scarica(`officina-${classe.nome}.csv`, csvClasse(righe, classe.compiti))}
+            onClick={() => scarica(`officina-${classe.nome}.csv`, csvClasse(righe))}
             className="rounded-lg border border-(--color-bordo) px-3 py-1.5 text-sm hover:border-(--color-giallo)"
           >
             Scarica CSV
@@ -172,27 +146,25 @@ export function Classe({ classeId }: { classeId: string }) {
         </p>
       )}
 
-      <CompitiAssegnati compiti={attivi} chiusa={classe.chiusa} azione={azione} />
-
-      {/* La tabella */}
       <section className="overflow-x-auto rounded-xl border border-(--color-bordo) bg-(--color-fondo-card)">
         <table className="w-full text-left" aria-label="tabella della classe">
           <thead className="text-sm text-(--color-testo-tenue)">
             <tr>
               <th className="px-3 py-2">Allievo</th>
-              {attivi.map((c) => (
+              {TITOLI_PERCORSO.map((c, i) => (
                 <th key={c.id} className="px-3 py-2">
-                  {c.titolo}
+                  {i + 1}. {c.titolo}
                 </th>
               ))}
+              <th className="px-3 py-2">Media</th>
               <th className="px-3 py-2" />
             </tr>
           </thead>
           <tbody>
             {righe.length === 0 && (
               <tr>
-                <td colSpan={attivi.length + 2} className="px-3 py-4 text-(--color-testo-tenue)">
-                  Nessun allievo è ancora entrato: proietta il codice {classe.codice}.
+                <td colSpan={TITOLI_PERCORSO.length + 3} className="px-3 py-4 text-(--color-testo-tenue)">
+                  Nessun allievo è ancora entrato: quando accedono scelgono la classe «{classe.nome}».
                 </td>
               </tr>
             )}
@@ -202,19 +174,21 @@ export function Classe({ classeId }: { classeId: string }) {
                   <p className="font-bold">{r.nome}</p>
                   <p className="text-xs text-(--color-testo-tenue)">{r.email}</p>
                 </td>
-                {r.celle.map((x) => (
-                  <td key={x.compitoId} className="px-3 py-2">
+                {r.voci.map((v) => (
+                  <td key={v.id} className="px-3 py-2">
                     <button
-                      onClick={() => setAperta(aperta?.uid === r.uid && aperta.compitoId === x.compitoId ? null : { uid: r.uid, compitoId: x.compitoId })}
-                      className={`rounded-lg border px-2 py-1 text-left hover:border-(--color-giallo) ${
-                        aperta?.uid === r.uid && aperta.compitoId === x.compitoId ? 'border-(--color-giallo)' : 'border-transparent'
+                      onClick={() => setAperta(aperta?.uid === r.uid && aperta.compitoId === v.id ? null : { uid: r.uid, compitoId: v.id })}
+                      disabled={v.stato === 'bloccato'}
+                      className={`rounded-lg border px-2 py-1 text-left hover:border-(--color-giallo) disabled:cursor-default disabled:hover:border-transparent ${
+                        aperta?.uid === r.uid && aperta.compitoId === v.id ? 'border-(--color-giallo)' : 'border-transparent'
                       }`}
-                      aria-label={`${r.nome}: ${x.compitoId}`}
+                      aria-label={`${r.nome}: ${v.id}`}
                     >
-                      <Cella x={x} />
+                      <Cella v={v} />
                     </button>
                   </td>
                 ))}
+                <td className="px-3 py-2 font-mono text-lg font-black text-(--color-giallo)">{r.media ?? '–'}</td>
                 <td className="px-3 py-2 text-right">
                   <button
                     onClick={() => {
@@ -232,151 +206,38 @@ export function Classe({ classeId }: { classeId: string }) {
       </section>
 
       {dettaglio && compitoAperto && (
-        <Lavoro
-          allievo={dettaglio}
-          compito={compitoAperto}
-          lavoro={dettaglio.lavori[compitoAperto.id] ?? null}
-          onVoto={(voto) => void azione({ azione: 'voto', compitoId: compitoAperto.id, uid: dettaglio.uid, voto })}
-          onChiudi={() => setAperta(null)}
-        />
+        <Lavoro allievo={dettaglio} titolo={compitoAperto.titolo} lavoro={dettaglio.lavori[compitoAperto.id] ?? null} onChiudi={() => setAperta(null)} />
       )}
     </main>
   );
 }
 
-function Cella({ x }: { x: CellaTabella }) {
-  if (!x.lavoro && !x.scaduto && x.voto === null) return <span className="text-(--color-testo-tenue)">—</span>;
+function Cella({ v }: { v: VoceCompito }) {
+  if (v.stato === 'bloccato') return <span className="text-(--color-testo-tenue)">🔒</span>;
+  if (v.stato === 'da-cominciare') return <span className="text-(--color-testo-tenue)">—</span>;
   return (
     <span className="flex items-baseline gap-2">
       <span className="font-mono text-sm text-(--color-testo-tenue)">
-        {x.fasi}/{FASI_PER_COMPITO}
+        {v.fasi}/{FASI_PER_COMPITO}
       </span>
-      {x.consigli > 0 && <span className="text-sm text-(--color-giallo)">🧑‍🏫 {x.consigli}</span>}
-      {x.voto !== null && (
-        <span className={`font-mono text-lg font-black ${x.finito || x.scaduto || x.aMano ? 'text-(--color-giallo)' : 'text-(--color-testo-tenue)'}`} title={x.aMano ? 'voto del docente' : x.finito || x.scaduto ? 'voto' : 'voto proposto, in corso'}>
-          {x.voto}
-          {x.aMano && '*'}
-        </span>
-      )}
+      {v.consigli > 0 && <span className="text-sm text-(--color-giallo)">🧑‍🏫 {v.consigli}</span>}
+      {v.voto !== null && <span className="font-mono text-lg font-black text-(--color-giallo)">{v.voto}</span>}
     </span>
   );
 }
 
-function CompitiAssegnati({
-  compiti,
-  chiusa,
-  azione,
-}: {
-  compiti: CompitoVisto[];
-  chiusa: boolean;
-  azione: (corpo: Record<string, unknown>) => Promise<void>;
-}) {
-  const [progetto, setProgetto] = useState<Progetto>(ELENCO_PROGETTI[0]);
-  const [scadenza, setScadenza] = useState('');
-  return (
-    <section className="flex flex-col gap-3 rounded-xl border border-(--color-bordo) bg-(--color-fondo-card) p-4">
-      <h2 className="font-bold">Compiti assegnati</h2>
-      {compiti.length === 0 && <p className="text-sm text-(--color-testo-tenue)">Nessuno ancora.</p>}
-      <ul aria-label="compiti assegnati" className="flex flex-col gap-1">
-        {compiti.map((c) => (
-          <li key={c.id} className="flex flex-wrap items-center gap-3">
-            <span className="font-bold">{c.titolo}</span>
-            <label className="flex items-center gap-1 text-sm text-(--color-testo-tenue)">
-              scadenza
-              <input
-                type="datetime-local"
-                defaultValue={perInput(c.scadenzaAt)}
-                onBlur={(e) => {
-                  const nuova = e.target.value ? new Date(e.target.value).toISOString() : null;
-                  if (nuova !== (c.scadenzaAt?.toISOString() ?? null)) void azione({ azione: 'modificaCompito', compitoId: c.id, scadenza: nuova });
-                }}
-                aria-label={`scadenza di ${c.titolo}`}
-                className="rounded border border-(--color-bordo) bg-black/30 px-2 py-0.5"
-              />
-            </label>
-            <button
-              onClick={() => {
-                if (confirm(`Ritirare «${c.titolo}»? Sparisce agli allievi; i lavori restano.`)) void azione({ azione: 'modificaCompito', compitoId: c.id, ritira: true });
-              }}
-              className="text-sm text-(--color-testo-tenue) underline"
-            >
-              ritira
-            </button>
-          </li>
-        ))}
-      </ul>
-      {!chiusa && (
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            void azione({ azione: 'assegna', progetto, scadenza: scadenza ? new Date(scadenza).toISOString() : null });
-          }}
-          className="flex flex-wrap items-center gap-2 border-t border-(--color-bordo) pt-3 text-sm"
-        >
-          <select value={progetto} onChange={(e) => setProgetto(e.target.value as Progetto)} aria-label="compito da assegnare" className="rounded-lg border border-(--color-bordo) bg-black/30 px-2 py-1">
-            {ELENCO_PROGETTI.map((p) => (
-              <option key={p} value={p}>
-                {titoloDi(p)}
-              </option>
-            ))}
-          </select>
-          <label className="flex items-center gap-1 text-(--color-testo-tenue)">
-            entro
-            <input type="datetime-local" value={scadenza} onChange={(e) => setScadenza(e.target.value)} aria-label="scadenza" className="rounded border border-(--color-bordo) bg-black/30 px-2 py-0.5" />
-            <span>(vuoto = senza scadenza)</span>
-          </label>
-          <button type="submit" className="rounded-lg bg-(--color-giallo) px-3 py-1 font-bold text-black hover:brightness-110">
-            Assegna
-          </button>
-        </form>
-      )}
-    </section>
-  );
-}
-
-/** Il lavoro di un allievo su un compito: codice fase per fase, conversazione, voto a mano. */
-function Lavoro({
-  allievo,
-  compito,
-  lavoro,
-  onVoto,
-  onChiudi,
-}: {
-  allievo: AllievoVisto;
-  compito: CompitoVisto;
-  lavoro: LavoroVisto | null;
-  onVoto: (voto: number | null) => void;
-  onChiudi: () => void;
-}) {
-  const [voto, setVoto] = useState(lavoro?.votoDocente?.toString() ?? '');
+/** Il lavoro di un allievo su un compito: codice fase per fase, bozza, conversazione. */
+function Lavoro({ allievo, titolo, lavoro, onChiudi }: { allievo: AllievoVisto; titolo: string; lavoro: LavoroVisto | null; onChiudi: () => void }) {
   const fasi = lavoro ? Object.entries(lavoro.codice).sort((a, b) => Number(a[0]) - Number(b[0])) : [];
   return (
     <section aria-label="lavoro dell'allievo" className="flex flex-col gap-3 rounded-xl border border-(--color-giallo)/40 bg-(--color-giallo)/5 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="text-lg font-bold">
-          {allievo.nome} · {compito.titolo}
+          {allievo.nome} · {titolo}
         </h2>
-        <div className="flex items-center gap-2 text-sm">
-          <label className="flex items-center gap-1">
-            voto a mano
-            <input
-              type="number"
-              min={1}
-              max={10}
-              value={voto}
-              onChange={(e) => setVoto(e.target.value)}
-              placeholder="auto"
-              aria-label="voto del docente"
-              className="w-16 rounded border border-(--color-bordo) bg-black/30 px-2 py-0.5 text-center"
-            />
-          </label>
-          <button onClick={() => onVoto(voto === '' ? null : Number(voto))} className="rounded-lg border border-(--color-bordo) px-2 py-0.5 hover:border-(--color-giallo)">
-            Salva
-          </button>
-          <button onClick={onChiudi} className="text-(--color-testo-tenue) underline">
-            chiudi
-          </button>
-        </div>
+        <button onClick={onChiudi} className="text-sm text-(--color-testo-tenue) underline">
+          chiudi
+        </button>
       </div>
       {!lavoro ? (
         <p className="text-(--color-testo-tenue)">Non ha ancora aperto il compito.</p>
