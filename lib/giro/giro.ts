@@ -34,6 +34,7 @@ export type Tema =
   | 'parola'
   | 'salvadanaio'
   | 'allenamento'
+  | 'scontrino'
   | 'misto';
 
 export interface InfoTema {
@@ -147,6 +148,14 @@ export const TEMI: InfoTema[] = [
     piano: [],
     durataMinuti: null,
     progetto: 'allenamento',
+  },
+  {
+    id: 'scontrino',
+    nome: 'Cronoscalata: lo scontrino',
+    descrizione: 'Il terzo compito di realtà: input() e int(), il programma che chiede i dati',
+    piano: [],
+    durataMinuti: null,
+    progetto: 'scontrino',
   },
   {
     id: 'misto',

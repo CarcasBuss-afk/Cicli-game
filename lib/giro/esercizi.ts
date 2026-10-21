@@ -52,6 +52,18 @@ export interface Vincoli {
    * otto `print` a mano in un `for i in range(1)` no.
    */
   printNelCicloMax?: number | null;
+  /** Quante `input()` almeno deve avere il codice (i compiti con le domande); assente = non si controlla. */
+  inputRichiesti?: number;
+}
+
+/**
+ * Una prova di un esercizio con `input()`: le risposte da dare alle domande e l'output
+ * che ne deve uscire. La prima prova è quella mostrata all'allievo; le altre sono nascoste
+ * e fermano chi scrive i valori a mano invece di leggerli.
+ */
+export interface Prova {
+  risposte: string[];
+  output: string[];
 }
 
 export interface Esercizio {
@@ -76,15 +88,23 @@ export interface Esercizio {
   /** Soluzione di riferimento: resta sul server, serve ai test e al docente. */
   soluzione: string;
   vincoli: Vincoli;
+  /** Le prove con le risposte alle `input()`; `prove[0].output` coincide con `outputAtteso`. */
+  prove?: Prova[];
 }
 
-/** La tappa come la vede l'allievo: senza soluzione e senza l'output se è segreto. */
-export type EsercizioPubblico = Omit<Esercizio, 'soluzione' | 'outputAtteso'> & { outputAtteso?: string[] };
+/** La tappa come la vede l'allievo: senza soluzione, senza l'output se è segreto, con le sole risposte della prova mostrata. */
+export type EsercizioPubblico = Omit<Esercizio, 'soluzione' | 'outputAtteso' | 'prove'> & {
+  outputAtteso?: string[];
+  /** Le risposte di prova con cui il programma viene eseguito (la prova mostrata). */
+  risposte?: string[];
+};
 
 export function esercizioPerAllievo(tappa: Esercizio): EsercizioPubblico {
-  const { soluzione: _soluzione, outputAtteso, ...resto } = tappa;
+  const { soluzione: _soluzione, outputAtteso, prove, ...resto } = tappa;
   void _soluzione;
-  return tappa.mostraOutput ? { ...resto, outputAtteso } : resto;
+  const pubblico: EsercizioPubblico = tappa.mostraOutput ? { ...resto, outputAtteso } : resto;
+  if (prove && prove.length > 0) pubblico.risposte = prove[0].risposte;
+  return pubblico;
 }
 
 /* ---------------------------------------------------------------- numeri casuali */

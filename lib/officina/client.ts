@@ -3,6 +3,7 @@
  * Google. A differenza del Giro qui l'SDK client serve (per il login): è l'eccezione
  * voluta, vedi PERCORSO.md §12. */
 import type { EsercizioPubblico } from '@/lib/giro/esercizi';
+import type { RigaSchermo } from '@/lib/giro/interprete';
 import type { SchedaProgetto } from '@/lib/giro/progetti';
 import { getClientAuth } from '@/lib/firebaseClient';
 
@@ -74,12 +75,13 @@ export type RispostaConsegna =
   | {
       promosso: true;
       output: string[] | null;
+      schermo?: RigaSchermo[];
       fasi: number;
       finito: boolean;
       voto: number | null;
       votoSeFinisci: number;
       esercizio: EsercizioPubblico | null;
     }
-  | { promosso: false; hint: string; output: string[] | null; errori: number };
+  | { promosso: false; hint: string; output: string[] | null; schermo?: RigaSchermo[]; errori: number };
 
 export type RispostaTutor = { risposta: string; consigli: number; votoSeFinisci: number; fase: number };

@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { valutaRisposta } from './hint';
 import { esegui } from './interprete';
 import { ELENCO_PROGETTI, generaCronoscalata, schedaProgetto, votoProposto, votoSeFinisce } from './progetti';
+import { esercizioPerAllievo } from './esercizi';
 import { generaTappa, infoTema, TEMI_DEL_GIRO } from './giro';
 
 const SEMI = Array.from({ length: 40 }, (_, i) => (i + 1) * 1013);
@@ -39,8 +40,8 @@ describe.each(ELENCO_PROGETTI)('ogni progetto: %s', (progetto) => {
   it("l'output resta leggibile: al massimo 11 righe", () => {
     for (const seme of SEMI) {
       for (const fase of generaCronoscalata(progetto, seme)) {
-        expect(fase.outputAtteso.length).toBeLessThanOrEqual(11);
-        expect(fase.outputAtteso.length).toBeGreaterThanOrEqual(6);
+        expect(fase.outputAtteso.length).toBeLessThanOrEqual(12);
+        expect(fase.outputAtteso.length).toBeGreaterThanOrEqual(1);
       }
     }
   });
@@ -163,9 +164,9 @@ describe("la tabella d'allenamento", () => {
     expect(esito.hint).toContain('un solo `print`');
   });
 
-  it('i due temi Cronoscalata sono nell\'elenco del docente', () => {
+  it("i temi Cronoscalata sono nell'elenco del docente, uno per progetto", () => {
     expect(infoTema('allenamento').progetto).toBe('allenamento');
-    expect(TEMI_DEL_GIRO.filter((t) => t.progetto)).toHaveLength(2);
+    expect(TEMI_DEL_GIRO.filter((t) => t.progetto).map((t) => t.progetto)).toEqual(ELENCO_PROGETTI);
   });
 });
 
@@ -189,3 +190,75 @@ describe('il voto proposto', () => {
     expect(votoProposto(1, 5, 4)).toBe(2);
   });
 });
+
+describe('lo scontrino del bar (input e int)', () => {
+  const fasi = generaCronoscalata('scontrino', 23);
+  const scheda = schedaProgetto('scontrino', 23);
+  const prezzo = Number(scheda.dati[0].match(/(\d+) €/)![1]);
+  const [nome, panini] = fasi[1].prove![0].risposte;
+
+  it('ogni fase ha due prove: la prima mostrata (il suo output è quello atteso), la seconda nascosta e diversa', () => {
+    for (const f of fasi) {
+      expect(f.prove).toHaveLength(2);
+      expect(f.prove![0].output).toEqual(f.outputAtteso);
+      expect(f.prove![1].risposte).not.toEqual(f.prove![0].risposte);
+      expect(f.prove![1].output).not.toEqual(f.prove![0].output);
+    }
+    expect(fasi[0].prove![0].risposte).toHaveLength(1);
+    expect(fasi[4].prove![0].risposte).toHaveLength(3);
+  });
+
+  it("all'allievo arrivano le risposte della prova mostrata, non quella nascosta", () => {
+    const pubblico = esercizioPerAllievo(fasi[1]);
+    expect(pubblico.risposte).toEqual([nome, panini]);
+    expect('prove' in pubblico).toBe(false);
+    expect(JSON.stringify(pubblico)).not.toContain(fasi[1].prove![1].risposte[0]);
+  });
+
+  it('i valori scritti a mano passano la prova mostrata ma cadono su quella nascosta', () => {
+    const aMano = `nome = input("Nome? ")\nprint(f"Scontrino di ${nome}")`;
+    const esito = valutaRisposta(fasi[0], aMano);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/altre risposte|rispondendo/);
+  });
+
+  it('senza input() non si passa, anche se l\'output torna', () => {
+    const senza = `print("Scontrino di ${nome}")`;
+    const esito = valutaRisposta(fasi[0], senza);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('`input()`');
+  });
+
+  it('dimenticare int() dà un errore che spiega int()', () => {
+    const senzaInt = `nome = input("Nome? ")\nprint(f"Scontrino di {nome}")\npanini = input("Quanti? ")\nprint(f"Panini: {panini}")\nfor i in range(1, panini + 1):\n    print(f"Panino {i}: ${prezzo} €")`;
+    const esito = valutaRisposta(fasi[2], senzaInt);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('int()');
+  });
+
+  it('la validazione restituisce lo schermo con le domande e le risposte', () => {
+    const esito = valutaRisposta(fasi[0], fasi[0].soluzione);
+    expect(esito.promosso).toBe(true);
+    expect(esito.schermo?.[0]).toEqual({ k: 'in', domanda: 'Come ti chiami? ', risposta: nome });
+    expect(esito.schermo?.[1]).toEqual({ k: 'out', v: `Scontrino di ${nome}` });
+  });
+
+  it('il testo della domanda è libero', () => {
+    const altra = fasi[0].soluzione.replace('Come ti chiami? ', 'nome: ');
+    expect(valutaRisposta(fasi[0], altra).promosso).toBe(true);
+  });
+
+  it('il resto torna: paga con una banconota che copre il totale', () => {
+    for (let seme = 1; seme <= 30; seme++) {
+      for (const prova of generaCronoscalata('scontrino', seme)[4].prove!) {
+        const m = prova.output[prova.output.length - 1].match(/Hai dato (\d+) €, resto (\d+) €/)!;
+        expect(Number(m[2])).toBeGreaterThanOrEqual(0);
+        expect(Number(m[1]) - Number(m[2])).toBe(Number(prova.risposte[1]) * prezzoDi(seme));
+      }
+    }
+  });
+});
+
+function prezzoDi(seme: number): number {
+  return Number(schedaProgetto('scontrino', seme).dati[0].match(/(\d+) €/)![1]);
+}

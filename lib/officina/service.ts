@@ -222,7 +222,7 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
         },
         { merge: true },
       );
-      return { promosso: false, hint: valutazione.hint, output: valutazione.output, errori: lavoro.errori + 1 };
+      return { promosso: false, hint: valutazione.hint, output: valutazione.output, schermo: valutazione.schermo, errori: lavoro.errori + 1 };
     }
 
     const nuoveFasi = f + 1;
@@ -250,6 +250,7 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
     return {
       promosso: true,
       output: valutazione.output,
+      schermo: valutazione.schermo,
       fasi: nuoveFasi,
       finito,
       voto: finito ? votoLavoro({ fasi: nuoveFasi, consigli: lavoro.consigli, finito: true, votoDocente: lavoro.votoDocente }) : null,
@@ -269,7 +270,7 @@ export async function tutor(body: Record<string, unknown>, utente: Utente) {
 
   const ctx = await contesto(body, utente);
   const { c, lavoro, esercizio } = lavoroInCorso(ctx, body, utente.uid);
-  const esito = esegui(codice);
+  const esito = esegui(codice, esercizio.prove?.[0] ? { risposte: esercizio.prove[0].risposte } : {});
   const valutazione = codice.trim() ? valutaRisposta(esercizio, codice) : null;
   const risposta = await chiediTutor(
     {

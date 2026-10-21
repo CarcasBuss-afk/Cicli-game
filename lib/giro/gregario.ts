@@ -40,7 +40,7 @@ export interface ContestoConsiglio {
   /** Numero della fase, da 1. */
   fase: number;
   fasiTotali: number;
-  esercizio: Pick<Esercizio, 'consegna' | 'outputAtteso'>;
+  esercizio: Pick<Esercizio, 'consegna' | 'outputAtteso' | 'prove'>;
   /** Il codice com'è adesso nell'editor. */
   codice: string;
   /** Che cosa produce quel codice: le righe, oppure l'errore del micro-interprete. */
@@ -62,6 +62,12 @@ export function messaggioConsiglio(c: ContestoConsiglio): string {
   parti.push(`PROGETTO: ${c.scheda.titolo}. ${c.scheda.committente}`);
   parti.push(`Dati: ${c.scheda.dati.join(' · ')}`);
   parti.push(`FASE ${c.fase} di ${c.fasiTotali}. Consegna: ${c.esercizio.consegna.replace(/\*\*/g, '')}`);
+  const risposte = c.esercizio.prove?.[0]?.risposte;
+  if (risposte) {
+    parti.push(
+      `Il programma usa input(): viene provato rispondendo, nell'ordine, ${risposte.map((r) => `«${r}»`).join(', ')} (e poi con altre risposte: deve funzionare per chiunque). Il testo delle domande è libero; si confrontano solo le righe stampate con print.`,
+    );
+  }
   parti.push(blocco('OUTPUT CHE DEVE PRODURRE:', c.esercizio.outputAtteso));
   parti.push(blocco("CODICE DELL'ALLIEVO ADESSO:", c.codice.trim() ? c.codice.replace(/\r\n?/g, '\n').split('\n') : []));
   if ('errore' in c.esito) parti.push(`IL SUO CODICE NON GIRA. Errore: ${c.esito.errore}`);

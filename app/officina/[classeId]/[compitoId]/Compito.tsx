@@ -5,8 +5,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import EditorPython from '@/components/EditorPython';
 import SchedaCompito from '@/components/SchedaCompito';
+import Schermo, { RisposteDiProva } from '@/components/Schermo';
 import Testo from '@/components/Testo';
 import TutorChat from '@/components/TutorChat';
+import type { RigaSchermo } from '@/lib/giro/interprete';
 import { chiamaOfficina, messaggioErrore, type CompitoAperto, type RispostaConsegna, type RispostaTutor } from '@/lib/officina/client';
 import { AccessoAllievo } from '../../Accesso';
 import { useAllievo } from '../../useAllievo';
@@ -17,6 +19,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
   const [errore, setErrore] = useState('');
   const [hint, setHint] = useState<string | null>(null);
   const [output, setOutput] = useState<string[] | null>(null);
+  const [schermo, setSchermo] = useState<RigaSchermo[] | null>(null);
   const [invio, setInvio] = useState(false);
   const [scossa, setScossa] = useState(false);
   const codiceRef = useRef('');
@@ -40,6 +43,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
     try {
       const r = await chiamaOfficina<RispostaConsegna>('consegna', { classeId, compitoId, fase: c.fasi, codice: codiceRef.current });
       setErrore('');
+      setSchermo(r.schermo ?? null);
       if (!r.promosso) {
         setHint(r.hint);
         setOutput(r.output);
@@ -50,6 +54,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
       }
       setHint(null);
       setOutput(null);
+      setSchermo(null);
       setC((p) =>
         p
           ? {
@@ -142,6 +147,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
           <h2 className="text-xl font-bold">
             <Testo>{es.consegna}</Testo>
           </h2>
+          {es.risposte && <RisposteDiProva risposte={es.risposte} />}
           {es.outputAtteso && (
             <div>
               <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Deve stampare:</p>
@@ -174,11 +180,16 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
         </section>
       )}
 
-      {output && output.length > 0 && (
-        <section>
-          <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Il tuo codice ha stampato:</p>
-          <pre className="overflow-x-auto rounded-xl border border-(--color-bordo) bg-black/40 p-4 font-mono text-[1.05rem]">{output.join('\n')}</pre>
-        </section>
+      {schermo && schermo.length > 0 ? (
+        <Schermo righe={schermo} titolo="Il tuo programma, con le risposte di prova:" />
+      ) : (
+        output &&
+        output.length > 0 && (
+          <section>
+            <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Il tuo codice ha stampato:</p>
+            <pre className="overflow-x-auto rounded-xl border border-(--color-bordo) bg-black/40 p-4 font-mono text-[1.05rem]">{output.join('\n')}</pre>
+          </section>
+        )
       )}
 
       {hint && (

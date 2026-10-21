@@ -8,7 +8,7 @@
  * Qui vivono anche i controlli anti-furbo: senza di questi, cinque `print` scritti a mano
  * passerebbero una tappa che chiede un ciclo.
  */
-import { esegui, type Struttura } from './interprete';
+import { esegui, type RigaSchermo, type Struttura } from './interprete';
 import type { Esercizio } from './esercizi';
 
 export interface Valutazione {
@@ -17,6 +17,8 @@ export interface Valutazione {
   hint: string | null;
   /** Output prodotto dal suo codice, da mostrare nel pannello (null se non eseguibile). */
   output: string[] | null;
+  /** Con le `input()`: lo schermo come lo vedrebbe l'allievo (domande con la risposta, e le righe stampate). */
+  schermo?: RigaSchermo[];
 }
 
 /** Normalizza l'output: via gli spazi a fine riga e le righe vuote finali. */
@@ -318,10 +320,13 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
     };
   }
 
-  const esito = esegui(testo);
+  // Con le `input()` si esegue con la prova mostrata; senza, come sempre.
+  const prove = tappa.prove && tappa.prove.length > 0 ? tappa.prove : null;
+  const esito = esegui(testo, prove ? { risposte: prove[0].risposte } : {});
   if (!esito.ok) {
     return { promosso: false, hint: esito.errore.messaggio, output: null };
   }
+  const schermo = prove ? esito.schermo : undefined;
 
   // "Nessun ciclo" si dice subito: è il malinteso di fondo, non un dettaglio dell'output.
   if (tappa.vincoli.forRichiesti !== null && esito.struttura.numFor === 0) {
@@ -329,16 +334,49 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
       promosso: false,
       hint: 'Questa tappa si vince con un ciclo `for`: i `print` scritti a mano uno sotto l\'altro non valgono',
       output: esito.output,
+      schermo,
+    };
+  }
+  // Senza `input()` i valori sono scritti a mano: anche se l'output torna, non è il programma chiesto.
+  if (prove && (tappa.vincoli.inputRichiesti ?? 0) > 0 && esito.struttura.numInput === 0) {
+    return {
+      promosso: false,
+      hint: 'Il programma deve chiedere i dati con `input()`, non averli scritti dentro: così funziona per chiunque lo usi',
+      output: esito.output,
+      schermo,
     };
   }
 
   const prodotto = normalizza(esito.output);
   if (!uguali(prodotto, atteso)) {
-    return { promosso: false, hint: spiega(tappa, prodotto, atteso), output: prodotto };
+    return { promosso: false, hint: spiega(tappa, prodotto, atteso), output: prodotto, schermo };
   }
 
   const forma = hintStruttura(tappa, esito.struttura);
-  if (forma) return { promosso: false, hint: forma, output: prodotto };
+  if (forma) return { promosso: false, hint: forma, output: prodotto, schermo };
 
-  return { promosso: true, hint: null, output: prodotto };
+  // Le prove nascoste: con altre risposte il programma deve funzionare lo stesso.
+  if (prove) {
+    for (const prova of prove.slice(1)) {
+      const altro = esegui(testo, { risposte: prova.risposte });
+      if (!altro.ok) {
+        return {
+          promosso: false,
+          hint: `Con le risposte di prova funziona, ma rispondendo ${prova.risposte.map(virgolette).join(', ')} il programma si ferma: ${altro.errore.messaggio}`,
+          output: prodotto,
+          schermo,
+        };
+      }
+      if (!uguali(normalizza(altro.output), normalizza(prova.output))) {
+        return {
+          promosso: false,
+          hint: `Con le risposte di prova funziona, ma rispondendo ${prova.risposte.map(virgolette).join(', ')} stampa un'altra cosa: i valori devono arrivare da \`input()\`, non essere scritti a mano nel programma`,
+          output: prodotto,
+          schermo,
+        };
+      }
+    }
+  }
+
+  return { promosso: true, hint: null, output: prodotto, schermo };
 }

@@ -14,6 +14,8 @@
  *   - `print(...)` con stringhe, numeri, variabili, f-string semplici, più argomenti
  *   - operatori `+`, `-`, `*` su interi, `+` fra stringhe, `*` fra stringa e intero
  *   - corpo del ciclo sulla riga stessa (`for i in range(3): print(i)`) o indentato sotto
+ *   - `input(domanda)` e `int(...)`, solo se le risposte arrivano dalle opzioni (i compiti
+ *     di realtà): le domande finiscono sullo "schermo", non nell'output confrontato
  * Tutto il resto è un errore con un messaggio in italiano scritto per un allievo.
  */
 
@@ -47,6 +49,8 @@ export interface Struttura {
   printFuoriCiclo: number;
   /** Righe di codice vere (vuote e commenti esclusi). */
   numRighe: number;
+  /** Quante chiamate a `input()` nel codice. */
+  numInput: number;
   /**
    * Accumuli dentro un ciclo: `x += ...` oppure `x = x + ...`. Serve alle tappe della
    * somma, dove senza questo controllo `for i in range(1): print(15)` passerebbe.
@@ -54,8 +58,17 @@ export interface Struttura {
   accumuliNelCiclo: number;
 }
 
+/** Una domanda fatta con `input()` e la risposta che ha ricevuto. */
+export interface Interazione {
+  domanda: string;
+  risposta: string;
+}
+
+/** Lo schermo come lo vedrebbe l'allievo: righe stampate e domande con la risposta "digitata", in ordine. */
+export type RigaSchermo = { k: 'out'; v: string } | { k: 'in'; domanda: string; risposta: string };
+
 export type Esito =
-  | { ok: true; output: string[]; struttura: Struttura }
+  | { ok: true; output: string[]; struttura: Struttura; interazioni: Interazione[]; schermo: RigaSchermo[] }
   | { ok: false; errore: ErroreCodice };
 
 export interface Opzioni {
@@ -63,6 +76,11 @@ export interface Opzioni {
   maxIterazioni?: number;
   /** Tetto alle righe stampate (default 200). */
   maxRigheOutput?: number;
+  /**
+   * Le risposte alle `input()`, nell'ordine in cui il programma le chiede. Se manca,
+   * `input()` non è ammesso: nelle tappe del Giro il programma non chiede niente.
+   */
+  risposte?: string[];
 }
 
 export const MAX_ITERAZIONI = 1000;
@@ -216,7 +234,11 @@ type Espr =
   | { k: 'nome'; v: string }
   | { k: 'bin'; op: '+' | '-' | '*'; sx: Espr; dx: Espr }
   | { k: 'neg'; e: Espr }
-  | { k: 'fstr'; parti: Array<{ k: 'testo'; v: string } | { k: 'espr'; e: Espr }> };
+  | { k: 'fstr'; parti: Array<{ k: 'testo'; v: string } | { k: 'espr'; e: Espr }> }
+  /** `input(domanda)`: la risposta arriva dalle opzioni, non dalla tastiera. */
+  | { k: 'input'; domanda: Espr | null }
+  /** `int(x)`: da testo a numero intero. */
+  | { k: 'int'; e: Espr };
 
 type Iterabile = { k: 'range'; args: Espr[] } | { k: 'espr'; espr: Espr };
 
@@ -244,10 +266,9 @@ const NON_AMMESSE = [
   'break',
   'continue',
   'pass',
-  'input',
 ];
 
-const RISERVATE = ['for', 'in', 'print', 'range', 'and', 'or', 'not', 'is', 'True', 'False', 'None', ...NON_AMMESSE];
+const RISERVATE = ['for', 'in', 'print', 'range', 'input', 'int', 'and', 'or', 'not', 'is', 'True', 'False', 'None', ...NON_AMMESSE];
 
 interface Riga {
   testo: string;
@@ -381,7 +402,27 @@ function parseFattore(l: Lettore): Espr {
       if (t.v === 'print') {
         err('nonAmmesso', '`print` va su una riga sua, non dentro un calcolo', l.riga);
       }
+      if (t.v === 'input') {
+        l.avanti();
+        if (l.prossimoEOp(')')) {
+          l.avanti();
+          return { k: 'input', domanda: null };
+        }
+        const domanda = parseEspressione(l);
+        l.attesoOp(')', 'Manca la parentesi tonda chiusa `)` di `input`');
+        return { k: 'input', domanda };
+      }
+      if (t.v === 'int') {
+        l.avanti();
+        if (l.prossimoEOp(')')) err('sintassi', '`int()` è vuoto: dentro ci va quello da trasformare in numero, per esempio `int(input())`', l.riga);
+        const e = parseEspressione(l);
+        l.attesoOp(')', 'Manca la parentesi tonda chiusa `)` di `int`');
+        return { k: 'int', e };
+      }
       err('nonAmmesso', `La funzione \`${t.v}()\` non è ammessa in questo gioco`, l.riga);
+    }
+    if (t.v === 'input' || t.v === 'int') {
+      err('sintassi', `Dopo \`${t.v}\` ci vogliono le parentesi tonde: \`${t.v}(...)\``, l.riga);
     }
     if (t.v === 'range') {
       err('sintassi', '`range` si usa solo dopo `in`, in un ciclo for', l.riga);
@@ -453,9 +494,6 @@ function parseFString(grezzo: string, riga: number): Espr {
 }
 
 function messaggioNonAmmessa(parola: string): string {
-  if (parola === 'input') {
-    return '`input()` non è ammesso: in questo gioco il programma non chiede niente, stampa soltanto';
-  }
   if (parola === 'while') {
     return 'Qui serve un ciclo `for`: `while` non è ammesso in questo gioco';
   }
@@ -679,12 +717,34 @@ class Parser {
 class Macchina {
   private readonly ambiente = new Map<string, Valore>();
   private iterazioni = 0;
+  private prossimaRisposta = 0;
   readonly output: string[] = [];
+  readonly interazioni: Interazione[] = [];
+  readonly schermo: RigaSchermo[] = [];
 
   constructor(
     private readonly maxIterazioni: number,
     private readonly maxRigheOutput: number,
+    private readonly risposte: string[] | null,
   ) {}
+
+  /** `input()`: la risposta è la prossima della lista; la domanda finisce sullo schermo, non nell'output. */
+  private chiedi(domanda: string, riga: number): string {
+    if (this.risposte === null) {
+      err('nonAmmesso', '`input()` non è ammesso in questa tappa: il programma non chiede niente, stampa soltanto', riga);
+    }
+    if (this.prossimaRisposta >= this.risposte.length) {
+      err(
+        'limite',
+        `Il programma chiede più cose di quelle previste: le risposte di prova sono ${this.risposte.length} e questo è l'\`input()\` numero ${this.prossimaRisposta + 1}`,
+        riga,
+      );
+    }
+    const risposta = this.risposte[this.prossimaRisposta++];
+    this.interazioni.push({ domanda, risposta });
+    this.schermo.push({ k: 'in', domanda, risposta });
+    return risposta;
+  }
 
   esegui(corpo: Istruzione[]): void {
     for (const istr of corpo) this.istruzione(istr);
@@ -780,6 +840,7 @@ class Macchina {
         );
       }
       this.output.push(pezzo);
+      this.schermo.push({ k: 'out', v: pezzo });
     }
   }
 
@@ -807,6 +868,18 @@ class Macchina {
           out += parte.k === 'testo' ? parte.v : testo(this.valuta(parte.e, riga));
         }
         return out;
+      }
+      case 'input': {
+        const domanda = e.domanda ? testo(this.valuta(e.domanda, riga)) : '';
+        return this.chiedi(domanda, riga);
+      }
+      case 'int': {
+        const v = this.valuta(e.e, riga);
+        if (typeof v === 'number') return v;
+        if (!/^\s*-?\d+\s*$/.test(v)) {
+          err('tipo', `\`int()\` vuole un numero scritto in cifre, invece ha ricevuto «${v}»`, riga);
+        }
+        return Number(v.trim());
       }
       case 'bin': {
         const sx = this.valuta(e.sx, riga);
@@ -836,7 +909,7 @@ function somma(sx: Valore, dx: Valore, riga: number): Valore {
   if (typeof sx === 'string' && typeof dx === 'string') return sx + dx;
   err(
     'tipo',
-    'Non puoi unire un numero e un testo con `+`: usa una f-string, per esempio `f"Totale: {totale}"`',
+    'Non puoi unire un numero e un testo con `+`: usa una f-string, per esempio `f"Totale: {totale}"`. Se il testo viene da `input()`, ricorda che `input()` dà sempre un testo: per farne un numero mettilo dentro `int()`',
     riga,
   );
 }
@@ -862,8 +935,28 @@ function usaNome(e: Espr, nome: string): boolean {
       return usaNome(e.e, nome);
     case 'fstr':
       return e.parti.some((p) => p.k === 'espr' && usaNome(p.e, nome));
+    case 'int':
+      return usaNome(e.e, nome);
     default:
       return false;
+  }
+}
+
+/** Quante `input()` dentro un'espressione. */
+function contaInput(e: Espr): number {
+  switch (e.k) {
+    case 'input':
+      return 1 + (e.domanda ? contaInput(e.domanda) : 0);
+    case 'int':
+      return contaInput(e.e);
+    case 'bin':
+      return contaInput(e.sx) + contaInput(e.dx);
+    case 'neg':
+      return contaInput(e.e);
+    case 'fstr':
+      return e.parti.reduce((n, p) => n + (p.k === 'espr' ? contaInput(p.e) : 0), 0);
+    default:
+      return 0;
   }
 }
 
@@ -875,17 +968,20 @@ function struttura(corpo: Istruzione[]): Struttura {
     printFuoriCiclo: 0,
     numRighe: 0,
     accumuliNelCiclo: 0,
+    numInput: 0,
   };
 
   const visita = (istruzioni: Istruzione[], dentroCiclo: boolean) => {
     for (const istr of istruzioni) {
       s.numRighe++;
       if (istr.k === 'assegna') {
+        s.numInput += contaInput(istr.espr);
         if (dentroCiclo && (istr.op === '+=' || usaNome(istr.espr, istr.nome))) s.accumuliNelCiclo++;
         continue;
       }
       if (istr.k === 'print') {
         s.numPrint++;
+        s.numInput += istr.args.reduce((n, a) => n + contaInput(a), 0);
         if (!dentroCiclo) s.printFuoriCiclo++;
         continue;
       }
@@ -927,9 +1023,15 @@ export function esegui(codice: string, opzioni: Opzioni = {}): Esito {
     }
     const parser = new Parser(righe);
     const programma = parser.blocco(0);
-    const macchina = new Macchina(maxIterazioni, maxRigheOutput);
+    const macchina = new Macchina(maxIterazioni, maxRigheOutput, opzioni.risposte ?? null);
     macchina.esegui(programma);
-    return { ok: true, output: macchina.output, struttura: struttura(programma) };
+    return {
+      ok: true,
+      output: macchina.output,
+      struttura: struttura(programma),
+      interazioni: macchina.interazioni,
+      schermo: macchina.schermo,
+    };
   } catch (e) {
     if (e instanceof ErrPy) {
       return { ok: false, errore: { tipo: e.tipo, messaggio: e.messaggio, riga: e.riga } };

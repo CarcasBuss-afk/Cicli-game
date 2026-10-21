@@ -5,6 +5,7 @@
  * messaggio chiaro. Gli errori del server (4xx/5xx) non si ritentano: sono risposte.
  */
 import type { EsercizioPubblico } from './esercizi';
+import type { RigaSchermo } from './interprete';
 import type { SchedaProgetto } from './progetti';
 
 const TIMEOUT_MS = 10_000;
@@ -208,6 +209,7 @@ export type RispostaSubmit =
   | {
       promosso: true;
       output: string[] | null;
+      schermo?: RigaSchermo[];
       kmFatti: number;
       finita: boolean;
       ordineArrivo: number | null;
@@ -216,7 +218,7 @@ export type RispostaSubmit =
       /** Cronoscalata: il voto se arriva in fondo; null nelle altre tappe. */
       voto: number | null;
     }
-  | { promosso: false; hint: string; output: string[] | null; erroriTotali: number };
+  | { promosso: false; hint: string; output: string[] | null; schermo?: RigaSchermo[]; erroriTotali: number };
 
 export type RispostaConsiglio = { consiglio: string; consigli: number; consigliRimasti: number; voto: number };
 

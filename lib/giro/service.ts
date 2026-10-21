@@ -317,7 +317,7 @@ export async function submit(body: Record<string, unknown>) {
         [`${base}.erroriKm.${k}`]: FieldValue.increment(1),
       });
       // Il totale torna al client: la schermata finale lo mostra.
-      return { promosso: false, hint: valutazione.hint, output: valutazione.output, erroriTotali: erroriPrima + 1 };
+      return { promosso: false, hint: valutazione.hint, output: valutazione.output, schermo: valutazione.schermo, erroriTotali: erroriPrima + 1 };
     }
 
     const nuoviKm = k + 1;
@@ -338,6 +338,7 @@ export async function submit(body: Record<string, unknown>) {
     return {
       promosso: true,
       output: valutazione.output,
+      schermo: valutazione.schermo,
       kmFatti: nuoviKm,
       finita,
       ordineArrivo,
@@ -388,7 +389,7 @@ export async function consiglio(body: Record<string, unknown>) {
   const esercizio = tappa.esercizi[fatti];
   if (!esercizio) throw new ApiError(500, 'INTERNAL', 'Fase non trovata: chiama il prof');
 
-  const esito = esegui(codice);
+  const esito = esegui(codice, esercizio.prove?.[0] ? { risposte: esercizio.prove[0].risposte } : {});
   const valutazione = codice.trim() ? valutaRisposta(esercizio, codice) : null;
   const testo = await chiediConsiglio({
     scheda: schedaProgetto(progetto, tappa.seme),

@@ -396,3 +396,65 @@ describe('accumuli nel ciclo (per le tappe della somma)', () => {
     expect(accumuli('t = 0\nt += 5\nfor i in range(3):\n    print(i)')).toBe(0);
   });
 });
+
+describe('input() e int(), con le risposte fornite dalle opzioni', () => {
+  const con = (codice: string, risposte: string[]) => {
+    const esito = esegui(codice, { risposte });
+    if (!esito.ok) throw new Error(`atteso successo, ricevuto errore: ${esito.errore.messaggio}`);
+    return esito;
+  };
+
+  it('la risposta entra nella variabile e la domanda va sullo schermo, non nell\'output', () => {
+    const e = con('nome = input("Come ti chiami? ")\nprint(f"Ciao {nome}!")', ['Luca']);
+    expect(e.output).toEqual(['Ciao Luca!']);
+    expect(e.interazioni).toEqual([{ domanda: 'Come ti chiami? ', risposta: 'Luca' }]);
+    expect(e.schermo).toEqual([
+      { k: 'in', domanda: 'Come ti chiami? ', risposta: 'Luca' },
+      { k: 'out', v: 'Ciao Luca!' },
+    ]);
+    expect(e.struttura.numInput).toBe(1);
+  });
+
+  it('input() senza domanda, e dentro int()', () => {
+    const e = con('n = int(input())\nfor i in range(n): print(i)', ['3']);
+    expect(e.output).toEqual(['0', '1', '2']);
+    expect(e.interazioni[0].domanda).toBe('');
+    expect(e.struttura.numInput).toBe(1);
+  });
+
+  it('le risposte si consumano in ordine', () => {
+    const e = con('a = input("a? ")\nb = input("b? ")\nprint(a + b)', ['x', 'y']);
+    expect(e.output).toEqual(['xy']);
+  });
+
+  it('input() dà un testo: sommarlo a un numero spiega int()', () => {
+    const esito = esegui('n = input("quanti? ")\nprint(n + 1)', ['3'].length ? { risposte: ['3'] } : {});
+    expect(esito.ok).toBe(false);
+    if (!esito.ok) expect(esito.errore.messaggio).toContain('int()');
+  });
+
+  it('int() su un testo che non è un numero', () => {
+    const esito = esegui('n = int(input())\nprint(n)', { risposte: ['tre'] });
+    expect(esito.ok).toBe(false);
+    if (!esito.ok) expect(esito.errore.messaggio).toContain('«tre»');
+  });
+
+  it('troppe domande rispetto alle risposte', () => {
+    const esito = esegui('a = input()\nb = input()', { risposte: ['x'] });
+    expect(esito.ok).toBe(false);
+    if (!esito.ok) expect(esito.errore.tipo).toBe('limite');
+  });
+
+  it('senza risposte nelle opzioni input() resta vietato (le tappe del Giro)', () => {
+    expect(errore('x = input()').tipo).toBe('nonAmmesso');
+  });
+
+  it('input e int senza parentesi, e int vuoto', () => {
+    expect(errore('x = input').messaggio).toContain('parentesi');
+    expect(errore('x = int()').messaggio).toContain('vuoto');
+  });
+
+  it('input() non si può usare come nome di variabile', () => {
+    expect(errore('input = 3').tipo).toBe('nonAmmesso');
+  });
+});

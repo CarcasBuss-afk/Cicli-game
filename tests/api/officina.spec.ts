@@ -239,6 +239,8 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
 
     // Luca, che era già dentro, apre il compito.
     await page.getByRole('button', { name: 'esci' }).click();
+    // Il logout è asincrono: navigare prima che sia finito lascia Nadia dentro.
+    await expect(page.getByRole('button', { name: 'Accedi con Google' })).toBeVisible();
     await accedi(page, luca.email);
     await page.getByRole('link', { name: /Il salvadanaio/ }).click();
     await expect(page.getByText('Fase 1 di 5', { exact: true })).toBeVisible();

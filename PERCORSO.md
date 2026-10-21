@@ -403,3 +403,22 @@ le domande (min 2). Il docente può **scriverlo a mano** (`votoDocente`) e torna
 
 **Dashboard** (`/docente/officina`): classi → tabella allievi × compiti (fasi, domande,
 voto), il lavoro di ciascuno (codice fase per fase, conversazione col tutor), CSV.
+
+### Il terzo progetto: lo scontrino del bar, con `input()`
+
+Il micro-interprete ha imparato `input(domanda)` e `int(...)`, ma solo quando **le risposte
+le fornisce il compito**: nessuna tastiera, il server esegue il programma con le risposte
+di prova. Le domande non entrano nell'output confrontato (il testo è libero, come il nome
+delle variabili) ma si vedono nello "schermo" con la risposta evidenziata. Ogni fase si
+prova con **due serie di risposte**, una mostrata e una nascosta: chi scrive i valori a
+mano passa la prima e cade sulla seconda, con l'hint «i valori devono arrivare da
+`input()`». È l'anti-furbo naturale, e insegna la cosa giusta: il programma deve
+funzionare per chiunque.
+
+| Fase | Consegna | Cosa impara |
+|---|---|---|
+| 1 | chiedi il nome → `Scontrino di Luca` | `input()` + f-string |
+| 2 | chiedi quanti panini → `Panini: 3` | `int(input())` |
+| 3 | una riga per panino | il ciclo guidato dall'input |
+| 4 | `Totale: 12 €` | accumulatore (ripasso) |
+| 5 | chiedi quanto paga → `Hai dato 20 €, resto 8 €. Grazie Luca!` | sottrazione, tre input |

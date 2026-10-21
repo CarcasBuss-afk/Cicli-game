@@ -11,9 +11,9 @@
  *
  * Modulo puro: niente Firestore, niente Next.
  */
-import { generatore, type Esercizio, type Vincoli } from './esercizi';
+import { generatore, type Esercizio, type Prova, type Vincoli } from './esercizi';
 
-export type Progetto = 'salvadanaio' | 'allenamento';
+export type Progetto = 'salvadanaio' | 'allenamento' | 'scontrino';
 
 export interface SchedaProgetto {
   id: Progetto;
@@ -286,15 +286,153 @@ function schedaAllenamento(seme: number): SchedaProgetto {
   };
 }
 
+/* ------------------------------------------------------------ lo scontrino del bar */
+
+/* Il primo progetto con `input()`: il programma chiede il nome, quanti panini, quanto si
+ * paga, e stampa lo scontrino. Le risposte le fornisce il compito; ogni fase si prova con
+ * due serie di risposte (una mostrata, una nascosta), così chi scrive i valori a mano
+ * invece di leggerli cade alla seconda. */
+
+const CLIENTI = ['Luca', 'Sara', 'Marco', 'Giulia', 'Omar', 'Aisha', 'Nadia', 'Pietro'] as const;
+const PREZZI_PANINO = [3, 4, 5] as const;
+
+interface Cliente {
+  nome: string;
+  panini: number;
+  /** Quanto paga: una banconota che copre il totale. */
+  dato: number;
+}
+
+interface ParametriScontrino {
+  prezzo: number;
+  /** La prova mostrata e quella nascosta. */
+  clienti: [Cliente, Cliente];
+}
+
+function parametriScontrino(seme: number): ParametriScontrino {
+  const rnd = generatore(seme);
+  const prezzo = PREZZI_PANINO[Math.floor(rnd() * PREZZI_PANINO.length)];
+  const i = Math.floor(rnd() * CLIENTI.length);
+  const j = (i + 1 + Math.floor(rnd() * (CLIENTI.length - 1))) % CLIENTI.length;
+  const cliente = (nome: string, panini: number): Cliente => {
+    const totale = panini * prezzo;
+    // Paga con la banconota da 10, 20 o 50 che basta.
+    const dato = totale <= 10 ? 10 : totale <= 20 ? 20 : 50;
+    return { nome, panini, dato };
+  };
+  const a = 2 + Math.floor(rnd() * 4); // 2..5
+  let b = 2 + Math.floor(rnd() * 5); // 2..6
+  if (b === a) b = a === 6 ? 2 : a + 1;
+  return { prezzo, clienti: [cliente(CLIENTI[i], a), cliente(CLIENTI[j], b)] };
+}
+
+/** Lo scontrino di un cliente, fase per fase. */
+function righeScontrino(p: ParametriScontrino, c: Cliente, fase: 1 | 2 | 3 | 4 | 5): string[] {
+  const righe = [`Scontrino di ${c.nome}`];
+  if (fase >= 2) righe.push(`Panini: ${c.panini}`);
+  if (fase >= 3) for (let i = 1; i <= c.panini; i++) righe.push(`Panino ${i}: ${p.prezzo} €`);
+  const totale = c.panini * p.prezzo;
+  if (fase >= 4) righe.push(`Totale: ${totale} €`);
+  if (fase >= 5) righe.push(`Hai dato ${c.dato} €, resto ${c.dato - totale} €. Grazie ${c.nome}!`);
+  return righe;
+}
+
+/** Le risposte che servono alla fase: il nome, poi i panini, alla fine i soldi. */
+function risposteScontrino(c: Cliente, fase: number): string[] {
+  const r = [c.nome];
+  if (fase >= 2) r.push(String(c.panini));
+  if (fase >= 5) r.push(String(c.dato));
+  return r;
+}
+
+function proveScontrino(p: ParametriScontrino, fase: 1 | 2 | 3 | 4 | 5): Prova[] {
+  return p.clienti.map((c) => ({ risposte: risposteScontrino(c, fase), output: righeScontrino(p, c, fase) }));
+}
+
+/** I vincoli: niente ciclo fino alla fase 2, poi uno solo con un solo print; le `input()` crescono. */
+function vincoliScontrino(fase: number): Vincoli {
+  return {
+    forRichiesti: fase >= 3 ? 1 : null,
+    righeCorpoMax: null,
+    printNelCicloMax: fase >= 3 ? 1 : null,
+    printFuoriCicloMax: null,
+    accumuloRichiesto: fase >= 4,
+    inputRichiesti: fase >= 5 ? 3 : fase >= 2 ? 2 : 1,
+  };
+}
+
+function fasiScontrino(seme: number): Esercizio[] {
+  const p = parametriScontrino(seme);
+  const [a] = p.clienti;
+  const base = { tipo: 'progetto' as const, terreno: 'montagna' as const, mostraOutput: true, risposta: 'codice' as const };
+  const fase = (n: 1 | 2 | 3 | 4 | 5, consegna: string, soluzione: string): Esercizio => {
+    const prove = proveScontrino(p, n);
+    return { ...base, consegna, outputAtteso: prove[0].output, prove, soluzione, vincoli: vincoliScontrino(n) };
+  };
+  const r1 = 'nome = input("Come ti chiami? ")\nprint(f"Scontrino di {nome}")';
+  const r2 = `${r1}\npanini = int(input("Quanti panini? "))\nprint(f"Panini: {panini}")`;
+  const r3 = `${r2}\nfor i in range(1, panini + 1):\n    print(f"Panino {i}: ${p.prezzo} €")`;
+  const r4 = `${r2}\ntotale = 0\nfor i in range(1, panini + 1):\n    totale += ${p.prezzo}\n    print(f"Panino {i}: ${p.prezzo} €")\nprint(f"Totale: {totale} €")`;
+  const r5 = `${r4}\ndato = int(input("Quanto paghi? "))\nprint(f"Hai dato {dato} €, resto {dato - totale} €. Grazie {nome}!")`;
+  return [
+    fase(
+      1,
+      `**Fase 1 — il cliente.** Lo scontrino comincia con il nome del cliente. Chiedilo con \`input()\`, mettilo in una ` +
+        `variabile e stampa \`Scontrino di ${a.nome}\`. Il programma viene provato rispondendo **${a.nome}**, ma deve funzionare con qualunque nome.`,
+      r1,
+    ),
+    fase(
+      2,
+      `**Fase 2 — quanti panini.** Chiedi quanti panini vuole e stampa \`Panini: ${a.panini}\`. La risposta di \`input()\` è un testo: ` +
+        `per usarla come numero mettila dentro \`int()\`. Risposte di prova: **${a.nome}**, poi **${a.panini}**.`,
+      r2,
+    ),
+    fase(
+      3,
+      `**Fase 3 — una riga per panino.** Dopo \`Panini: ${a.panini}\`, un ciclo stampa una riga per ogni panino: ` +
+        `\`Panino 1: ${p.prezzo} €\`, \`Panino 2: ${p.prezzo} €\`… Il numero di giri è quello che ha risposto il cliente.`,
+      r3,
+    ),
+    fase(
+      4,
+      `**Fase 4 — il totale.** Sotto i panini stampa \`Totale: ${a.panini * p.prezzo} €\`. Usa una variabile \`totale\` che parte da 0 ` +
+        `prima del ciclo e a ogni panino cresce di ${p.prezzo}; il \`print\` del totale va **fuori** dal ciclo.`,
+      r4,
+    ),
+    fase(
+      5,
+      `**Fase 5 — il resto.** Chiedi quanto paga (con \`int()\`) e stampa l'ultima riga: ` +
+        `\`Hai dato ${a.dato} €, resto ${a.dato - a.panini * p.prezzo} €. Grazie ${a.nome}!\`. Risposte di prova: **${a.nome}**, **${a.panini}**, **${a.dato}**.`,
+      r5,
+    ),
+  ];
+}
+
+function schedaScontrino(seme: number): SchedaProgetto {
+  const p = parametriScontrino(seme);
+  const [a] = p.clienti;
+  return {
+    id: 'scontrino',
+    titolo: 'Lo scontrino del bar',
+    committente:
+      `Il bar della scuola vuole un programma per lo scontrino dei panini: chiede il nome del cliente, quanti panini prende ` +
+      `e quanto paga, e stampa lo scontrino con il resto. Un panino costa ${p.prezzo} €.`,
+    prodotto: 'Lo scontrino: il nome, una riga per panino, il totale e il resto. Deve funzionare per qualunque cliente: i dati li chiede con input().',
+    dati: [`Panino: ${p.prezzo} €`, `Risposte di prova: ${a.nome} · ${a.panini} panini · paga ${a.dato} €`],
+    outputFinale: righeScontrino(p, a, 5),
+  };
+}
+
 /* ------------------------------------------------------------------- catalogo */
 
 const PROGETTI: Record<Progetto, { fasi: (seme: number) => Esercizio[]; scheda: (seme: number) => SchedaProgetto }> = {
   salvadanaio: { fasi: fasiSalvadanaio, scheda: schedaSalvadanaio },
   allenamento: { fasi: fasiAllenamento, scheda: schedaAllenamento },
+  scontrino: { fasi: fasiScontrino, scheda: schedaScontrino },
 };
 
 /** I progetti nell'ordine didattico: ognuno è un passo avanti rispetto al precedente. */
-export const ELENCO_PROGETTI: Progetto[] = ['salvadanaio', 'allenamento'];
+export const ELENCO_PROGETTI: Progetto[] = ['salvadanaio', 'allenamento', 'scontrino'];
 
 /** Le fasi del progetto, come chilometri della tappa. Stesso seme, stesse fasi. */
 export function generaCronoscalata(progetto: Progetto, seme: number): Esercizio[] {

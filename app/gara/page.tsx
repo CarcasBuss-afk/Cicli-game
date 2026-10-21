@@ -13,6 +13,7 @@ import { useRouter } from 'next/navigation';
 import EditorPython from '@/components/EditorPython';
 import Gregario from '@/components/Gregario';
 import SchedaCompito from '@/components/SchedaCompito';
+import SchermoProgramma, { RisposteDiProva } from '@/components/Schermo';
 import Testo from '@/components/Testo';
 import {
   consiglio,
@@ -23,6 +24,7 @@ import {
   type Identita,
   type RispostaStatus,
 } from '@/lib/giro/client';
+import type { RigaSchermo } from '@/lib/giro/interprete';
 import { sbloccaSuoni, suonoErrore, suonoTappa, suonoTraguardo, suonoVia, whoosh } from '@/lib/giro/suoni';
 
 const AGGIORNA_MS = 10_000;
@@ -42,6 +44,7 @@ export default function Gara() {
   const [risposta, setRisposta] = useState('');
   const [hint, setHint] = useState<string | null>(null);
   const [output, setOutput] = useState<string[] | null>(null);
+  const [schermo, setSchermo] = useState<RigaSchermo[] | null>(null);
   const [animazione, setAnimazione] = useState<'vola' | 'scuoti' | 'entra' | null>(null);
   const [invio, setInvio] = useState(false);
   const [serie, setSerie] = useState(0);
@@ -111,6 +114,7 @@ export default function Gara() {
     try {
       const esito = await submit(identita, tappa.indice, tappa.kmFatti, testo);
       setErrore(null);
+      setSchermo(esito.schermo ?? null);
       if (!esito.promosso) {
         setHint(esito.hint);
         setOutput(esito.output);
@@ -128,6 +132,7 @@ export default function Gara() {
       setSerie(nuovaSerie);
       setHint(null);
       setOutput(null);
+      setSchermo(null);
       whoosh();
       suonoTappa(nuovaSerie - 1);
       setAnimazione('vola');
@@ -329,6 +334,7 @@ export default function Gara() {
         <h1 className="text-xl font-bold">
           <Testo>{es.consegna}</Testo>
         </h1>
+        {es.risposte && <RisposteDiProva risposte={es.risposte} />}
 
         {es.codiceMostrato && (
           <pre className="overflow-x-auto rounded-xl border border-(--color-bordo) bg-black/40 p-4 font-mono text-[1.05rem] text-(--color-giallo)">
@@ -405,7 +411,9 @@ export default function Gara() {
       </section>
 
       {/* Che cosa ha stampato il suo codice */}
-      {output && output.length > 0 && (
+      {schermo && schermo.length > 0 ? (
+        <SchermoProgramma righe={schermo} titolo="Il tuo programma, con le risposte di prova:" />
+      ) : output && output.length > 0 && (
         <section>
           <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Il tuo codice ha stampato:</p>
           <pre className="overflow-x-auto rounded-xl border border-(--color-bordo) bg-black/40 p-4 font-mono text-[1.05rem]">
