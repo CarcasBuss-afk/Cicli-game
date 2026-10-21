@@ -216,3 +216,65 @@ test.describe('la Cronoscalata nella pagina dell\'allievo', () => {
     await expect(page.getByText('9', { exact: true })).toBeVisible();
   });
 });
+
+/* --------------------------------------------------------------------- alla LIM */
+
+test.describe('la Cronoscalata alla LIM', () => {
+  test('fasi e consigli dal vivo, poi i voti con il CSV, e la generale che non la conta', async ({ page, request }) => {
+    const { corpo } = await chiama(request, 'test-setup', { azione: 'crea', tipo: 'giro', classLabel: '2A', temi: ['salvadanaio', 'ripeti'] });
+    const sessionId = corpo.sessionId as string;
+    const { corpo: aperta } = await chiama(request, 'test-setup', { azione: 'apri', sessionId, tappa: 0 });
+    const fasi = aperta.esercizi as Esercizio[];
+    const ada = await entra(request, corpo.code, 'Ada');
+    const bea = await entra(request, corpo.code, 'Bea');
+    for (let k = 0; k < 2; k++) expect((await consegna(request, ada, k, fasi[k].soluzione)).corpo.promosso).toBe(true);
+    await consiglio(request, ada, { domanda: 'e adesso?' });
+    for (let k = 0; k < 5; k++) expect((await consegna(request, bea, k, fasi[k].soluzione)).corpo.promosso).toBe(true);
+
+    // Dal vivo: fasi al posto dei chilometri, i consigli accanto al nome, la scheda toccando la riga.
+    await page.goto(`/docente/sessione/${sessionId}`);
+    await page.getByRole('button', { name: 'Accesso di prova (emulatori)' }).click();
+    const righe = page.getByRole('list', { name: 'classifica' }).locator('li');
+    await expect(righe).toHaveCount(2);
+    await expect(righe.first()).toContainText('Bea');
+    await expect(righe.first()).toContainText('5/5 fasi');
+    await expect(righe.nth(1)).toContainText('Ada');
+    await expect(righe.nth(1)).toContainText('2/5 fasi');
+    await expect(righe.nth(1)).toContainText('🚴 1');
+    await righe.nth(1).click();
+    await expect(page.getByRole('list', { name: 'consigli dati' }).locator('li')).toHaveCount(1);
+    await expect(page.getByText('«e adesso?»')).toBeVisible();
+    await expect(page.getByText('Programma promosso alla fase 2')).toBeVisible();
+
+    // Chiusa: i voti al posto dei punti, e il CSV.
+    await page.getByRole('button', { name: 'Chiudi la tappa' }).click();
+    const voti = page.getByRole('list', { name: 'voti della cronoscalata' }).locator('li');
+    await expect(voti).toHaveCount(2);
+    await expect(voti.first()).toContainText('Bea');
+    await expect(voti.first()).toContainText('10');
+    await expect(voti.nth(1)).toContainText('Ada');
+    await expect(voti.nth(1)).toContainText('2/5 fasi · 1 consiglio');
+    await expect(voti.nth(1)).toContainText('3'); // 2 fasi su 5 → 4, meno un consiglio
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Scarica CSV per il registro' }).click();
+    const file = await download;
+    expect(file.suggestedFilename()).toBe('cronoscalata-2A-tappa1.csv');
+    const testo = await (await import('node:fs/promises')).readFile(await file.path(), 'utf-8');
+    expect(testo).toContain('Nome;Numero;Fasi su 5;Consigli;Errori;Voto proposto');
+    expect(testo).toContain('Bea;2;5;0;0;10');
+    expect(testo).toContain('Ada;1;2;1;0;3');
+
+    // La generale non conta la Cronoscalata: dopo la tappa "ripeti" Ada e Bea hanno solo quei punti.
+    const letto = (await chiama(request, 'test-setup', { azione: 'leggi', sessionId })).corpo;
+    expect(letto.sessione.generale.every((g: { punti: number }) => g.punti === 0)).toBe(true);
+    const { corpo: ripeti } = await chiama(request, 'test-setup', { azione: 'apri', sessionId, tappa: 1 });
+    const km = ripeti.esercizi as Esercizio[];
+    for (let k = 0; k < 5; k++) {
+      await chiama(request, 'submit', { playerId: ada.playerId, token: ada.token, tappa: 1, km: k, risposta: km[k].soluzione });
+    }
+    await chiama(request, 'test-setup', { azione: 'chiudiTappa', sessionId, tappa: 1 });
+    const dopo = (await chiama(request, 'test-setup', { azione: 'leggi', sessionId })).corpo;
+    expect(dopo.sessione.generale[0]).toMatchObject({ name: 'Ada', punti: 25, tappeContate: 1 });
+    expect(dopo.allievi.find((a: { name: string }) => a.name === 'Bea').tappe['0'].punti).toBe(0);
+  });
+});

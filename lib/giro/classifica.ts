@@ -2,6 +2,7 @@
  * durate. Funzioni pure, girano nel browser del docente sui dati che arrivano da Firestore
  * in tempo reale. Le classifiche (di tappa e generale) stanno in giro.ts. */
 import type { TipoEsercizio } from './esercizi';
+import { votoProposto } from './progetti';
 
 /** Come è andato un allievo in una tappa, con le date già convertite. */
 export type ProgressoLim = {
@@ -13,6 +14,10 @@ export type ProgressoLim = {
   ordineArrivo: number | null;
   posizione: number | null;
   punti: number | null;
+  /** Cronoscalata: i consigli del gregario e il codice promosso a ogni fase. */
+  consigli: number;
+  gregario: Array<{ km: number; domanda: string; consiglio: string }>;
+  codice: Record<string, string>;
 };
 
 export type AllievoLim = {
@@ -63,6 +68,50 @@ export function riepilogoErrori(
     .map(([tipo, v]) => ({ tipo, ...v }))
     .filter((r) => r.km > 0)
     .sort((a, b) => b.errori / b.km - a.errori / a.km);
+}
+
+/* ---------------------------------------------------------------- Cronoscalata */
+
+export type RigaCronoscalata = {
+  id: string;
+  name: string;
+  numero: number | null;
+  fasi: number;
+  consigli: number;
+  errori: number;
+  /** Il voto proposto al docente (lib/giro/progetti.ts): si cambia a mano prima di esportare. */
+  voto: number;
+};
+
+/**
+ * La tabella della Cronoscalata per il docente: tutti gli allievi iscritti, anche chi non
+ * ha consegnato niente (fasi 0, voto al pavimento), in ordine di voto e poi di fasi.
+ */
+export function righeCronoscalata(allievi: AllievoLim[], tappa: number, fasiTotali: number): RigaCronoscalata[] {
+  return allievi
+    .map((a) => {
+      const p = a.tappe?.[String(tappa)];
+      const fasi = p?.km ?? 0;
+      const consigli = p?.consigli ?? 0;
+      return {
+        id: a.id,
+        name: a.name,
+        numero: a.numero,
+        fasi,
+        consigli,
+        errori: p?.errori ?? 0,
+        voto: votoProposto(fasi, fasiTotali, consigli),
+      };
+    })
+    .sort((x, y) => y.voto - x.voto || y.fasi - x.fasi || x.consigli - y.consigli || x.name.localeCompare(y.name, 'it'));
+}
+
+/** La tabella in CSV con il punto e virgola, che Excel in italiano apre senza chiedere niente. */
+export function csvCronoscalata(righe: RigaCronoscalata[], fasiTotali: number): string {
+  const pulisci = (v: string) => (/[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  const testa = ['Nome', 'Numero', `Fasi su ${fasiTotali}`, 'Consigli', 'Errori', 'Voto proposto'];
+  const corpo = righe.map((r) => [pulisci(r.name), r.numero ?? '', r.fasi, r.consigli, r.errori, r.voto].join(';'));
+  return [testa.join(';'), ...corpo].join('\n') + '\n';
 }
 
 /** Nome leggibile del tipo di esercizio, per il riepilogo alla LIM. */

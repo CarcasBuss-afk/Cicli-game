@@ -203,24 +203,30 @@ export function indiceTappa(valore: unknown, sessione: SessioneDoc): number {
 
 /* ------------------------------------------------------------ punti alla chiusura */
 
+/** Le tappe che non entrano nella generale: la Cronoscalata (il compito di realtà) fa voto, non punti. */
+function fuoriGenerale(tappe: TappaDoc[]): Set<string> {
+  return new Set(tappe.map((t, i) => (infoTema(t.tema).progetto ? String(i) : null)).filter((i): i is string => i !== null));
+}
+
 /** Classifica generale dai punti salvati, con in più quelli appena calcolati per una tappa. */
 function calcolaGenerale(
-  migliori: number | null,
+  sessione: Pick<SessioneDoc, 'migliori' | 'tappe'>,
   allievi: AllievoLetto[],
   appena?: { indice: number; punti: Map<string, number> },
 ): RigaGeneraleDoc[] {
+  const escluse = fuoriGenerale(sessione.tappe);
   const righe = classificaGenerale(
     allievi.map((a) => {
       const punti: Record<string, number> = {};
       for (const [t, p] of Object.entries(a.dati.tappe ?? {})) {
-        if (typeof p.punti === 'number') punti[t] = p.punti;
+        if (typeof p.punti === 'number' && !escluse.has(t)) punti[t] = p.punti;
       }
-      if (appena && a.dati.tappe?.[String(appena.indice)]) {
+      if (appena && a.dati.tappe?.[String(appena.indice)] && !escluse.has(String(appena.indice))) {
         punti[String(appena.indice)] = appena.punti.get(a.id) ?? 0;
       }
       return { id: a.id, name: a.dati.name, numero: a.dati.numero ?? null, punti };
     }),
-    migliori,
+    sessione.migliori,
   );
   return righe.map((r) => ({
     id: r.id,
@@ -250,6 +256,8 @@ function fissaPunti(tx: Transaction, sessione: SessioneDoc, indice: number, alli
     }),
   );
   const perId = new Map(righe.map((r) => [r.id, r]));
+  // La Cronoscalata dà un voto, non punti: resta fuori dalla generale.
+  const progetto = Boolean(infoTema(sessione.tappe[indice].tema).progetto);
 
   // Ricevono posizione e punti solo quelli che hanno corso questa tappa: l'assente non
   // ha la voce, ed è proprio questo che le "migliori N tappe" compensano.
@@ -258,10 +266,10 @@ function fissaPunti(tx: Transaction, sessione: SessioneDoc, indice: number, alli
     const riga = perId.get(a.id)!;
     tx.update(a.ref, {
       [`tappe.${indice}.posizione`]: riga.posizione,
-      [`tappe.${indice}.punti`]: riga.punti,
+      [`tappe.${indice}.punti`]: progetto ? 0 : riga.punti,
     });
   }
-  return calcolaGenerale(sessione.migliori, allievi, {
+  return calcolaGenerale(sessione, allievi, {
     indice,
     punti: new Map(righe.map((r) => [r.id, r.punti])),
   });
@@ -382,11 +390,12 @@ export async function eliminaTappa(sessionId: string, indiceGrezzo: unknown): Pr
     const aperta = sessione.tappaAperta;
     const tappaAperta =
       aperta === null || aperta === undefined || aperta === indice ? null : aperta > indice ? aperta - 1 : aperta;
+    const tappe = sessione.tappe.filter((_, i) => i !== indice);
     tx.update(ref, {
-      tappe: sessione.tappe.filter((_, i) => i !== indice),
+      tappe,
       tappaAperta,
       arrivati: rinumeraDopoCancellazione(sessione.arrivati ?? {}, indice),
-      generale: calcolaGenerale(sessione.migliori, aggiornati),
+      generale: calcolaGenerale({ migliori: sessione.migliori, tappe }, aggiornati),
     });
   });
 }
@@ -395,9 +404,9 @@ export async function eliminaTappa(sessionId: string, indiceGrezzo: unknown): Pr
 export async function impostaMigliori(sessionId: string, valore: unknown): Promise<void> {
   const migliori = validaMigliori(valore);
   await getDb().runTransaction(async (tx) => {
-    const { ref } = await leggiGiro(tx, sessionId);
+    const { ref, sessione } = await leggiGiro(tx, sessionId);
     const allievi = await leggiAllievi(tx, sessionId);
-    tx.update(ref, { migliori, generale: calcolaGenerale(migliori, allievi) });
+    tx.update(ref, { migliori, generale: calcolaGenerale({ migliori, tappe: sessione.tappe }, allievi) });
   });
 }
 
@@ -412,7 +421,7 @@ export async function ricalcola(sessionId: string, indice: number | null): Promi
     const generale =
       indice !== null && sessione.tappe[indice]?.stato === 'chiusa'
         ? fissaPunti(tx, sessione, indice, allievi)
-        : calcolaGenerale(sessione.migliori, allievi);
+        : calcolaGenerale(sessione, allievi);
     tx.update(ref, { generale });
   });
 }

@@ -13,7 +13,16 @@ import { getClientDb } from '@/lib/firebaseClient';
 import { Accesso } from '../../Accesso';
 import { chiamaDocente } from '../../api';
 import { useDocente } from '../../useDocente';
-import { cronaca, formattaSecondi, NOME_TIPO, riepilogoErrori, type AllievoLim, type ProgressoLim } from '@/lib/giro/classifica';
+import {
+  cronaca,
+  csvCronoscalata,
+  formattaSecondi,
+  NOME_TIPO,
+  riepilogoErrori,
+  righeCronoscalata,
+  type AllievoLim,
+  type ProgressoLim,
+} from '@/lib/giro/classifica';
 import type { TipoEsercizio } from '@/lib/giro/esercizi';
 import { classificaTappa, infoTema, TEMI_DEL_GIRO, type Tema } from '@/lib/giro/giro';
 
@@ -28,6 +37,8 @@ type TappaLim = {
   scadenza: Date | null;
   /** Tipi dei chilometri, per il riepilogo degli errori. Vuoto finché non si apre. */
   tipi: TipoEsercizio[];
+  /** Cronoscalata: i chilometri sono le fasi di un progetto, e si fa un voto invece dei punti. */
+  progetto: boolean;
 };
 
 type RigaGenerale = { id: string; name: string; numero: number | null; punti: number; tappeContate: number; posizione: number };
@@ -56,6 +67,13 @@ function progressoDa(grezzo: Record<string, unknown>): ProgressoLim {
     ordineArrivo: (grezzo.ordineArrivo as number) ?? null,
     posizione: (grezzo.posizione as number) ?? null,
     punti: (grezzo.punti as number) ?? null,
+    consigli: (grezzo.consigli as number) ?? 0,
+    gregario: ((grezzo.gregario ?? []) as Array<{ km: number; domanda: string; consiglio: string }>).map((g) => ({
+      km: g.km,
+      domanda: g.domanda ?? '',
+      consiglio: g.consiglio ?? '',
+    })),
+    codice: (grezzo.codice as Record<string, string>) ?? {},
   };
 }
 
@@ -99,6 +117,7 @@ export function Lim({ sessionId }: { sessionId: string }) {
             durataSec: (t.durataSec as number | null) ?? null,
             scadenza: data(t.scadenzaAt),
             tipi: ((t.esercizi ?? []) as Array<{ tipo: TipoEsercizio }>).map((e) => e.tipo),
+            progetto: Boolean(infoTema(t.tema as Tema).progetto),
           })),
         });
       },
@@ -381,7 +400,9 @@ function TappaInCorso({
       <section className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-(--color-bordo) bg-(--color-fondo-card) px-4 py-2">
         <p className="text-xl font-bold">
           {singola ? tappa.nome : `Tappa ${indice + 1} · ${tappa.nome}`}
-          <span className="ml-3 text-base font-normal text-(--color-testo-tenue)">{tappa.km} km</span>
+          <span className="ml-3 text-base font-normal text-(--color-testo-tenue)">
+            {tappa.progetto ? `${tappa.km} fasi · ogni consiglio del gregario costa un punto` : `${tappa.km} km`}
+          </span>
         </p>
         {secondi !== null && (
           <p
@@ -431,6 +452,7 @@ function TappaInCorso({
                 km={r.km}
                 totale={tappa.km}
                 errori={r.errori}
+                consigli={tappa.progetto ? (a?.tappe[String(indice)]?.consigli ?? 0) : null}
                 arrivo={a?.tappe[String(indice)]?.ordineArrivo ?? null}
                 maglia={maglia === r.id}
                 inTesta={r.posizione === 1 && r.km > 0}
@@ -438,6 +460,7 @@ function TappaInCorso({
                 scelto={scelto === r.id}
                 onClick={() => setScelto(scelto === r.id ? null : r.id)}
               >
+                {a && tappa.progetto && <SchedaAllievo progresso={a.tappe[String(indice)] ?? null} />}
                 {a && (
                   <Azioni allievo={a} indice={indice} km={tappa.km} azione={(c) => azione('allievi', { ...c, playerId: a.id })} />
                 )}
@@ -495,6 +518,7 @@ function RigaCorridore({
   km,
   totale,
   errori,
+  consigli,
   arrivo,
   maglia,
   inTesta,
@@ -509,6 +533,8 @@ function RigaCorridore({
   km: number;
   totale: number;
   errori: number;
+  /** Cronoscalata: i consigli chiesti al gregario; null nelle tappe normali. */
+  consigli: number | null;
   arrivo: number | null;
   maglia: boolean;
   inTesta: boolean;
@@ -534,8 +560,13 @@ function RigaCorridore({
         <span className={`min-w-0 flex-1 truncate font-bold ${compatta ? 'text-xl' : 'text-2xl'}`}>{nome}</span>
         {compatta && <Caselle fatti={km} totale={totale} />}
         <span className={`shrink-0 font-mono text-(--color-testo-tenue) ${compatta ? 'text-sm' : 'text-xl'}`}>
-          {km}/{totale} km
+          {km}/{totale} {consigli === null ? 'km' : 'fasi'}
         </span>
+        {consigli !== null && consigli > 0 && (
+          <span className={`shrink-0 text-(--color-giallo) ${compatta ? 'text-sm' : 'text-xl'}`} title="consigli del gregario">
+            🚴 {consigli}
+          </span>
+        )}
         {arrivo !== null && (
           <span className={`shrink-0 text-(--color-giallo) ${compatta ? 'text-sm' : 'text-xl'}`}>
             🏁 {arrivo}°{compatta ? '' : ' arrivato'}
@@ -622,7 +653,14 @@ function FraLeTappe({
         </section>
       ) : (
         <div className="flex flex-1 flex-col gap-4 lg:flex-row">
-          <div className="min-w-0 flex-1">{ultima && <RisultatiTappa giro={giro} indice={ultima.i} allievi={allievi} />}</div>
+          <div className="min-w-0 flex-1">
+            {ultima &&
+              (ultima.t.progetto ? (
+                <RisultatiCronoscalata giro={giro} indice={ultima.i} allievi={allievi} />
+              ) : (
+                <RisultatiTappa giro={giro} indice={ultima.i} allievi={allievi} />
+              ))}
+          </div>
           <aside className="flex w-full shrink-0 flex-col gap-3 lg:w-[30rem]">
             <ClassificaGenerale giro={giro} azione={azione} />
             <PianoGiro giro={giro} azione={azione} />
@@ -806,6 +844,9 @@ function FineGiro({ giro, allievi, singola }: { giro: GiroLim; allievi: AllievoL
           <Podio nomi={podio} />
         </section>
         {singola ? <RisultatiTappa giro={giro} indice={0} allievi={allievi} /> : <ClassificaFinale righe={giro.generale} />}
+        {giro.tappe.map((t, i) =>
+          t.progetto && t.stato === 'chiusa' ? <RisultatiCronoscalata key={i} giro={giro} indice={i} allievi={allievi} /> : null,
+        )}
       </div>
       {riepilogo.some((r) => r.errori > 0) && (
         <aside className="w-full shrink-0 lg:w-80">
@@ -848,6 +889,108 @@ function ClassificaFinale({ righe }: { righe: RigaGenerale[] }) {
         </li>
       ))}
     </ol>
+  );
+}
+
+/* ----------------------------------------------------------------- Cronoscalata */
+
+/** Fa scaricare un file di testo dal browser del docente. */
+function scarica(nome: string, contenuto: string, tipo = 'text/csv;charset=utf-8') {
+  const url = URL.createObjectURL(new Blob(['\ufeff' + contenuto], { type: tipo }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nome;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+/**
+ * La tabella della Cronoscalata chiusa: fasi, consigli, errori e il voto proposto. Non ci
+ * sono punti: il compito di realtà resta fuori dalla generale. Il CSV va nel registro.
+ */
+function RisultatiCronoscalata({ giro, indice, allievi }: { giro: GiroLim; indice: number; allievi: AllievoLim[] }) {
+  const tappa = giro.tappe[indice];
+  const righe = useMemo(() => righeCronoscalata(allievi, indice, tappa.km), [allievi, indice, tappa.km]);
+  const [aperto, setAperto] = useState<string | null>(null);
+  const perId = useMemo(() => new Map(allievi.map((a) => [a.id, a])), [allievi]);
+  const colonne = righe.length > 12 ? 2 : 1;
+  return (
+    <section className="rounded-xl border border-(--color-giallo)/40 bg-(--color-giallo)/5 p-4">
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-xl font-bold">
+          Tappa {indice + 1} · {tappa.nome}: i voti
+        </h2>
+        <button
+          onClick={() => scarica(`cronoscalata-${giro.classLabel}-tappa${indice + 1}.csv`, csvCronoscalata(righe, tappa.km))}
+          className="rounded-lg border border-(--color-bordo) px-3 py-1 text-sm hover:border-(--color-giallo)"
+        >
+          Scarica CSV per il registro
+        </button>
+      </div>
+      <p className="mb-2 text-sm text-(--color-testo-tenue)">
+        10 meno un punto a consiglio, mai sotto 5 per chi finisce; chi non finisce parte dalle fasi fatte. È una proposta:
+        tocca un nome per vedere consigli e codice.
+      </p>
+      <ol
+        aria-label="voti della cronoscalata"
+        className={`grid grid-flow-col gap-x-6 gap-y-0.5 ${GRIGLIA[colonne]}`}
+        style={righePerColonna(righe.length, colonne)}
+      >
+        {righe.map((r) => (
+          <li
+            key={r.id}
+            onClick={() => setAperto(aperto === r.id ? null : r.id)}
+            className={`cursor-pointer rounded px-1 hover:bg-white/5 ${aperto === r.id ? 'col-span-full bg-white/5' : ''}`}
+          >
+            <div className="flex items-baseline justify-between gap-2">
+              <span className="flex min-w-0 items-baseline gap-2">
+                {r.numero !== null && <Dorsale numero={r.numero} />}
+                <span className="truncate font-bold">{r.name}</span>
+              </span>
+              <span className="shrink-0 text-(--color-testo-tenue)">
+                {r.fasi}/{tappa.km} fasi · {r.consigli} {r.consigli === 1 ? 'consiglio' : 'consigli'} · {r.errori}{' '}
+                {r.errori === 1 ? 'errore' : 'errori'} ·{' '}
+                <span className="font-mono text-lg font-black text-(--color-giallo)">{r.voto}</span>
+              </span>
+            </div>
+            {aperto === r.id && <SchedaAllievo progresso={perId.get(r.id)?.tappe[String(indice)] ?? null} />}
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
+}
+
+/** Che cosa ha chiesto al gregario e l'ultimo programma promosso: per correggere a mano con cognizione. */
+function SchedaAllievo({ progresso }: { progresso: ProgressoLim | null }) {
+  const ultimo = progresso ? Object.entries(progresso.codice).sort((a, b) => Number(b[0]) - Number(a[0]))[0] : undefined;
+  return (
+    <div onClick={(e) => e.stopPropagation()} className="mt-2 grid gap-3 border-t border-(--color-bordo) pt-2 text-base sm:grid-cols-2">
+      <div>
+        <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Consigli del gregario</p>
+        {!progresso || progresso.gregario.length === 0 ? (
+          <p className="text-(--color-testo-tenue)">Nessuno.</p>
+        ) : (
+          <ol aria-label="consigli dati" className="flex flex-col gap-1">
+            {progresso.gregario.map((g, i) => (
+              <li key={i} className="rounded bg-black/30 px-2 py-1">
+                <span className="text-sm text-(--color-testo-tenue)">fase {g.km + 1}{g.domanda ? ` · «${g.domanda}»` : ''}</span>
+                <br />
+                {g.consiglio}
+              </li>
+            ))}
+          </ol>
+        )}
+      </div>
+      <div>
+        <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">
+          {ultimo ? `Programma promosso alla fase ${Number(ultimo[0]) + 1}` : 'Nessuna fase promossa'}
+        </p>
+        {ultimo && (
+          <pre className="overflow-x-auto rounded bg-black/40 p-2 font-mono text-sm text-(--color-giallo)">{ultimo[1]}</pre>
+        )}
+      </div>
+    </div>
   );
 }
 
