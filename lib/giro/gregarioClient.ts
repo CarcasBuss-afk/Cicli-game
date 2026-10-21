@@ -33,7 +33,7 @@ function finto(): boolean {
 export async function chiediConsiglio(contesto: ContestoConsiglio): Promise<string> {
   if (finto()) {
     const risposta = pulisciConsiglio(consiglioFinto(contesto));
-    if (contieneCodice(risposta)) throw new ApiError(503, 'GREGARIO_NON_DISPONIBILE', 'Il gregario non ha un consiglio buono adesso: riprova fra poco');
+    if (contieneCodice(risposta, contesto.codice)) throw new ApiError(503, 'GREGARIO_NON_DISPONIBILE', 'Il gregario non ha un consiglio buono adesso: riprova fra poco');
     return risposta;
   }
 
@@ -43,7 +43,10 @@ export async function chiediConsiglio(contesto: ContestoConsiglio): Promise<stri
     try {
       const risposta = await anthropic().messages.create({
         model: MODELLO_GREGARIO,
-        max_tokens: 300,
+        max_tokens: 400,
+        // Senza questo Haiku ragiona prima di rispondere e il ragionamento si mangia i
+        // token: il testo arrivava vuoto e il gregario "non aveva un consiglio buono".
+        thinking: { type: 'disabled' },
         system: PROMPT_SISTEMA,
         messages: messaggi,
       });
@@ -56,7 +59,9 @@ export async function chiediConsiglio(contesto: ContestoConsiglio): Promise<stri
       throw new ApiError(503, 'GREGARIO_NON_DISPONIBILE', 'Il gregario non risponde: riprova fra poco');
     }
     const consiglio = pulisciConsiglio(testo);
-    if (consiglio && !contieneCodice(consiglio)) return consiglio;
+    if (consiglio && !contieneCodice(consiglio, contesto.codice)) return consiglio;
+    // Nei log di Vercel si vede che cosa è stato scartato: serve a tarare prompt e filtro.
+    console.warn('[gregario] risposta scartata', { tentativo, vuota: !consiglio, testo });
     // Si rimanda la risposta sbagliata e si chiede di rifarla senza codice.
     messaggi.push({ role: 'assistant', content: testo });
     messaggi.push({ role: 'user', content: 'Il consiglio contiene del codice: rifallo a parole, senza nessuna riga di programma, in 2-3 frasi.' });

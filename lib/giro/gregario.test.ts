@@ -32,6 +32,18 @@ describe('contieneCodice', () => {
       expect(contieneCodice(no), no).toBe(true);
     }
   });
+
+  it("lascia citare le righe che l'allievo ha scritto, non quelle che dovrebbe scrivere", () => {
+    const suo = 'for i in range(1, 9):\n    totale = 0\n    totale += 15\n    print(f"Settimana {i}: {totale} €")';
+    expect(contieneCodice('Guarda la riga `totale = 0`: è dentro il ciclo, quindi riparte da zero a ogni giro.', suo)).toBe(false);
+    expect(contieneCodice('Il numero in `totale += 15` non è la quota della consegna.', suo)).toBe(false);
+    // Spazi diversi non cambiano la citazione.
+    expect(contieneCodice('La riga `totale=0` va spostata.', suo)).toBe(false);
+    // La riga giusta, che lui non ha scritto, resta vietata; i blocchi sempre.
+    expect(contieneCodice('Scrivi `totale += 20` al posto di quella riga.', suo)).toBe(true);
+    expect(contieneCodice('Il tuo codice:\n```\ntotale = 0\n```', suo)).toBe(true);
+    expect(contieneCodice('Guarda la riga `totale = 0`.', '')).toBe(true);
+  });
 });
 
 describe('il messaggio al modello', () => {
