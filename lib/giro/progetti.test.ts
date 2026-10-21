@@ -141,9 +141,26 @@ describe("la tabella d'allenamento", () => {
     expect(valutaRisposta(fasi[1], calcolo).hint).toMatch(/accumula/);
   });
 
-  it('il corpo del ciclo può avere tre righe: totale, stampa, aumento', () => {
-    expect(fasi[2].vincoli.righeCorpoMax).toBe(3);
-    expect(valutaRisposta(fasi[2], fasi[2].soluzione).promosso).toBe(true);
+  it("le righe del corpo sono libere: la variabile d'appoggio per la barra va bene (il caso visto in classe)", () => {
+    const inClasse = [
+      `km = ${partenza}`,
+      'totale = 0',
+      `for settimane in range(1, ${n + 1}):`,
+      '    totale += km',
+      '    barra = "=" * settimane',
+      '    print(f"Settimana {settimane}: {km} km (totale {totale}) {barra}")',
+      `    km += ${incremento}`,
+    ].join('\n');
+    const esito = valutaRisposta(fasi[3], inClasse);
+    expect(esito.hint).toBeNull();
+    expect(esito.promosso).toBe(true);
+  });
+
+  it('otto print a mano in un ciclo che gira una volta sola non passano', () => {
+    const furbo = ['totale = 0', 'for i in range(1):', '    totale += 1', ...fasi[0].outputAtteso.map((r) => `    print("${r}")`)].join('\n');
+    const esito = valutaRisposta(fasi[0], furbo);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('un solo `print`');
   });
 
   it('i due temi Cronoscalata sono nell\'elenco del docente', () => {

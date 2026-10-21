@@ -77,13 +77,21 @@ function rigaFinale(p: ParametriSalvadanaio): string {
 }
 
 /**
- * Vincoli delle fasi: un ciclo solo e un corpo corto, come nel Giro, ma con un po' di
- * aria in più (fino a 3 righe nel corpo: accumulo, stampa, e una variabile d'appoggio).
- * Da `accumuloDalla` in poi dentro il ciclo ci vuole l'accumulo: `totale = quota * i`
- * darebbe lo stesso output, ma il progetto esiste per insegnare la variabile che ricorda.
+ * Vincoli delle fasi: un ciclo solo con dentro un solo `print`. Le righe del corpo sono
+ * libere: chi si fa una variabile d'appoggio (`barra = "=" * i`) scrive meglio, non
+ * peggio; il furbo da fermare è chi mette otto `print` in un `for i in range(1)`, e lo
+ * ferma il conto dei `print`. Da `accumuloDalla` in poi dentro il ciclo ci vuole
+ * l'accumulo: `totale = quota * i` darebbe lo stesso output, ma il progetto esiste per
+ * insegnare la variabile che ricorda.
  */
 function vincoliFase(fase: number, accumuloDalla = 3): Vincoli {
-  return { forRichiesti: 1, righeCorpoMax: 3, printFuoriCicloMax: fase === 5 ? 1 : 0, accumuloRichiesto: fase >= accumuloDalla };
+  return {
+    forRichiesti: 1,
+    righeCorpoMax: null,
+    printNelCicloMax: 1,
+    printFuoriCicloMax: fase === 5 ? 1 : 0,
+    accumuloRichiesto: fase >= accumuloDalla,
+  };
 }
 
 function fasiSalvadanaio(seme: number): Esercizio[] {

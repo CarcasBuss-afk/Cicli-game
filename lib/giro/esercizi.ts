@@ -46,6 +46,12 @@ export interface Vincoli {
    * le gare create prima che esistesse non ce l'hanno, e vale come false.
    */
   accumuloRichiesto?: boolean;
+  /**
+   * Massimo di `print` dentro i cicli; null o assente = non si controlla. Nei progetti
+   * sostituisce il limite sulle righe del corpo: le variabili d'appoggio sono benvenute,
+   * otto `print` a mano in un `for i in range(1)` no.
+   */
+  printNelCicloMax?: number | null;
 }
 
 export interface Esercizio {

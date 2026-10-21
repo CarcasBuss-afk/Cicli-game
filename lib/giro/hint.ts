@@ -241,6 +241,12 @@ function hintStruttura(tappa: Esercizio, struttura: Struttura): string | null {
       ? 'Il `print` va dentro il ciclo: niente `print` aggiunti a mano fuori dal ciclo'
       : 'Fuori dal ciclo ci va un solo `print`, quello del risultato';
   }
+  const printNelCicloMax = tappa.vincoli.printNelCicloMax ?? null;
+  if (printNelCicloMax !== null && struttura.numPrint - struttura.printFuoriCiclo > printNelCicloMax) {
+    return printNelCicloMax === 1
+      ? 'Dentro il ciclo basta un solo `print`: è il ciclo che lo ripete, non devi scrivere una riga per ogni giro'
+      : `Dentro il ciclo bastano ${printNelCicloMax} \`print\``;
+  }
   if (tappa.vincoli.accumuloRichiesto && struttura.accumuliNelCiclo === 0) {
     return 'Il risultato è giusto, ma deve calcolarlo il ciclo: dentro il ciclo ci vuole una variabile che accumula, per esempio `totale += i`';
   }
