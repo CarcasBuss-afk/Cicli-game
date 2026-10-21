@@ -13,7 +13,7 @@
  */
 import { generatore, type Esercizio, type Vincoli } from './esercizi';
 
-export type Progetto = 'salvadanaio';
+export type Progetto = 'salvadanaio' | 'allenamento';
 
 export interface SchedaProgetto {
   id: Progetto;
@@ -79,11 +79,11 @@ function rigaFinale(p: ParametriSalvadanaio): string {
 /**
  * Vincoli delle fasi: un ciclo solo e un corpo corto, come nel Giro, ma con un po' di
  * aria in più (fino a 3 righe nel corpo: accumulo, stampa, e una variabile d'appoggio).
- * Dalla fase 3 dentro il ciclo ci vuole l'accumulo: `totale = quota * i` darebbe lo
- * stesso output, ma il progetto esiste per insegnare la variabile che ricorda.
+ * Da `accumuloDalla` in poi dentro il ciclo ci vuole l'accumulo: `totale = quota * i`
+ * darebbe lo stesso output, ma il progetto esiste per insegnare la variabile che ricorda.
  */
-function vincoliFase(fase: number): Vincoli {
-  return { forRichiesti: 1, righeCorpoMax: 3, printFuoriCicloMax: fase === 5 ? 1 : 0, accumuloRichiesto: fase >= 3 };
+function vincoliFase(fase: number, accumuloDalla = 3): Vincoli {
+  return { forRichiesti: 1, righeCorpoMax: 3, printFuoriCicloMax: fase === 5 ? 1 : 0, accumuloRichiesto: fase >= accumuloDalla };
 }
 
 function fasiSalvadanaio(seme: number): Esercizio[] {
@@ -158,11 +158,135 @@ function schedaSalvadanaio(seme: number): SchedaProgetto {
   };
 }
 
+/* ------------------------------------------------------- la tabella di allenamento */
+
+/* Il passo dopo il salvadanaio: due variabili che ricordano (i km della settimana, che
+ * crescono, e il totale percorso), e l'ordine delle istruzioni nel corpo che cambia il
+ * risultato: i km si stampano **prima** di aumentarli. */
+
+const PARTENZE = [8, 10, 12, 15] as const;
+const INCREMENTI = [2, 3, 5] as const;
+const GARE = ['la granfondo di giugno', 'la gara di paese', 'la salita del Mortirolo', 'la pedalata con gli amici', 'il raduno di primavera'] as const;
+
+interface ParametriAllenamento {
+  partenza: number;
+  incremento: number;
+  settimane: number;
+  gara: string;
+}
+
+function parametriAllenamento(seme: number): ParametriAllenamento {
+  const rnd = generatore(seme);
+  const partenza = PARTENZE[Math.floor(rnd() * PARTENZE.length)];
+  const incremento = INCREMENTI[Math.floor(rnd() * INCREMENTI.length)];
+  const settimane = 6 + Math.floor(rnd() * 4);
+  const gara = GARE[Math.floor(rnd() * GARE.length)];
+  return { partenza, incremento, settimane, gara };
+}
+
+/** Le righe delle settimane nelle quattro forme del programma; `totaleFinale` serve alla riga d'arrivo. */
+function righeAllenamento(p: ParametriAllenamento, fase: 1 | 2 | 3 | 4): { righe: string[]; totale: number } {
+  const righe: string[] = [];
+  let km = p.partenza;
+  let totale = 0;
+  for (let i = 1; i <= p.settimane; i++) {
+    totale += km;
+    if (fase === 1) righe.push(`Settimana ${i}`);
+    else if (fase === 2) righe.push(`Settimana ${i}: ${km} km`);
+    else if (fase === 3) righe.push(`Settimana ${i}: ${km} km (totale ${totale})`);
+    else righe.push(`Settimana ${i}: ${km} km (totale ${totale}) ${'='.repeat(i)}`);
+    km += p.incremento;
+  }
+  return { righe, totale };
+}
+
+function rigaArrivo(p: ParametriAllenamento): string {
+  return `In ${p.settimane} settimane hai pedalato ${righeAllenamento(p, 4).totale} km`;
+}
+
+function fasiAllenamento(seme: number): Esercizio[] {
+  const p = parametriAllenamento(seme);
+  const { partenza, incremento, settimane } = p;
+  const base = { tipo: 'progetto' as const, terreno: 'montagna' as const, mostraOutput: true, risposta: 'codice' as const };
+  const ciclo = `for i in range(1, ${settimane + 1}):`;
+  const corpo3 = `    totale += km\n    print(f"Settimana {i}: {km} km (totale {totale})`;
+  return [
+    {
+      ...base,
+      consegna:
+        `**Fase 1 — le settimane.** Il piano ha una riga per settimana. Scrivi un ciclo che stampa ` +
+        `\`Settimana 1\`, \`Settimana 2\`… fino a \`Settimana ${settimane}\`.`,
+      outputAtteso: righeAllenamento(p, 1).righe,
+      soluzione: `${ciclo}\n    print(f"Settimana {i}")`,
+      vincoli: vincoliFase(1),
+    },
+    {
+      ...base,
+      consegna:
+        `**Fase 2 — i chilometri che crescono.** La prima settimana si fanno ${partenza} km, poi ogni settimana ` +
+        `${incremento} in più: ${partenza}, ${partenza + incremento}, ${partenza + 2 * incremento}… Usa una variabile \`km\` che parte da ${partenza} ` +
+        `**prima** del ciclo; dentro, prima la stampi (\`Settimana 1: ${partenza} km\`) e **poi** la aumenti di ${incremento}.`,
+      outputAtteso: righeAllenamento(p, 2).righe,
+      soluzione: `km = ${partenza}\n${ciclo}\n    print(f"Settimana {i}: {km} km")\n    km += ${incremento}`,
+      vincoli: vincoliFase(2, 2),
+    },
+    {
+      ...base,
+      consegna:
+        `**Fase 3 — il totale.** Accanto ai km della settimana, fra parentesi, quanti km hai fatto in tutto fin lì: ` +
+        `\`(totale ${partenza})\`, poi \`(totale ${2 * partenza + incremento})\`… Ti serve una seconda variabile \`totale\` che parte da 0 ` +
+        `e a ogni settimana cresce dei km di quella settimana.`,
+      outputAtteso: righeAllenamento(p, 3).righe,
+      soluzione: `km = ${partenza}\ntotale = 0\n${ciclo}\n${corpo3}")\n    km += ${incremento}`,
+      vincoli: vincoliFase(3, 2),
+    },
+    {
+      ...base,
+      consegna:
+        `**Fase 4 — la barra.** Dopo la parentesi, separata da uno spazio, una barra di \`=\` che si allunga: ` +
+        `uno alla prima settimana, due alla seconda, e così via (\`"=" * 3\` fa \`===\`).`,
+      outputAtteso: righeAllenamento(p, 4).righe,
+      soluzione: `km = ${partenza}\ntotale = 0\n${ciclo}\n${corpo3} " + "=" * i)\n    km += ${incremento}`,
+      vincoli: vincoliFase(4, 2),
+    },
+    {
+      ...base,
+      consegna:
+        `**Fase 5 — l'arrivo.** Quando il ciclo ha finito, stampa una riga sola: \`${rigaArrivo(p)}\`. ` +
+        `Usa \`totale\`, non scrivere il numero a mano.`,
+      outputAtteso: [...righeAllenamento(p, 4).righe, rigaArrivo(p)],
+      soluzione:
+        `km = ${partenza}\ntotale = 0\n${ciclo}\n${corpo3} " + "=" * i)\n    km += ${incremento}\n` +
+        `print(f"In ${settimane} settimane hai pedalato {totale} km")`,
+      vincoli: vincoliFase(5, 2),
+    },
+  ];
+}
+
+function schedaAllenamento(seme: number): SchedaProgetto {
+  const p = parametriAllenamento(seme);
+  const { righe, totale } = righeAllenamento(p, 4);
+  return {
+    id: 'allenamento',
+    titolo: "La tabella d'allenamento",
+    committente:
+      `Un amico si prepara per ${p.gara} e ti chiede il piano: si parte da ${p.partenza} km la prima settimana ` +
+      `e si aggiungono ${p.incremento} km ogni settimana, per ${p.settimane} settimane. Lo vuole stampato, da appendere in garage.`,
+    prodotto: 'La tabella: una riga per settimana con i km da fare, il totale percorso fin lì e una barra che cresce; alla fine quanti km ha pedalato.',
+    dati: [`Partenza: ${p.partenza} km`, `Aumento: +${p.incremento} km a settimana`, `Settimane: ${p.settimane}`, `Totale: ${totale} km`],
+    outputFinale: [...righe, rigaArrivo(p)],
+  };
+}
+
 /* ------------------------------------------------------------------- catalogo */
 
 const PROGETTI: Record<Progetto, { fasi: (seme: number) => Esercizio[]; scheda: (seme: number) => SchedaProgetto }> = {
   salvadanaio: { fasi: fasiSalvadanaio, scheda: schedaSalvadanaio },
+  allenamento: { fasi: fasiAllenamento, scheda: schedaAllenamento },
 };
+
+/** I progetti nell'ordine didattico: ognuno è un passo avanti rispetto al precedente. */
+export const ELENCO_PROGETTI: Progetto[] = ['salvadanaio', 'allenamento'];
 
 /** Le fasi del progetto, come chilometri della tappa. Stesso seme, stesse fasi. */
 export function generaCronoscalata(progetto: Progetto, seme: number): Esercizio[] {

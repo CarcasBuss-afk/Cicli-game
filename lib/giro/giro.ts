@@ -33,6 +33,7 @@ export type Tema =
   | 'accumulatore'
   | 'parola'
   | 'salvadanaio'
+  | 'allenamento'
   | 'misto';
 
 export interface InfoTema {
@@ -138,6 +139,14 @@ export const TEMI: InfoTema[] = [
     piano: [],
     durataMinuti: null,
     progetto: 'salvadanaio',
+  },
+  {
+    id: 'allenamento',
+    nome: "Cronoscalata: l'allenamento",
+    descrizione: 'Il secondo compito di realtà: due variabili che ricordano, e l\'ordine delle istruzioni che conta',
+    piano: [],
+    durataMinuti: null,
+    progetto: 'allenamento',
   },
   {
     id: 'misto',

@@ -320,9 +320,29 @@ deve poter confrontare i programmi alla LIM).
 | 4 | la barra `*` accanto al totale, un asterisco per settimana | `"*" * i` |
 | 5 | riga finale `Obiettivo 120 € raggiunto in 8 settimane` | `print` dopo il ciclo |
 
-Tutto si fa con il sottoinsieme del micro-interprete (`+`, `*`, f-string, accumulatore). Gli
-altri progetti pensati — biglietti numerati della festa, tabella di allenamento in bici —
-stanno nella stessa struttura; l'orario dell'autobus richiederebbe `//` e `%`, rimandato.
+Tutto si fa con il sottoinsieme del micro-interprete (`+`, `*`, f-string, accumulatore).
+
+### Il secondo progetto: la tabella d'allenamento (21 ottobre 2026)
+
+Committente: un amico che prepara una gara. Prodotto: il piano di allenamento da appendere
+in garage. Si parte da P km la prima settimana e si aggiungono I km a settimana (P ∈ {8,
+10, 12, 15}, I ∈ {2, 3, 5}, 6-9 settimane, dal seme).
+
+| Fase | Consegna | Cosa aggiunge |
+|---|---|---|
+| 1 | `Settimana 1` … `Settimana 8` | `for` + f-string |
+| 2 | `Settimana 1: 10 km`, `Settimana 2: 13 km`… | `km` che parte prima del ciclo e cresce **dopo** la stampa: l'ordine nel corpo conta |
+| 3 | `… (totale 23)` | il **secondo accumulatore** |
+| 4 | la barra `=` | `"=" * i` |
+| 5 | `In 8 settimane hai pedalato 316 km` | `print` dopo il ciclo |
+
+È il passo dopo il salvadanaio: due variabili che ricordano, corpo del ciclo di tre righe,
+e un errore nuovo che si vede subito (aumentare i km prima di stamparli sbaglia la prima
+riga). L'accumulo è richiesto già dalla fase 2.
+
+Altre idee nella stessa struttura: i biglietti numerati della festa (corpo di tre righe,
+cornice-testo-cornice), il listino del bar con i cicli annidati (quando la classe ci
+arriva). L'orario dell'autobus richiederebbe `//` e `%`, rimandato.
 
 ### Il Gregario: il consiglio dell'IA
 
