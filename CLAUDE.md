@@ -135,6 +135,9 @@ giroSessions/{sessionId}/players/{playerId}
     ordineArrivo?: number           // se ha finito tutti i km
     posizione?: number              // fissati alla chiusura della tappa
     punti?: number
+    codice?: { [k]: string }        // il codice promosso a ogni km (la Cronoscalata riparte da qui)
+    consigli?: number               // Cronoscalata: consigli del gregario, un punto l'uno
+    gregario?: Array<{km, domanda, consiglio, at}>
   } }
 ```
 
@@ -147,7 +150,8 @@ Allievo (`/api/giro/*`, tutte POST, body JSON, auth `playerId` + `token` via sha
 | `join` | `{code, name}` | `{playerId, token, name, numero, sessionStatus, numTappe, classLabel}` | Giro `waiting` o `running`; codice anche in minuscolo; nomi normalizzati e doppioni rifiutati (il messaggio suggerisce «Luca B.» oppure il rientro col numero) |
 | `rientro` | `{code, numero}` | come `join` | Rientro da un altro PC con il numero di corsa. Il token viene **rigenerato**: quello rimasto sul PC di prima smette di valere |
 | `status` | `{playerId, token}` | `{sessionStatus, name, numero, classLabel, numTappe, tappeCorse, singola, generale, erroriTotali, tappa, ultimaTappa}` | `tappa` = la tappa in corso vista dall'allievo (`indice, tema, nomeTema, km, kmFatti, secondiRimasti, scaduta, finita, ordineArrivo, esercizio`), `null` fra una tappa e l'altra; `esercizio` è solo il km da fare adesso. `generale` = `{posizione, punti, corridori}` dalla fotografia del server. `ultimaTappa` = risultato dell'ultima tappa chiusa che ha corso |
-| `submit` | `{playerId, token, tappa, km, risposta}` | promosso: `{promosso: true, output, kmFatti, finita, ordineArrivo, erroriTotali, esercizio}`; bocciato: `{promosso: false, hint, output, erroriTotali}` | `tappa` deve essere quella aperta e `km` esattamente i km già fatti. **Una risposta sbagliata non è un errore HTTP**: torna 200 con l'hint. Tutto in una transazione |
+| `submit` | `{playerId, token, tappa, km, risposta}` | promosso: `{promosso: true, output, kmFatti, finita, ordineArrivo, erroriTotali, esercizio, voto}`; bocciato: `{promosso: false, hint, output, erroriTotali}` | `tappa` deve essere quella aperta e `km` esattamente i km già fatti. **Una risposta sbagliata non è un errore HTTP**: torna 200 con l'hint. Tutto in una transazione. Il codice promosso si salva (`tappe[t].codice[k]`); nella Cronoscalata torna come `codiceIniziale` della fase dopo e `voto` è quello se arriva in fondo |
+| `consiglio` | `{playerId, token, tappa, codice, domanda?}` | `{consiglio, consigli, consigliRimasti, voto}` | Solo nella **Cronoscalata** (tappa con `progetto`): il gregario (Claude Haiku, `lib/giro/gregarioClient.ts`) dà un consiglio a parole sulla fase in corso, mai codice (filtro `contieneCodice`, altrimenti 503). Costa un punto; tetto `MAX_CONSIGLI` = 30; salvato in `tappe[t].gregario`. Nei test `GREGARIO_FINTO=1` |
 
 Docente (`/api/docente/*`, `Authorization: Bearer <ID token>`, email in `TEACHER_EMAILS`; claim `teacher` auto-assegnato al primo accesso):
 
@@ -159,7 +163,7 @@ Docente (`/api/docente/*`, `Authorization: Bearer <ID token>`, email in `TEACHER
 
 `/api/giro/test-setup` esiste **solo per i test**: risponde 404 se non è impostato `FIRESTORE_EMULATOR_HOST`. Prepara Giri, apre e chiude tappe, fa scadere il tempo, e restituisce anche le soluzioni: non deve mai funzionare in produzione.
 
-Errori: HTTP 4xx/5xx con `{error, message}` in italiano. Codici: `INVALID_BODY`, `INVALID_NAME`, `SESSION_NOT_FOUND` (404), `DUPLICATE_PLAYER` (409), `PLAYER_NOT_FOUND` (404), `UNAUTHORIZED` (401), `SESSION_NOT_RUNNING` (403, Giro non partito o chiuso), `INVALID_TAPPA` (400), `TAPPA_NON_APERTA` (409), `TEMPO_SCADUTO` (403), `TAPPA_FINITA` (403, ha già fatto tutti i km), `INVALID_KM` (400 fuori range, 409 non è il km corrente), `TAPPA_CHIUSA` (409, riaprire una tappa corsa), `ULTIMA_TAPPA` (400, cancellare l'unica tappa), `SESSION_CLOSED` (409), `RATE_LIMITED` (429), `INTERNAL` (500).
+Errori: HTTP 4xx/5xx con `{error, message}` in italiano. Codici: `INVALID_BODY`, `INVALID_NAME`, `SESSION_NOT_FOUND` (404), `DUPLICATE_PLAYER` (409), `PLAYER_NOT_FOUND` (404), `UNAUTHORIZED` (401), `SESSION_NOT_RUNNING` (403, Giro non partito o chiuso), `INVALID_TAPPA` (400), `TAPPA_NON_APERTA` (409), `TEMPO_SCADUTO` (403), `TAPPA_FINITA` (403, ha già fatto tutti i km), `INVALID_KM` (400 fuori range, 409 non è il km corrente), `TAPPA_CHIUSA` (409, riaprire una tappa corsa), `ULTIMA_TAPPA` (400, cancellare l'unica tappa), `SESSION_CLOSED` (409), `NON_PROGETTO` (400, gregario fuori dalla Cronoscalata), `CONSIGLI_FINITI` (403), `GREGARIO_NON_DISPONIBILE` (503, il modello non risponde o insiste col codice), `RATE_LIMITED` (429), `INTERNAL` (500).
 
 ## Pagine
 
@@ -171,7 +175,7 @@ Errori: HTTP 4xx/5xx con `{error, message}` in italiano. Codici: `INVALID_BODY`,
 ## Stack e convenzioni
 
 - Next.js (App Router) + TypeScript + Tailwind **alla radice del repo**, deploy su Vercel, Node 22. `firebase-admin` v13 (la 14 rompe su Vercel, verificato nell'escape room).
-- Credenziali Admin da variabili d'ambiente (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`): stessi valori dell'escape room (`html-escape-room/web/.env`), mai file di service account nel repo.
+- Credenziali Admin da variabili d'ambiente (`FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`): stessi valori dell'escape room (`html-escape-room/web/.env`), mai file di service account nel repo. `ANTHROPIC_API_KEY` per il gregario: stesso valore di `edu-code/.env.local`; senza chiave risponde il gregario finto.
 - Editor: CodeMirror 6 (`codemirror`, `@codemirror/lang-python`, tema One Dark).
 - Micro-interprete, generatori e hint in `lib/giro/` **puri e senza dipendenze** (niente Firestore, niente Next): testabili in isolamento. I moduli che toccano Firestore (`store.ts`, `service.ts`, `sessioni.ts`) hanno `import 'server-only'`.
 - Test: **Vitest** (`npm test`) per micro-interprete, generatori, hint, nomi e rate limit (è il cuore, va coperto bene); **Playwright** (`npm run test:api`, solo Chromium) con emulatore Firestore per API e flusso completo, sul modello di `html-escape-room/tests/api/`. Gli emulatori girano sulle porte 8099/9199 e il server di test sulla 3211: diverse da quelle dell'escape room, così i due progetti possono avere i test aperti insieme. Serve Java.

@@ -5,12 +5,16 @@
  * escono mai.
  */
 import 'server-only';
-import { FieldValue } from 'firebase-admin/firestore';
+import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getDb } from '@/lib/firebaseAdmin';
-import { esercizioPerAllievo } from './esercizi';
+import { esercizioPerAllievo, type EsercizioPubblico } from './esercizi';
 import { infoTema } from './giro';
+import { MAX_CONSIGLI, normalizzaDomanda } from './gregario';
+import { chiediConsiglio } from './gregarioClient';
 import { valutaRisposta } from './hint';
 import { ApiError } from './http';
+import { esegui } from './interprete';
+import { schedaProgetto, votoSeFinisce } from './progetti';
 import { chiaveNome, normalizzaNome, validaNome } from './nomi';
 import { richiestaAmmessa } from './rateLimit';
 import {
@@ -45,6 +49,35 @@ function secondiRimasti(tappa: TappaDoc, ora = Date.now()): number | null {
 }
 
 const kmFatti = (allievo: AllievoDoc, indice: number) => allievo.tappe?.[String(indice)]?.km ?? 0;
+
+/* ----------------------------------------------------------------- Cronoscalata */
+
+/** Il progetto della tappa, se è una Cronoscalata. */
+const progettoDi = (tappa: TappaDoc) => infoTema(tappa.tema).progetto ?? null;
+
+/**
+ * Nella Cronoscalata il programma cresce di fase in fase: l'esercizio arriva all'allievo
+ * con dentro il codice promosso alla fase prima, così l'editor non riparte da vuoto
+ * (nemmeno dopo una ricarica o da un altro PC).
+ */
+function conCodicePrecedente(esercizio: EsercizioPubblico, codice: string | undefined): EsercizioPubblico {
+  return codice ? { ...esercizio, codiceIniziale: codice } : esercizio;
+}
+
+/** Lo stato della Cronoscalata visto dall'allievo: scheda, consigli, voto. */
+function statoCronoscalata(tappa: TappaDoc, allievo: AllievoDoc, indice: number) {
+  const progetto = progettoDi(tappa);
+  if (!progetto) return null;
+  const p = allievo.tappe?.[String(indice)];
+  const consigli = p?.consigli ?? 0;
+  return {
+    scheda: schedaProgetto(progetto, tappa.seme),
+    consigli,
+    consigliRimasti: Math.max(0, MAX_CONSIGLI - consigli),
+    voto: votoSeFinisce(consigli),
+    gregario: (p?.gregario ?? []).map((g) => ({ fase: g.km + 1, domanda: g.domanda, consiglio: g.consiglio })),
+  };
+}
 
 /* ------------------------------------------------------------------------- join */
 
@@ -163,6 +196,8 @@ function tappaInCorso(ctx: Contesto) {
   const finita = fatti >= tappa.km;
   const finitoIlTempo = scaduta(tappa);
   const esercizio = !finita && !finitoIlTempo ? tappa.esercizi[fatti] : undefined;
+  const progresso = ctx.allievo.tappe?.[String(indice)];
+  const codicePrecedente = progettoDi(tappa) && fatti > 0 ? progresso?.codice?.[String(fatti - 1)] : undefined;
   return {
     indice,
     tema: tappa.tema,
@@ -172,8 +207,10 @@ function tappaInCorso(ctx: Contesto) {
     secondiRimasti: secondiRimasti(tappa),
     scaduta: finitoIlTempo,
     finita,
-    ordineArrivo: ctx.allievo.tappe?.[String(indice)]?.ordineArrivo ?? null,
-    esercizio: esercizio ? esercizioPerAllievo(esercizio) : null,
+    ordineArrivo: progresso?.ordineArrivo ?? null,
+    esercizio: esercizio ? conCodicePrecedente(esercizioPerAllievo(esercizio), codicePrecedente) : null,
+    /** Solo nella Cronoscalata: la scheda del compito, i consigli chiesti, il voto. */
+    cronoscalata: statoCronoscalata(tappa, ctx.allievo, indice),
   };
 }
 
@@ -288,6 +325,7 @@ export async function submit(body: Record<string, unknown>) {
     const ordineArrivo = finita ? (sessione.arrivati?.[String(t)] ?? 0) + 1 : null;
     tx.update(ctx.allievoRef, {
       [`${base}.km`]: nuoviKm,
+      [`${base}.codice.${k}`]: risposta,
       [`${base}.kmAt.${k}`]: FieldValue.serverTimestamp(),
       [`${base}.ultimoAt`]: FieldValue.serverTimestamp(),
       ...(finita ? { [`${base}.ordineArrivo`]: ordineArrivo } : {}),
@@ -295,6 +333,8 @@ export async function submit(body: Record<string, unknown>) {
     if (finita) tx.update(ctx.sessioneRef, { [`arrivati.${t}`]: FieldValue.increment(1) });
 
     const seguente = finita ? undefined : tappa.esercizi[nuoviKm];
+    const progetto = progettoDi(tappa);
+    const consigli = allievo.tappe?.[String(t)]?.consigli ?? 0;
     return {
       promosso: true,
       output: valutazione.output,
@@ -302,7 +342,84 @@ export async function submit(body: Record<string, unknown>) {
       finita,
       ordineArrivo,
       erroriTotali: erroriPrima,
-      esercizio: seguente ? esercizioPerAllievo(seguente) : null,
+      esercizio: seguente ? conCodicePrecedente(esercizioPerAllievo(seguente), progetto ? risposta : undefined) : null,
+      /** Nella Cronoscalata: il voto se arriva in fondo (all'ultima fase è quello vero). */
+      voto: progetto ? votoSeFinisce(consigli) : null,
     };
   });
+}
+
+/* -------------------------------------------------------------------- consiglio */
+
+/**
+ * Un consiglio del gregario sulla fase in corso. Costa un punto sul voto, quindi: la
+ * tappa deve essere una Cronoscalata aperta, la fase non finita, il tetto non raggiunto.
+ * La chiamata al modello sta fuori dalla transazione (è lenta e può fallire); il
+ * conteggio si aggiorna dentro, rileggendo l'allievo.
+ */
+export async function consiglio(body: Record<string, unknown>) {
+  limita(chiaveAllievo(body));
+  const domanda = normalizzaDomanda(body.domanda);
+  const codice = typeof body.codice === 'string' ? body.codice.slice(0, 4000) : '';
+
+  const ctx = await caricaContesto(body);
+  const { sessione, allievo } = ctx;
+  if (sessione.status !== 'running') {
+    throw new ApiError(403, 'SESSION_NOT_RUNNING', sessione.status === 'closed' ? 'Il Giro è chiuso' : 'Il Giro non è ancora partito');
+  }
+  const t = intero(body.tappa);
+  if (!Number.isInteger(t) || t < 0 || t >= sessione.tappe.length) {
+    throw new ApiError(400, 'INVALID_TAPPA', 'Tappa non valida: ricarica la pagina');
+  }
+  const tappa = sessione.tappe[t];
+  if (sessione.tappaAperta !== t || tappa.stato !== 'in-corso') {
+    throw new ApiError(409, 'TAPPA_NON_APERTA', 'Questa tappa non è aperta: ricarica la pagina');
+  }
+  const progetto = progettoDi(tappa);
+  if (!progetto) throw new ApiError(400, 'NON_PROGETTO', "In questa tappa il gregario non c'è: si corre da soli");
+  if (scaduta(tappa)) throw new ApiError(403, 'TEMPO_SCADUTO', 'Tempo scaduto! Il gregario non serve più');
+
+  const fatti = kmFatti(allievo, t);
+  if (fatti >= tappa.km) throw new ApiError(403, 'TAPPA_FINITA', 'Hai già finito: il gregario non serve più');
+  const progresso = allievo.tappe?.[String(t)];
+  if ((progresso?.consigli ?? 0) >= MAX_CONSIGLI) {
+    throw new ApiError(403, 'CONSIGLI_FINITI', 'Hai usato tutti i consigli di questa tappa: chiama il prof');
+  }
+  const esercizio = tappa.esercizi[fatti];
+  if (!esercizio) throw new ApiError(500, 'INTERNAL', 'Fase non trovata: chiama il prof');
+
+  const esito = esegui(codice);
+  const valutazione = codice.trim() ? valutaRisposta(esercizio, codice) : null;
+  const testo = await chiediConsiglio({
+    scheda: schedaProgetto(progetto, tappa.seme),
+    fase: fatti + 1,
+    fasiTotali: tappa.km,
+    esercizio,
+    codice,
+    esito: esito.ok ? { output: esito.output } : { errore: esito.errore.messaggio },
+    hint: valutazione?.hint ?? null,
+    domanda,
+    precedenti: (progresso?.gregario ?? []).map((g) => ({ fase: g.km + 1, consiglio: g.consiglio })),
+  });
+
+  const consigli = await getDb().runTransaction(async (tx) => {
+    const snap = await tx.get(ctx.allievoRef);
+    const fresco = snap.data() as AllievoDoc | undefined;
+    if (!fresco) throw new ApiError(401, 'UNAUTHORIZED', 'Non ti riconosco: rientra dalla pagina iniziale');
+    const n = fresco.tappe?.[String(t)]?.consigli ?? 0;
+    if (n >= MAX_CONSIGLI) throw new ApiError(403, 'CONSIGLI_FINITI', 'Hai usato tutti i consigli di questa tappa: chiama il prof');
+    const base = `tappe.${t}`;
+    tx.update(ctx.allievoRef, {
+      [`${base}.consigli`]: n + 1,
+      [`${base}.gregario`]: FieldValue.arrayUnion({ km: fatti, domanda, consiglio: testo, at: Timestamp.now() }),
+    });
+    return n + 1;
+  });
+
+  return {
+    consiglio: testo,
+    consigli,
+    consigliRimasti: Math.max(0, MAX_CONSIGLI - consigli),
+    voto: votoSeFinisce(consigli),
+  };
 }

@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { valutaRisposta } from './hint';
 import { esegui } from './interprete';
-import { generaCronoscalata, schedaProgetto, votoProposto } from './progetti';
+import { generaCronoscalata, schedaProgetto, votoProposto, votoSeFinisce } from './progetti';
 import { generaTappa, infoTema, TEMI_DEL_GIRO } from './giro';
 
 const SEMI = Array.from({ length: 40 }, (_, i) => (i + 1) * 1013);
@@ -106,6 +106,12 @@ describe('la Cronoscalata come tema del Giro', () => {
 });
 
 describe('il voto proposto', () => {
+  it('mentre corre, l\'allievo vede il voto che prende se finisce: 10 meno i consigli, mai sotto 5', () => {
+    expect(votoSeFinisce(0)).toBe(10);
+    expect(votoSeFinisce(3)).toBe(7);
+    expect(votoSeFinisce(30)).toBe(5);
+  });
+
   it('parte da 10 e scende di uno a consiglio, fino a 5, per chi finisce', () => {
     expect(votoProposto(5, 5, 0)).toBe(10);
     expect(votoProposto(5, 5, 3)).toBe(7);

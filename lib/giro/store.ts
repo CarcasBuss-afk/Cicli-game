@@ -69,6 +69,15 @@ export type SessioneDoc = {
   generale: RigaGeneraleDoc[];
 };
 
+/** Un consiglio del gregario (Cronoscalata): resta sul documento dell'allievo, il docente lo rilegge. */
+export type ConsiglioDoc = {
+  /** Fase (0-based) in cui è stato chiesto. */
+  km: number;
+  domanda: string;
+  consiglio: string;
+  at: Timestamp;
+};
+
 /** Come è andato un allievo in una tappa. */
 export type ProgressoDoc = {
   /** Chilometri completati. */
@@ -84,6 +93,14 @@ export type ProgressoDoc = {
   /** Fissati alla chiusura della tappa. */
   posizione?: number;
   punti?: number;
+  /**
+   * Il codice promosso a ogni chilometro (chiave = indice). Nella Cronoscalata l'editor
+   * riparte da qui dopo una ricarica o un cambio di PC; il docente vede i programmi.
+   */
+  codice?: Record<string, string>;
+  /** Consigli del gregario chiesti in questa tappa (Cronoscalata): ognuno costa un punto. */
+  consigli?: number;
+  gregario?: ConsiglioDoc[];
 };
 
 export type AllievoDoc = {

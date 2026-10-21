@@ -15,6 +15,7 @@
     "deploy-rules": "node scripts/deploy-rules.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "@codemirror/autocomplete": "^6.20.3",
     "@codemirror/commands": "^6.11.1",
     "@codemirror/lang-python": "^6.2.1",

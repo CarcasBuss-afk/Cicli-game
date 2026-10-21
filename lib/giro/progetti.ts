@@ -181,14 +181,22 @@ export function eProgetto(valore: unknown): valore is Progetto {
 /* ----------------------------------------------------------------------- voto */
 
 /**
- * Il voto proposto al docente: 10 meno un punto a consiglio, pavimento 5, per chi arriva
- * in fondo. Chi non finisce parte da un voto proporzionale alle fasi fatte (3 su 5 → 6),
- * sempre meno i consigli, pavimento 2. È una proposta: il docente la cambia prima di
- * esportare.
+ * Il voto che l'allievo vede mentre corre: quello che prende se arriva in fondo, 10 meno
+ * un punto a consiglio, pavimento 5. È il numero che gli si mostra prima di chiedere un
+ * consiglio («costa 1 punto: voto attuale 9»).
+ */
+export function votoSeFinisce(consigli: number): number {
+  return Math.max(VOTO_MINIMO_FINITO, VOTO_MASSIMO - Math.max(0, consigli));
+}
+
+/**
+ * Il voto proposto al docente a tappa chiusa: `votoSeFinisce` per chi arriva in fondo;
+ * chi non finisce parte da un voto proporzionale alle fasi fatte (3 su 5 → 6), sempre
+ * meno i consigli, pavimento 2. È una proposta: il docente la cambia prima di esportare.
  */
 export function votoProposto(fasiFatte: number, fasiTotali: number, consigli: number): number {
   const finito = fasiTotali > 0 && fasiFatte >= fasiTotali;
-  const base = finito ? VOTO_MASSIMO : fasiTotali > 0 ? Math.round((VOTO_MASSIMO * fasiFatte) / fasiTotali) : 0;
-  const pavimento = finito ? VOTO_MINIMO_FINITO : VOTO_MINIMO;
-  return Math.max(pavimento, base - Math.max(0, consigli));
+  if (finito) return votoSeFinisce(consigli);
+  const base = fasiTotali > 0 ? Math.round((VOTO_MASSIMO * fasiFatte) / fasiTotali) : 0;
+  return Math.max(VOTO_MINIMO, base - Math.max(0, consigli));
 }
