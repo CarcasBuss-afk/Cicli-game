@@ -17,6 +17,7 @@ import {
   type Esercizio,
   type TipoEsercizio,
 } from './esercizi';
+import { generaCronoscalata, type Progetto } from './progetti';
 
 /* ------------------------------------------------------------------------- temi */
 
@@ -31,6 +32,7 @@ export type Tema =
   | 'caccia'
   | 'accumulatore'
   | 'parola'
+  | 'salvadanaio'
   | 'misto';
 
 export interface InfoTema {
@@ -40,8 +42,13 @@ export interface InfoTema {
   descrizione: string;
   /** I chilometri, in ordine: tipo di esercizio e difficoltà. */
   piano: Array<{ tipo: TipoEsercizio; difficolta: Difficolta }>;
-  /** Durata proposta; il docente la cambia quando apre la tappa. */
-  durataMinuti: number;
+  /** Durata proposta; il docente la cambia quando apre la tappa. null = senza limite. */
+  durataMinuti: number | null;
+  /**
+   * Se c'è, la tappa è una Cronoscalata: i chilometri sono le fasi di questo compito di
+   * realtà (lib/giro/progetti.ts) e il piano non si usa.
+   */
+  progetto?: Progetto;
 }
 
 const km = (tipo: TipoEsercizio, difficolta: Difficolta) => ({ tipo, difficolta });
@@ -125,6 +132,14 @@ export const TEMI: InfoTema[] = [
     durataMinuti: 10,
   },
   {
+    id: 'salvadanaio',
+    nome: 'Cronoscalata: il salvadanaio',
+    descrizione: 'Il compito di realtà: un programma intero costruito in 5 fasi, con il gregario',
+    piano: [],
+    durataMinuti: null,
+    progetto: 'salvadanaio',
+  },
+  {
     id: 'misto',
     nome: 'Gara mista',
     descrizione: 'Un percorso misto, come la gara singola: range, lettura, caccia all\'errore',
@@ -158,7 +173,9 @@ export const KM_PER_TAPPA = 5;
  */
 export function generaTappa(tema: Tema, seme: number, kmMisto = KM_MISTO_DEFAULT): Esercizio[] {
   if (tema === 'misto') return generaPercorso(kmMisto, seme);
-  return infoTema(tema).piano.map((p, i) => generaEsercizio(p.tipo, p.difficolta, seme + i * 7919));
+  const info = infoTema(tema);
+  if (info.progetto) return generaCronoscalata(info.progetto, seme);
+  return info.piano.map((p, i) => generaEsercizio(p.tipo, p.difficolta, seme + i * 7919));
 }
 
 /* ------------------------------------------------------------------------ punti */

@@ -116,6 +116,12 @@ function validaDurata(minuti: unknown, predefinita: number | null): number | nul
 
 /* ------------------------------------------------------------------------ creazione */
 
+/** Durata proposta dal tema, in secondi; null per le tappe senza cronometro. */
+function durataProposta(tema: Tema): number | null {
+  const minuti = infoTema(tema).durataMinuti;
+  return minuti === null ? null : minuti * 60;
+}
+
 function tappaDaCorrere(tema: Tema, km: number, durataSec: number | null): TappaDoc {
   return {
     tema,
@@ -147,7 +153,7 @@ export async function creaGiro(
   const tappe =
     opzioni.tipo === 'singola'
       ? [tappaDaCorrere('misto', validaKmMisto(opzioni.km), null)]
-      : validaTemi(opzioni.temi).map((t) => tappaDaCorrere(t, KM_PER_TAPPA, infoTema(t).durataMinuti * 60));
+      : validaTemi(opzioni.temi).map((t) => tappaDaCorrere(t, KM_PER_TAPPA, durataProposta(t)));
   const migliori = opzioni.tipo === 'giro' ? validaMigliori(opzioni.migliori) : null;
   const code = await codiceLibero();
 
@@ -333,7 +339,7 @@ export async function aggiungiTappa(sessionId: string, tema: unknown): Promise<v
     if (sessione.status === 'closed') throw new ApiError(409, 'SESSION_CLOSED', 'Il Giro è chiuso');
     if (sessione.tappe.length >= TAPPE_MAX) throw new ApiError(400, 'INVALID_BODY', `Al massimo ${TAPPE_MAX} tappe`);
     tx.update(ref, {
-      tappe: [...sessione.tappe, tappaDaCorrere(tema, KM_PER_TAPPA, infoTema(tema).durataMinuti * 60)],
+      tappe: [...sessione.tappe, tappaDaCorrere(tema, KM_PER_TAPPA, durataProposta(tema))],
     });
   });
 }

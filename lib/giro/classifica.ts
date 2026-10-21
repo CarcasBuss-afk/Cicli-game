@@ -81,6 +81,7 @@ export const NOME_TIPO: Record<TipoEsercizio, string> = {
   'conta-giri': 'Contare i giri',
   fstring: 'Testo e numero (f-string)',
   'conta-lettere': 'Contare le lettere',
+  progetto: 'Fase del progetto',
 };
 
 /** "m:ss" per il cronometro della tappa. */

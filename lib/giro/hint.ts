@@ -122,8 +122,9 @@ function hintTesto(prodotto: string[], atteso: string[]): string {
     if (mio.toLowerCase() === suo.toLowerCase()) {
       return `Attento alle maiuscole e minuscole: ci vuole ${virgolette(suo)}`;
     }
-    if (mio.replace(/\s+/g, ' ').trim() === suo.replace(/\s+/g, ' ').trim()) {
-      return `Controlla gli spazi: ci vuole ${virgolette(suo)}`;
+    // Senza spazi le righe coincidono: ne manca uno o ce n'è uno di troppo (`1 :` invece di `1:`).
+    if (mio.replace(/\s+/g, '') === suo.replace(/\s+/g, '')) {
+      return `Controlla gli spazi: stampi ${virgolette(mio)}, ci vuole ${virgolette(suo)}`;
     }
     const numeroRiga = i + 1;
     return `Alla riga ${numeroRiga} stampi ${virgolette(mio)}, invece ci vuole ${virgolette(suo)}`;
@@ -174,7 +175,7 @@ function hintSegreto(tappa: Esercizio, prodotto: string[], atteso: string[]): st
   const i = prodotto.findIndex((r, idx) => r !== atteso[idx]);
   const riga = i + 1;
   if (prodotto[i].toLowerCase() === atteso[i].toLowerCase()) return `Attento alle maiuscole alla riga ${riga}`;
-  if (prodotto[i].replace(/\s+/g, ' ').trim() === atteso[i].replace(/\s+/g, ' ').trim()) {
+  if (prodotto[i].replace(/\s+/g, '') === atteso[i].replace(/\s+/g, '')) {
     return `Controlla gli spazi alla riga ${riga}`;
   }
   return `La riga ${riga} non è giusta: rifai a mente il giro numero ${riga} del ciclo — quanto vale \`i\` in quel momento?`;

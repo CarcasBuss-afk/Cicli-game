@@ -24,7 +24,8 @@ export type TipoEsercizio =
   | 'accumulatore-visibile' // somma che cresce, stampata a ogni giro
   | 'conta-giri' // contatore conta += 1
   | 'fstring' // testo e numero insieme: f"{i}° giro", tabellina scritta
-  | 'conta-lettere'; // contare le lettere di una parola con un ciclo
+  | 'conta-lettere' // contare le lettere di una parola con un ciclo
+  | 'progetto'; // una fase di un compito di realtà (lib/giro/progetti.ts)
 
 /** Il terreno dà il tono alla tappa (e il colore sulla LIM): 1 pianura, 2 collina, 3 montagna. */
 export type Terreno = 'pianura' | 'collina' | 'montagna';
@@ -523,6 +524,10 @@ const GENERATORI: Record<TipoEsercizio, (rnd: () => number, d: Difficolta) => Es
   'conta-giri': tappaContaGiri,
   fstring: tappaFstring,
   'conta-lettere': tappaContaLettere,
+  // Le fasi di un progetto non escono a caso da un piano: le genera `generaCronoscalata`.
+  progetto: () => {
+    throw new Error('Le fasi di un progetto si generano con generaCronoscalata (lib/giro/progetti.ts)');
+  },
 };
 
 export function generaEsercizio(tipo: TipoEsercizio, difficolta: Difficolta, seme: number): Esercizio {

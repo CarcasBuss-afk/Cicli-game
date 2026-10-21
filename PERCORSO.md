@@ -3,10 +3,11 @@
 Raccolta delle decisioni prese nel brainstorming. È il piano di contenuto e di struttura
 per la versione del gioco spalmata su più lezioni.
 
-**Stato (9 ottobre 2026)**: **costruito.** Il Giro a tappe tematiche funziona: tappe da 5
+**Stato (21 ottobre 2026)**: **costruito.** Il Giro a tappe tematiche funziona: tappe da 5
 chilometri con il cronometro, punti, classifica generale con le migliori N, numero di corsa
 per rientrare da qualunque PC, e tutti gli esercizi del catalogo. La gara singola di prima
-esiste ancora come Giro di una tappa sola. Restano aperte solo le idee della sezione 10.
+esiste ancora come Giro di una tappa sola. Restano aperte le idee della sezione 10; la
+sezione 11 è il progetto nuovo in costruzione: la **Cronoscalata**, il compito di realtà.
 
 ## 1. L'idea di fondo
 
@@ -284,3 +285,67 @@ chilometri; la generale conta le migliori N tappe.
 - **Aggancio a lab-guardian** per riconoscere l'allievo dalla postazione (sezione 9).
 - **Tarare la difficoltà** dei piani di ciascuna tappa dopo aver visto quanti chilometri fa
   davvero la classe in dieci minuti.
+
+## 11. La Cronoscalata: il compito di realtà guidato
+
+**Decisioni prese con il docente (21 ottobre 2026).** Gli allievi da soli non arriverebbero
+a scrivere un programma intero: il compito di realtà va **presentato sul sito** e spezzato
+in passi che li accompagnano. Possono chiedere consigli all'IA, ogni consiglio costa un
+punto sul voto, e il consiglio non è mai codice.
+
+### L'idea
+
+Una **tappa speciale del Giro**, senza cronometro, che il docente apre come le altre. I suoi
+5 chilometri sono le **fasi di costruzione di un solo programma**: a ogni fase l'allievo
+aggiunge una riga o due a quello che ha già, e il programma cresce fino al prodotto finale.
+L'editor **non si svuota** fra una fase e l'altra. La fase 1 la sanno fare tutti (è la
+tappa "ripetere"); ogni fase sposta un pezzo solo.
+
+La scheda del compito racconta committente, prodotto e **l'output finale per intero**: in un
+compito di realtà il bersaglio si vede, non è un segreto. Per questo in tutte le fasi
+l'output atteso è mostrato e gli hint automatici del Giro restano quelli di sempre.
+
+### Il primo progetto: il salvadanaio
+
+Committente: sé stessi. Prodotto: il piano di risparmio da stampare. I parametri (quota
+settimanale, numero di settimane) li genera il server dal seme della tappa, **uguali per
+tutti** (non li sceglie l'allievo: correggere a mano sarebbe più difficile, e la classe
+deve poter confrontare i programmi alla LIM).
+
+| Fase | Consegna | Cosa aggiunge |
+|---|---|---|
+| 1 | `Settimana 1` … `Settimana 8` | `for` + f-string |
+| 2 | `Settimana 1: 15 €` (la quota accanto) | il numero fisso nel testo |
+| 3 | `Settimana 1: 15 €`, `Settimana 2: 30 €`… il totale che cresce | accumulatore |
+| 4 | la barra `*` accanto al totale, un asterisco per settimana | `"*" * i` |
+| 5 | riga finale `Obiettivo 120 € raggiunto in 8 settimane` | `print` dopo il ciclo |
+
+Tutto si fa con il sottoinsieme del micro-interprete (`+`, `*`, f-string, accumulatore). Gli
+altri progetti pensati — biglietti numerati della festa, tabella di allenamento in bici —
+stanno nella stessa struttura; l'orario dell'autobus richiederebbe `//` e `%`, rimandato.
+
+### Il Gregario: il consiglio dell'IA
+
+Bottone «Chiedi al gregario» accanto all'editor, con una domanda facoltativa (a 14 anni
+spesso non si sa cosa chiedere: il bottone da solo vale «non so andare avanti»). Prima di
+chiedere l'allievo vede «Questo consiglio costa 1 punto. Voto attuale: 9» e conferma.
+
+Il server manda a Claude (Haiku, la stessa chiave di edu-code, in variabile d'ambiente):
+scheda del progetto, consegna della fase, codice attuale, output prodotto e atteso, la
+domanda, i consigli già dati. Regole del tutor: **un consiglio in 2-3 frasi, zero righe di
+codice**, indica dove guardare e che cosa cambiare, mai la riga da scrivere. Il server
+**controlla la risposta** (niente blocchi di codice né righe che sembrano Python) e se non
+va la richiede: l'allievo non vede mai codice. Tetto di 30 consigli per allievo e tappa,
+rate limit come il submit. Ogni consiglio è salvato (fase, domanda, risposta) e il docente
+li rilegge: dicono dove la classe si incaglia.
+
+Gli hint automatici del Giro restano **gratis**: sono sulla sintassi e sul confronto degli
+output, e l'errore continua a costare solo tempo.
+
+### Il voto
+
+`voto = 10 − consigli`, con pavimento **5**, per chi arriva in fondo. Chi non finisce ha un
+voto **proposto** proporzionale alle fasi fatte (3 su 5 → 6), meno i consigli, pavimento 2;
+è solo una proposta, il docente lo cambia prima di esportare. La Cronoscalata **non entra
+nella classifica generale** del Giro: è a parte, con la sua tabella
+`allievo · fasi · consigli · errori · voto proposto` esportabile.

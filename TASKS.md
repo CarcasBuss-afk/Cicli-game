@@ -44,6 +44,12 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] LIM: partenza, tappa dal vivo, risultati fra le tappe, fine del Giro. Pagina dell'allievo con cronometro, tempo scaduto, risultati.
 - [x] Test: 231 unitari, 51 sull'emulatore.
 
+## Task 9 — La Cronoscalata: il compito di realtà guidato (vedi PERCORSO.md §11)
+- [x] 9a. `lib/giro/progetti.ts`: il salvadanaio come 5 fasi (`Esercizio` di tipo `progetto`) generate dal seme, la scheda del compito, il voto proposto. Tema `salvadanaio` senza cronometro. Test: la soluzione di riferimento passa ogni fase su decine di semi; ogni fase è la precedente più un pezzo.
+- [ ] 9b. Il Gregario: `lib/giro/gregario.ts` (prompt, filtro anti-codice, puro) + `api/giro/consiglio` (Claude Haiku, chiave `ANTHROPIC_API_KEY`, tetto e rate limit, consiglio salvato in `giroSessions/{id}/consigli`). Nei test l'IA è finta (`GREGARIO_FINTO`).
+- [ ] 9c. Pagina allievo: layout della Cronoscalata (scheda del compito, fase corrente, editor che non si svuota, bottone del gregario con conferma e voto attuale, i consigli ricevuti).
+- [ ] 9d. Docente/LIM: la tabella `allievo · fasi · consigli · errori · voto proposto`, i consigli letti per allievo, esportazione CSV. La Cronoscalata non entra nella generale.
+
 ## Task 7 — Rifiniture
 - [x] Podio e riepilogo degli errori per tipo di tappa (fatti nel Task 6).
 - [x] README con istruzioni per la classe e per il deploy.
