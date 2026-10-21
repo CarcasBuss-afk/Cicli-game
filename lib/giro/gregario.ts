@@ -114,11 +114,11 @@ export function contieneCodice(testo: string, codiceAllievo = ''): boolean {
 }
 
 /** Via spazi di troppo e apici di blocco residui; taglia i consigli lunghi. */
-export function pulisciConsiglio(testo: string): string {
+export function pulisciConsiglio(testo: string, massimo = MAX_CONSIGLIO): string {
   const pulito = testo.replace(/\r\n?/g, '\n').trim();
-  if (pulito.length <= MAX_CONSIGLIO) return pulito;
-  const taglio = pulito.lastIndexOf('. ', MAX_CONSIGLIO - 1);
-  return taglio > MAX_CONSIGLIO / 2 ? pulito.slice(0, taglio + 1) : pulito.slice(0, MAX_CONSIGLIO) + '…';
+  if (pulito.length <= massimo) return pulito;
+  const taglio = pulito.lastIndexOf('. ', massimo - 1);
+  return taglio > massimo / 2 ? pulito.slice(0, taglio + 1) : pulito.slice(0, massimo) + '…';
 }
 
 /** La domanda dell'allievo, ripulita e accorciata; vuota se non c'è. */

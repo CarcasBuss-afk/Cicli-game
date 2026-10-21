@@ -44,6 +44,8 @@ export default defineConfig({
         GIRO_RATE_LIMIT_PER_MINUTE: String(RATE_LIMIT),
         // Nei test il gregario è finto: niente chiamate al modello.
         GREGARIO_FINTO: '1',
+        // L'Officina ammette solo gli account di questo dominio.
+        OFFICINA_DOMINIO: 'scuola.it',
         NEXT_PUBLIC_FIREBASE_EMULATORS: '1',
         NEXT_PUBLIC_FIREBASE_API_KEY: 'chiave-finta',
         NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: `${PROJECT_ID}.firebaseapp.com`,

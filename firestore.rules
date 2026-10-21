@@ -40,6 +40,21 @@ service cloud.firestore {
       }
     }
 
+    // L'Officina: i compiti di realtà (questo repository). Stesse regole del Giro.
+    match /officinaClassi/{classeId} {
+      allow read: if isTeacher();
+      allow write: if false;
+
+      match /{document=**} {
+        allow read: if isTeacher();
+        allow write: if false;
+      }
+    }
+    match /officinaAllievi/{uid} {
+      allow read: if isTeacher();
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }

@@ -9,6 +9,8 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { ApiError, handler } from '@/lib/giro/http';
 import { apriTappa, chiudiGiro, chiudiTappa, creaGiro, eliminaTappa } from '@/lib/giro/sessioni';
 import { allieviRef, sessioniRef, type AllievoDoc, type SessioneDoc } from '@/lib/giro/store';
+import { eProgetto, generaCronoscalata } from '@/lib/giro/progetti';
+import { semeDa } from '@/lib/officina/regole';
 
 export const dynamic = 'force-dynamic';
 
@@ -140,6 +142,15 @@ export const POST = handler(async (body) => {
         };
       }),
     };
+  }
+
+  if (azione === 'fasiOfficina') {
+    // Le fasi di un compito dell'Officina per un allievo, con le soluzioni: dal suo seme.
+    const uid = typeof body.uid === 'string' ? body.uid : '';
+    const compitoId = typeof body.compitoId === 'string' ? body.compitoId : '';
+    const progetto = body.progetto;
+    if (!eProgetto(progetto)) throw new ApiError(400, 'INVALID_BODY', 'Progetto sconosciuto');
+    return { fasi: generaCronoscalata(progetto, semeDa(`${uid}|${compitoId}`)) };
   }
 
   if (azione === 'svuota') {

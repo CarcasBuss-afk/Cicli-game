@@ -369,3 +369,37 @@ voto **proposto** proporzionale alle fasi fatte (3 su 5 → 6), meno i consigli,
 è solo una proposta, il docente lo cambia prima di esportare. La Cronoscalata **non entra
 nella classifica generale** del Giro: è a parte, con la sua tabella
 `allievo · fasi · consigli · errori · voto proposto` esportabile.
+
+## 12. L'Officina: i compiti di realtà in autonomia (21 ottobre 2026)
+
+**Decisione.** La Cronoscalata (§11) era un innesto sulla gara: tappa aperta dal docente,
+tutti insieme, parametri uguali, nome di battesimo. Per i compiti di realtà il docente
+vuole altro: **un sistema suo**, con una dashboard sua, dove gli allievi **procedono in
+autonomia** (a casa o in laboratorio, al loro ritmo), entrano con **l'account Google della
+scuola**, e hanno un tutor più capace (almeno Sonnet) con domande lunghe quanto serve.
+L'Officina è questo. Il Giro non cambia; la Cronoscalata resta per chi la vuole in classe.
+
+**Identità.** Login Google (SDK client anche per gli allievi, è l'eccezione alla regola del
+Giro), dominio limitato a `OFFICINA_DOMINIO`. Il server verifica l'ID token a ogni chiamata.
+Si conservano **uid, email istituzionale e nome** dell'allievo: decisione presa apposta,
+vale solo per l'Officina (collezioni `officina*`), non per il Giro.
+
+**Classi.** Il docente crea la classe e ottiene un codice; l'allievo entra una volta con
+Google + codice e da lì è nella classe per sempre (`officinaAllievi/{uid}` ricorda le sue
+classi, così non servono query di gruppo).
+
+**Compiti.** Il docente **assegna** un progetto alla classe, con scadenza facoltativa, e lo
+può ritirare. Ogni allievo ha **i suoi parametri** (seme da uid + compito): il vicino non
+copia i numeri. Si lavora fase per fase come nella Cronoscalata; l'ultima consegna, giusta
+o no, resta come bozza e alla riapertura l'editor riparte da lì.
+
+**Il tutor.** Sonnet 5.5 (`TUTOR_MODEL`), conversazione vera (la storia del compito entra
+come messaggi: «non ho capito» ha un senso), domanda fino a 6000 caratteri, risposta fino a
+un paragrafo pieno. Regola "mai codice" e filtro identici al gregario; può spiegare un
+concetto con un esempio della vita. **1 punto a domanda, pavimento 5** per chi finisce.
+
+**Voto.** Finito: 10 − domande (min 5). Scaduto senza finire: proporzionale alle fasi, meno
+le domande (min 2). Il docente può **scriverlo a mano** (`votoDocente`) e tornare indietro.
+
+**Dashboard** (`/docente/officina`): classi → tabella allievi × compiti (fasi, domande,
+voto), il lavoro di ciascuno (codice fase per fase, conversazione col tutor), CSV.

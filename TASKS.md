@@ -51,6 +51,12 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 9e. Secondo progetto: la tabella d'allenamento (due accumulatori, l'ordine nel corpo conta). Test comuni a tutti i progetti con `describe.each(ELENCO_PROGETTI)`.
 - [x] 9d. Docente/LIM: la tabella `allievo · fasi · consigli · errori · voto proposto`, i consigli letti per allievo, esportazione CSV. La Cronoscalata non entra nella generale.
 
+## Task 10 — L'Officina: i compiti di realtà in autonomia (PERCORSO.md §12)
+- [x] 10a. Server: login con l'account scolastico (`lib/officina/auth.ts`, dominio `OFFICINA_DOMINIO`), classi con codice, compiti assegnati con scadenza, lavoro fase per fase con bozza, tutor Sonnet con conversazione (`lib/officina/tutor.ts`), voto del docente. Regole Firestore `officina*`. 7 test sull'emulatore + unitari.
+- [ ] 10b. Pagina allievo `/officina`: login Google, entrare con il codice, elenco dei compiti, il compito (scheda, fase, editor, tutor in conversazione, voto).
+- [ ] 10c. Dashboard `/docente/officina`: classi, codice, assegnare/ritirare compiti con scadenza, tabella allievi × compiti, il lavoro dell'allievo, voto a mano, CSV.
+- [ ] 10d. `input()` nel micro-interprete (risposte fornite dal compito, due serie, confronto sui soli print) e il progetto «lo scontrino del bar».
+
 ## Task 7 — Rifiniture
 - [x] Podio e riepilogo degli errori per tipo di tappa (fatti nel Task 6).
 - [x] README con istruzioni per la classe e per il deploy.
