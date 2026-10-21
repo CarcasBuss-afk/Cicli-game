@@ -74,6 +74,9 @@ export function Dashboard() {
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-black text-(--color-rosa)">Il Giro dei Cicli · gare</h1>
         <div className="flex items-center gap-3 text-sm text-(--color-testo-tenue)">
+          <Link href="/docente/officina" className="font-bold text-(--color-giallo) underline">
+            🔧 L&apos;Officina
+          </Link>
           <span>{utente?.email}</span>
           <button onClick={esci} className="underline">
             esci

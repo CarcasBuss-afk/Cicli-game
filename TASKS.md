@@ -54,7 +54,7 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 ## Task 10 — L'Officina: i compiti di realtà in autonomia (PERCORSO.md §12)
 - [x] 10a. Server: login con l'account scolastico (`lib/officina/auth.ts`, dominio `OFFICINA_DOMINIO`), classi con codice, compiti assegnati con scadenza, lavoro fase per fase con bozza, tutor Sonnet con conversazione (`lib/officina/tutor.ts`), voto del docente. Regole Firestore `officina*`. 7 test sull'emulatore + unitari.
 - [x] 10b. Pagina allievo `/officina`: login Google, entrare con il codice, elenco dei compiti, il compito (scheda, fase, editor, tutor in conversazione, voto).
-- [ ] 10c. Dashboard `/docente/officina`: classi, codice, assegnare/ritirare compiti con scadenza, tabella allievi × compiti, il lavoro dell'allievo, voto a mano, CSV.
+- [x] 10c. Dashboard `/docente/officina`: classi, codice, assegnare/ritirare compiti con scadenza, tabella allievi × compiti, il lavoro dell'allievo, voto a mano, CSV.
 - [ ] 10d. `input()` nel micro-interprete (risposte fornite dal compito, due serie, confronto sui soli print) e il progetto «lo scontrino del bar».
 
 ## Task 7 — Rifiniture

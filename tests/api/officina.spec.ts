@@ -272,3 +272,57 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await expect(page.getByRole('link', { name: /Il salvadanaio/ })).toContainText('Fase 2 di 5');
   });
 });
+
+/* ------------------------------------------------------------- la dashboard del docente */
+
+test.describe("l'Officina nella dashboard del docente", () => {
+  test('classi, tabella in tempo reale, lavoro dell\'allievo, voto a mano, compito nuovo, CSV', async ({ page, request }) => {
+    const { classe, compitoId, luca, fasi } = await scenario(request);
+    const dati = { classeId: classe.classeId, compitoId };
+    for (let k = 0; k < 2; k++) await officina(request, luca, 'consegna', { ...dati, fase: k, codice: fasi[k].soluzione });
+    await officina(request, luca, 'tutor', { ...dati, domanda: 'come si fa il totale?', codice: '' });
+
+    await page.goto('/docente/officina');
+    await page.getByRole('button', { name: 'Accesso di prova (emulatori)' }).click();
+    const scheda = page.getByRole('article').filter({ hasText: classe.codice });
+    await expect(scheda).toContainText('1 compito assegnato');
+    await scheda.getByRole('link', { name: 'Apri' }).click();
+
+    // La tabella: fasi, domande, e il voto proposto in corso d'opera.
+    await expect(page.getByText(classe.codice)).toBeVisible();
+    const riga = page.getByRole('table', { name: 'tabella della classe' }).locator('tbody tr').filter({ hasText: 'Luca Rossi' });
+    await expect(riga).toContainText('2/5');
+    await expect(riga).toContainText('🧑‍🏫 1');
+
+    // Il lavoro: codice fase per fase e la conversazione; poi il voto a mano.
+    await riga.getByRole('button').first().click();
+    const lavoro = page.getByRole('region', { name: "lavoro dell'allievo" });
+    await expect(lavoro).toContainText('2/5 fasi');
+    await expect(lavoro.getByText('Fase 2', { exact: true })).toBeVisible();
+    await expect(lavoro.getByRole('list', { name: 'conversazione' }).locator('li')).toHaveCount(1);
+    await expect(lavoro).toContainText('come si fa il totale?');
+    await lavoro.getByLabel('voto del docente').fill('7');
+    await lavoro.getByRole('button', { name: 'Salva' }).click();
+    await expect(riga).toContainText('7*');
+    // E l'allievo lo vede.
+    expect((await officina(request, luca, 'compiti', { classeId: classe.classeId })).corpo.compiti[0].voto).toBe(7);
+
+    // Un compito nuovo con scadenza: in tempo reale compare nell'elenco e nella tabella.
+    await page.getByLabel('compito da assegnare').selectOption('allenamento');
+    await page.getByLabel('scadenza', { exact: true }).fill('2030-06-30T23:59');
+    await page.getByRole('button', { name: 'Assegna' }).click();
+    await expect(page.getByRole('list', { name: 'compiti assegnati' }).locator('li')).toHaveCount(2);
+    await expect(page.getByRole('columnheader', { name: "La tabella d'allenamento" })).toBeVisible();
+    const elenco = (await officina(request, luca, 'compiti', { classeId: classe.classeId })).corpo.compiti;
+    expect(elenco).toHaveLength(2);
+    expect(elenco[1].scadenzaAt).not.toBeNull();
+
+    // Il CSV.
+    const download = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Scarica CSV' }).click();
+    const file = await download;
+    const testo = await (await import('node:fs/promises')).readFile(await file.path(), 'utf-8');
+    expect(testo).toContain('Nome;Email;Il salvadanaio · fasi;Il salvadanaio · domande;Il salvadanaio · voto');
+    expect(testo).toContain(`Luca Rossi;${luca.email};2;1;7;0;0;`);
+  });
+});

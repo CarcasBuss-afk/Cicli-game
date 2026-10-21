@@ -132,7 +132,11 @@ function riassunto(compito: CompitoDoc, lavoro: LavoroDoc | undefined) {
     fasiTotali: FASI_PER_COMPITO,
     consigli: l.consigli,
     finito,
-    voto: finito || scaduto(compito) ? votoLavoro({ fasi: l.fasi, consigli: l.consigli, finito, votoDocente: l.votoDocente }) : null,
+    // Il voto si vede quando è fissato: finito, scaduto, oppure scritto a mano dal docente.
+    voto:
+      finito || scaduto(compito) || typeof l.votoDocente === 'number'
+        ? votoLavoro({ fasi: l.fasi, consigli: l.consigli, finito, votoDocente: l.votoDocente })
+        : null,
     votoSeFinisci: votoSeFinisce(l.consigli),
   };
 }
