@@ -5,6 +5,7 @@
  * messaggio chiaro. Gli errori del server (4xx/5xx) non si ritentano: sono risposte.
  */
 import type { EsercizioPubblico } from './esercizi';
+import type { SchedaProgetto } from './progetti';
 
 const TIMEOUT_MS = 10_000;
 const TENTATIVI = 3;
@@ -165,6 +166,20 @@ export type TappaInCorso = {
   ordineArrivo: number | null;
   /** Il chilometro da fare; null se ha finito o il tempo è scaduto. */
   esercizio: EsercizioPubblico | null;
+  /** Solo nella Cronoscalata (il compito di realtà): la scheda, i consigli, il voto. */
+  cronoscalata: Cronoscalata | null;
+};
+
+export type ConsiglioRicevuto = { fase: number; domanda: string; consiglio: string };
+
+export type Cronoscalata = {
+  scheda: SchedaProgetto;
+  /** Consigli del gregario già chiesti in questa tappa: un punto l'uno. */
+  consigli: number;
+  consigliRimasti: number;
+  /** Il voto se arriva in fondo: 10 meno i consigli, mai sotto 5. */
+  voto: number;
+  gregario: ConsiglioRicevuto[];
 };
 
 export type RispostaStatus = {
@@ -198,8 +213,12 @@ export type RispostaSubmit =
       ordineArrivo: number | null;
       erroriTotali: number;
       esercizio: EsercizioPubblico | null;
+      /** Cronoscalata: il voto se arriva in fondo; null nelle altre tappe. */
+      voto: number | null;
     }
   | { promosso: false; hint: string; output: string[] | null; erroriTotali: number };
+
+export type RispostaConsiglio = { consiglio: string; consigli: number; consigliRimasti: number; voto: number };
 
 export const join = (code: string, name: string) => chiamaApi<RispostaJoin>('join', { code, name });
 
@@ -212,3 +231,7 @@ export const status = (i: Identita) =>
 /** Consegna del chilometro `km` della tappa `tappa`. */
 export const submit = (i: Identita, tappa: number, km: number, risposta: string) =>
   chiamaApi<RispostaSubmit>('submit', { playerId: i.playerId, token: i.token, tappa, km, risposta });
+
+/** Un consiglio del gregario sulla fase in corso della Cronoscalata (costa un punto). */
+export const consiglio = (i: Identita, tappa: number, codice: string, domanda: string) =>
+  chiamaApi<RispostaConsiglio>('consiglio', { playerId: i.playerId, token: i.token, tappa, codice, domanda });

@@ -11,8 +11,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import EditorPython from '@/components/EditorPython';
+import Gregario from '@/components/Gregario';
+import SchedaCompito from '@/components/SchedaCompito';
 import Testo from '@/components/Testo';
 import {
+  consiglio,
   leggiIdentita,
   messaggioErrore,
   status,
@@ -140,6 +143,10 @@ export default function Gara() {
                   finita: esito.finita,
                   ordineArrivo: esito.ordineArrivo,
                   esercizio: esito.esercizio,
+                  cronoscalata:
+                    p.tappa.cronoscalata && esito.voto !== null
+                      ? { ...p.tappa.cronoscalata, voto: esito.voto }
+                      : p.tappa.cronoscalata,
                 },
               }
             : p,
@@ -157,6 +164,34 @@ export default function Gara() {
       void aggiorna(identita);
     }
   }, [identita, tappa, invio, tempoFinito, serie, aggiorna]);
+
+  /** Cronoscalata: un consiglio del gregario sul codice com'è adesso nell'editor. */
+  const chiediConsiglio = useCallback(
+    async (domanda: string) => {
+      if (!identita || !tappa) throw new Error('Nessuna tappa in corso');
+      const fase = tappa.kmFatti + 1;
+      const r = await consiglio(identita, tappa.indice, rispostaRef.current, domanda);
+      setStato((p) =>
+        p && p.tappa && p.tappa.cronoscalata
+          ? {
+              ...p,
+              tappa: {
+                ...p.tappa,
+                cronoscalata: {
+                  ...p.tappa.cronoscalata,
+                  consigli: r.consigli,
+                  consigliRimasti: r.consigliRimasti,
+                  voto: r.voto,
+                  gregario: [...p.tappa.cronoscalata.gregario, { fase, domanda, consiglio: r.consiglio }],
+                },
+              },
+            }
+          : p,
+      );
+      return r;
+    },
+    [identita, tappa],
+  );
 
   /* ----------------------------------------------------------------- schermate */
 
@@ -213,8 +248,9 @@ export default function Gara() {
     const medaglia =
       tappa.ordineArrivo === 1 ? '🥇' : tappa.ordineArrivo === 2 ? '🥈' : tappa.ordineArrivo === 3 ? '🥉' : '🏁';
     return (
-      <Schermo titolo={stato.singola ? 'Hai finito la gara!' : 'Hai finito la tappa!'} icona={medaglia}>
+      <Schermo titolo={tappa.cronoscalata ? 'Programma finito!' : stato.singola ? 'Hai finito la gara!' : 'Hai finito la tappa!'} icona={medaglia}>
         {testa}
+        {tappa.cronoscalata && <Voto c={tappa.cronoscalata} />}
         {tappa.ordineArrivo !== null && <p className="text-2xl font-bold">Sei arrivato {tappa.ordineArrivo}°</p>}
         <p className="text-(--color-testo-tenue)">
           {tappa.km} km su {tappa.km} · {stato.erroriTotali} {stato.erroriTotali === 1 ? 'errore' : 'errori'} lungo
@@ -268,7 +304,7 @@ export default function Gara() {
         </div>
         <div className="text-right">
           <p className="text-2xl font-black">
-            Km {tappa.kmFatti + 1}
+            {tappa.cronoscalata ? 'Fase' : 'Km'} {tappa.kmFatti + 1}
             <span className="text-base font-normal text-(--color-testo-tenue)"> di {tappa.km}</span>
           </p>
           <p className={`text-sm font-bold ${terreno.colore}`}>
@@ -279,6 +315,10 @@ export default function Gara() {
       </header>
 
       <Strada fatti={tappa.kmFatti} totale={tappa.km} />
+
+      {tappa.cronoscalata && (
+        <SchedaCompito key={tappa.indice} scheda={tappa.cronoscalata.scheda} fase={tappa.kmFatti + 1} fasi={tappa.km} />
+      )}
 
       {/* Il chilometro */}
       <section
@@ -381,6 +421,10 @@ export default function Gara() {
         </section>
       )}
 
+      {tappa.cronoscalata && (
+        <Gregario c={tappa.cronoscalata} fase={tappa.kmFatti + 1} onChiedi={chiediConsiglio} attivo={!invio} />
+      )}
+
       {errore && (
         <section role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-200">
           {errore}
@@ -391,7 +435,9 @@ export default function Gara() {
       )}
 
       <footer className="mt-auto pt-4 text-center text-sm text-(--color-testo-tenue)">
-        Gli errori non tolgono punti: costano solo tempo. Conta chi arriva più lontano.
+        {tappa.cronoscalata
+          ? 'Gli errori non tolgono niente: il programma cresce una fase alla volta. Solo i consigli del gregario costano un punto.'
+          : 'Gli errori non tolgono punti: costano solo tempo. Conta chi arriva più lontano.'}
       </footer>
     </main>
   );
@@ -454,6 +500,21 @@ function RisultatoTappa({ r }: { r: NonNullable<RispostaStatus['ultimaTappa']> }
       <p className="text-2xl font-bold">{r.posizione}° posto</p>
       <p className="text-(--color-testo-tenue)">
         {r.kmFatti} km su {r.km} · {r.punti} {r.punti === 1 ? 'punto' : 'punti'}
+      </p>
+    </div>
+  );
+}
+
+/** Il voto della Cronoscalata a programma finito: 10 meno i consigli chiesti. */
+function Voto({ c }: { c: NonNullable<NonNullable<RispostaStatus['tappa']>['cronoscalata']> }) {
+  return (
+    <div className="rounded-xl border border-(--color-giallo)/50 bg-(--color-giallo)/10 px-6 py-4">
+      <p className="text-sm text-(--color-testo-tenue)">Il tuo voto</p>
+      <p className="font-mono text-5xl font-black text-(--color-giallo)">{c.voto}</p>
+      <p className="text-(--color-testo-tenue)">
+        {c.consigli === 0
+          ? 'Nessun consiglio chiesto: tutto da solo!'
+          : `${c.consigli} ${c.consigli === 1 ? 'consiglio' : 'consigli'} del gregario`}
       </p>
     </div>
   );

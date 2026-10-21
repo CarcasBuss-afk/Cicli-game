@@ -1,7 +1,7 @@
 /* La Cronoscalata dalla parte delle API: la tappa senza cronometro con la scheda del
  * compito, il codice che resta da una fase all'altra, il gregario (finto) che costa un
  * punto, il filtro anti-codice, i rifiuti. */
-import { expect, test, type APIRequestContext } from '@playwright/test';
+import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 
 type Esercizio = { tipo: string; soluzione: string; outputAtteso: string[] };
 type Allievo = { playerId: string; token: string; name: string; numero: number };
@@ -149,5 +149,70 @@ test.describe('la Cronoscalata', () => {
     expect(presto.corpo.error).toBe('SESSION_NOT_RUNNING');
     const falso = await consiglio(request, { ...gino, token: 'x' });
     expect(falso.stato).toBe(401);
+  });
+});
+
+/* ------------------------------------------------------------- la pagina dell'allievo */
+
+/**
+ * Digita il codice riga per riga lasciando fare all'editor l'indentazione: dopo i due
+ * punti rientra da solo, e per tornare a sinistra (il print finale fuori dal ciclo) basta
+ * un Backspace, che in CodeMirror toglie un livello intero.
+ */
+async function digita(page: Page, codice: string) {
+  await page.locator('.cm-content').click();
+  await page.keyboard.press('Control+a');
+  await page.keyboard.press('Delete');
+  let rientro = 0;
+  for (const riga of codice.split('\n')) {
+    const spazi = riga.match(/^\s*/)![0].length;
+    if (spazi < rientro) await page.keyboard.press('Backspace');
+    await page.keyboard.type(riga.trim(), { delay: 8 });
+    await page.keyboard.press('Enter');
+    rientro = riga.trim().endsWith(':') ? spazi + 4 : spazi;
+  }
+}
+
+test.describe('la Cronoscalata nella pagina dell\'allievo', () => {
+  test('scheda del compito, codice che resta, gregario che costa un punto, voto finale', async ({ page, request }) => {
+    const gara = await creaCronoscalata(request);
+    await page.goto('/');
+    await page.locator('form[data-pronto="1"]').waitFor();
+    await page.getByPlaceholder('K7QX').fill(gara.code);
+    await page.getByPlaceholder('Luca').fill('Lia');
+    await page.getByRole('button', { name: 'Al via!' }).click();
+
+    // La scheda del compito con il prodotto finale, la fase 1, niente cronometro.
+    await expect(page.getByText('Fase 1 di 5', { exact: true })).toBeVisible();
+    await expect(page.getByRole('button', { name: /Compito di realtà/ })).toBeVisible();
+    await expect(page.getByText(gara.fasi[4].outputAtteso[gara.fasi[4].outputAtteso.length - 1])).toBeVisible();
+    await expect(page.getByLabel('tempo rimasto')).toHaveCount(0);
+    await expect(page.getByLabel('voto')).toHaveText('10');
+
+    // Il gregario: conferma con il costo, poi il consiglio compare e il voto scende.
+    await page.getByRole('button', { name: 'Chiedi al gregario' }).click();
+    await expect(page.getByText('il voto passa da 10 a 9')).toBeVisible();
+    await page.getByPlaceholder('es. perché il totale non cresce?').fill('da dove parto?');
+    await page.getByRole('button', { name: /Sì, chiedi/ }).click();
+    await expect(page.getByLabel('consigli ricevuti').locator('li')).toHaveCount(1);
+    await expect(page.getByText('«da dove parto?»')).toBeVisible();
+    await expect(page.getByLabel('voto')).toHaveText('9');
+
+    // Fase 1 fatta: la fase 2 riparte dal codice della fase 1, e i consigli di prima non ingombrano.
+    await digita(page, gara.fasi[0].soluzione);
+    await page.getByRole('button', { name: 'Esegui ▶' }).click();
+    await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();
+    await expect(page.locator('.cm-content')).toContainText('Settimana');
+    await expect(page.getByLabel('consigli ricevuti')).toHaveCount(0);
+
+    // Le altre fasi: si riscrive da capo la soluzione (il test non prova l'editing, prova il flusso).
+    for (let k = 1; k < 5; k++) {
+      await digita(page, gara.fasi[k].soluzione);
+      await page.getByRole('button', { name: 'Esegui ▶' }).click();
+      if (k < 4) await expect(page.getByText(`Fase ${k + 2} di 5`, { exact: true })).toBeVisible();
+    }
+    await expect(page.getByText('Programma finito!')).toBeVisible();
+    await expect(page.getByText('1 consiglio del gregario')).toBeVisible();
+    await expect(page.getByText('9', { exact: true })).toBeVisible();
   });
 });
