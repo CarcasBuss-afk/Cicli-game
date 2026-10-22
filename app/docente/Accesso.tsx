@@ -1,5 +1,6 @@
 'use client';
 /* Schermata di accesso del docente, condivisa da dashboard e vista LIM. */
+import Link from 'next/link';
 import type { StatoAccesso } from './useDocente';
 
 export function Accesso({
@@ -44,6 +45,10 @@ export function Accesso({
           {messaggio}
         </p>
       )}
+
+      <Link href="/" className="text-sm text-(--color-testo-tenue) underline hover:text-(--color-testo)">
+        ← tutte le attività
+      </Link>
     </main>
   );
 }

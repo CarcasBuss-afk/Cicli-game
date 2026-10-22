@@ -1,6 +1,7 @@
 'use client';
 /* Schermata di accesso dell'allievo: il pulsante Google e, con gli emulatori, l'accesso di prova. */
 import { useState } from 'react';
+import Link from 'next/link';
 import type { StatoAccesso } from './useAllievo';
 
 export function AccessoAllievo({
@@ -65,6 +66,10 @@ export function AccessoAllievo({
           {messaggio}
         </p>
       )}
+
+      <Link href="/" className="text-sm text-(--color-testo-tenue) underline hover:text-(--color-testo)">
+        ← tutte le attività
+      </Link>
     </main>
   );
 }

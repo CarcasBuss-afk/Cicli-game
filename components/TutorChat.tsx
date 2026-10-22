@@ -9,11 +9,16 @@ import { messaggioErrore, type Scambio } from '@/lib/officina/client';
 interface Props {
   scambi: Scambio[];
   votoSeFinisci: number;
+  /** Domande ancora possibili su questo compito: a zero il tutor non risponde più. */
+  domandeRimaste: number;
   onChiedi(domanda: string): Promise<void>;
   attivo: boolean;
 }
 
-export default function TutorChat({ scambi, votoSeFinisci, onChiedi, attivo }: Props) {
+/** Sotto questa soglia si vede quante domande restano: prima non serve ricordarlo. */
+const AVVISO_RIMASTE = 10;
+
+export default function TutorChat({ scambi, votoSeFinisci, domandeRimaste, onChiedi, attivo }: Props) {
   const [domanda, setDomanda] = useState('');
   const [conferma, setConferma] = useState(false);
   const [attesa, setAttesa] = useState(false);
@@ -39,7 +44,14 @@ export default function TutorChat({ scambi, votoSeFinisci, onChiedi, attivo }: P
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="font-bold">🧑‍🏫 Il tutor</p>
-          <p className="text-sm text-(--color-testo-tenue)">Spiega e ti dice dove guardare, mai il codice. Ogni domanda costa 1 punto.</p>
+          <p className="text-sm text-(--color-testo-tenue)">
+            Spiega e ti dice dove guardare, mai il codice. Ogni domanda costa 1 punto.
+            {domandeRimaste > 0 && domandeRimaste <= AVVISO_RIMASTE && (
+              <span className="ml-1 text-(--color-giallo)" aria-label="domande rimaste">
+                Te ne {domandeRimaste === 1 ? 'resta una' : `restano ${domandeRimaste}`} su questo compito.
+              </span>
+            )}
+          </p>
         </div>
         <p className="text-right">
           <span className="block text-sm text-(--color-testo-tenue)">Voto se arrivi in fondo</span>
@@ -65,7 +77,13 @@ export default function TutorChat({ scambi, votoSeFinisci, onChiedi, attivo }: P
         </ol>
       )}
 
-      {attivo && (
+      {attivo && domandeRimaste === 0 && (
+        <p className="rounded-xl border border-(--color-bordo) bg-black/30 p-3 text-(--color-testo-tenue)">
+          Le domande per questo compito sono finite: da qui in poi vai avanti da solo, o chiedi al prof.
+        </p>
+      )}
+
+      {attivo && domandeRimaste > 0 && (
         <div className="flex flex-col gap-2">
           <textarea
             value={domanda}

@@ -68,6 +68,8 @@ export type CompitoAperto = {
   fasi: number;
   fasiTotali: number;
   consigli: number;
+  /** Domande al tutor ancora possibili su questo compito (tetto per compito). */
+  domandeRimaste: number;
   finito: boolean;
   voto: number | null;
   votoSeFinisci: number;
@@ -91,4 +93,4 @@ export type RispostaConsegna =
     }
   | { promosso: false; hint: string; output: string[] | null; schermo?: RigaSchermo[]; errori: number };
 
-export type RispostaTutor = { risposta: string; consigli: number; votoSeFinisci: number; fase: number };
+export type RispostaTutor = { risposta: string; consigli: number; domandeRimaste: number; votoSeFinisci: number; fase: number };

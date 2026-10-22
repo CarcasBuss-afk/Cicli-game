@@ -48,7 +48,7 @@ async function consegna(page: Page, testo: string, modo: 'codice' | 'output') {
 
 /** Compila l'ingresso. Aspetta `data-pronto`: prima dell'idratazione il pulsante non fa niente. */
 async function registrati(page: Page, code: string, nome: string) {
-  await page.goto('/');
+  await page.goto('/giro');
   await page.locator('form[data-pronto="1"]').waitFor();
   await page.getByPlaceholder('K7QX').fill(code);
   await page.getByPlaceholder('Luca').fill(nome);
@@ -134,7 +134,7 @@ test.describe('attesa e ripresa', () => {
 
     const altroPc = await browser.newContext();
     const altra = await altroPc.newPage();
-    await altra.goto('/');
+    await altra.goto('/giro');
     await altra.locator('form[data-pronto="1"]').waitFor();
     await altra.getByPlaceholder('K7QX').fill(gara.code);
     await altra.getByRole('tab', { name: 'Ho già un numero' }).click();
@@ -147,7 +147,7 @@ test.describe('attesa e ripresa', () => {
 
   test('un numero che non esiste lo dice', async ({ page, request }) => {
     const gara = await creaGara(request, 4);
-    await page.goto('/');
+    await page.goto('/giro');
     await page.locator('form[data-pronto="1"]').waitFor();
     await page.getByPlaceholder('K7QX').fill(gara.code);
     await page.getByRole('tab', { name: 'Ho già un numero' }).click();
@@ -164,7 +164,7 @@ test.describe('attesa e ripresa', () => {
   test('chi è già entrato trova il pulsante per riprendere', async ({ page, request }) => {
     const gara = await creaGara(request, 4);
     await entra(page, gara.code, 'Elsa');
-    await page.goto('/');
+    await page.goto('/giro');
     await expect(page.getByText('Su questo computer stava correndo')).toBeVisible();
     await page.getByRole('button', { name: 'Sono io, riprendi' }).click();
     await expect(page.getByText(/Km 1\b/)).toBeVisible();

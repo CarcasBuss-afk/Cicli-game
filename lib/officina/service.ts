@@ -25,7 +25,7 @@ import {
   type LavoroDoc,
 } from './store';
 import { chiediTutor } from './tutor';
-import { MAX_DOMANDA_TUTOR } from './tutorPrompt';
+import { MAX_DOMANDA_TUTOR, MAX_DOMANDE_TUTOR } from './tutorPrompt';
 
 function limita(utente: Utente): void {
   if (!richiestaAmmessa(`officina:${utente.uid}`)) {
@@ -155,6 +155,7 @@ export async function compito(body: Record<string, unknown>, utente: Utente) {
     fasi: lavoro.fasi,
     fasiTotali: FASI_PER_COMPITO,
     consigli: lavoro.consigli,
+    domandeRimaste: domandeRimaste(lavoro.consigli),
     finito,
     voto: voce.voto,
     votoSeFinisci: votoSeFinisce(lavoro.consigli),
@@ -234,7 +235,12 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
 
 /* -------------------------------------------------------------------- tutor */
 
-/** Una domanda al tutor: costa un punto (fino al pavimento, poi è gratis ma si conta). */
+const domandeRimaste = (consigli: number) => Math.max(0, MAX_DOMANDE_TUTOR - consigli);
+
+/**
+ * Una domanda al tutor: costa un punto (fino al pavimento, poi è gratis ma si conta),
+ * fino al tetto di MAX_DOMANDE_TUTOR per compito.
+ */
 export async function tutor(body: Record<string, unknown>, utente: Utente) {
   limita(utente);
   const domanda = typeof body.domanda === 'string' ? body.domanda.replace(/\r\n?/g, '\n').trim().slice(0, MAX_DOMANDA_TUTOR) : '';
@@ -242,6 +248,9 @@ export async function tutor(body: Record<string, unknown>, utente: Utente) {
 
   const ctx = await contesto(body, utente);
   const { progetto, lavoro, esercizio } = lavoroInCorso(ctx, body, utente.uid);
+  if (lavoro.consigli >= MAX_DOMANDE_TUTOR) {
+    throw new ApiError(403, 'DOMANDE_FINITE', `Hai fatto ${MAX_DOMANDE_TUTOR} domande su questo compito: da qui in poi vai avanti da solo, o chiedi al prof`);
+  }
   const esito = esegui(codice, esercizio.prove?.[0] ? { risposte: esercizio.prove[0].risposte } : {});
   const valutazione = codice.trim() ? valutaRisposta(esercizio, codice) : null;
   const risposta = await chiediTutor(
@@ -272,5 +281,5 @@ export async function tutor(body: Record<string, unknown>, utente: Utente) {
     return attuale.consigli + 1;
   });
 
-  return { risposta, consigli, votoSeFinisci: votoSeFinisce(consigli), fase: lavoro.fasi + 1 };
+  return { risposta, consigli, domandeRimaste: domandeRimaste(consigli), votoSeFinisci: votoSeFinisce(consigli), fase: lavoro.fasi + 1 };
 }

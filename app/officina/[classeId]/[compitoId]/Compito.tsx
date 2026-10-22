@@ -85,6 +85,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
           ? {
               ...p,
               consigli: r.consigli,
+              domandeRimaste: r.domandeRimaste,
               votoSeFinisci: r.votoSeFinisci,
               tutor: [...p.tutor, { fase: r.fase, domanda: domanda.trim(), risposta: r.risposta }],
             }
@@ -199,7 +200,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
         </section>
       )}
 
-      <TutorChat scambi={c.tutor} votoSeFinisci={c.votoSeFinisci} onChiedi={chiedi} attivo={!c.finito} />
+      <TutorChat scambi={c.tutor} votoSeFinisci={c.votoSeFinisci} domandeRimaste={c.domandeRimaste} onChiedi={chiedi} attivo={!c.finito} />
 
       {errore && (
         <section role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-200">

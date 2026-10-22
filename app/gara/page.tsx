@@ -60,7 +60,7 @@ export default function Gara() {
   useEffect(() => {
     const i = leggiIdentita();
     if (!i) {
-      router.replace('/');
+      router.replace('/giro');
       return;
     }
     setIdentita(i);

@@ -7,6 +7,12 @@
 export const MAX_DOMANDA_TUTOR = 6000;
 /** Una risposta del tutor può arrivare a un paragrafo pieno. */
 export const MAX_RISPOSTA_TUTOR = 1800;
+/**
+ * Tetto di domande per allievo e compito. A 5 il voto è già fermo da un pezzo: il tetto
+ * non serve al voto, serve a dare un massimo alla spesa (ogni domanda porta con sé tutta
+ * la conversazione) e a non far diventare il tutor una chat per passare l'ora.
+ */
+export const MAX_DOMANDE_TUTOR = 30;
 
 export const PROMPT_TUTOR = `Sei il tutor di un allievo di 14-16 anni che sta imparando i cicli for in Python, al primo anno di una scuola professionale italiana. L'allievo costruisce da solo, a casa o in laboratorio, un programma a fasi (un "compito di realtà") e ti fa domande quando è fermo. Ogni domanda gli costa un punto sul voto, quindi quando chiede vuole capire davvero.
 

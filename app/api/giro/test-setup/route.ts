@@ -11,6 +11,7 @@ import { apriTappa, chiudiGiro, chiudiTappa, creaGiro, eliminaTappa } from '@/li
 import { allieviRef, sessioniRef, type AllievoDoc, type SessioneDoc } from '@/lib/giro/store';
 import { eProgetto, generaCronoscalata } from '@/lib/giro/progetti';
 import { semeDa } from '@/lib/officina/regole';
+import { allieviRef as allieviOfficinaRef, lavoroVuoto, type AllievoOfficinaDoc } from '@/lib/officina/store';
 
 export const dynamic = 'force-dynamic';
 
@@ -150,6 +151,20 @@ export const POST = handler(async (body) => {
     const progetto = body.progetto;
     if (!eProgetto(progetto)) throw new ApiError(400, 'INVALID_BODY', 'Progetto sconosciuto');
     return { fasi: generaCronoscalata(progetto, semeDa(`${uid}|${progetto}`)) };
+  }
+
+  if (azione === 'domandeOfficina') {
+    // Fa risultare già fatte N domande al tutor su un compito: per provare il tetto senza farle davvero.
+    const classeId = typeof body.classeId === 'string' ? body.classeId : '';
+    const uid = typeof body.uid === 'string' ? body.uid : '';
+    const progetto = body.progetto;
+    const consigli = typeof body.consigli === 'number' ? body.consigli : Number.NaN;
+    if (!classeId || !uid || !eProgetto(progetto) || !Number.isInteger(consigli)) throw new ApiError(400, 'INVALID_BODY', 'Servono classeId, uid, progetto e consigli');
+    const ref = allieviOfficinaRef(classeId).doc(uid);
+    const snap = await ref.get();
+    const lavoro = (snap.data() as AllievoOfficinaDoc | undefined)?.lavori?.[progetto] ?? lavoroVuoto();
+    await ref.set({ lavori: { [progetto]: { ...lavoro, consigli } } }, { merge: true });
+    return { ok: true };
   }
 
   if (azione === 'svuota') {

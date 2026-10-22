@@ -176,7 +176,7 @@ async function digita(page: Page, codice: string) {
 test.describe('la Cronoscalata nella pagina dell\'allievo', () => {
   test('scheda del compito, codice che resta, gregario che costa un punto, voto finale', async ({ page, request }) => {
     const gara = await creaCronoscalata(request);
-    await page.goto('/');
+    await page.goto('/giro');
     await page.locator('form[data-pronto="1"]').waitFor();
     await page.getByPlaceholder('K7QX').fill(gara.code);
     await page.getByPlaceholder('Luca').fill('Lia');

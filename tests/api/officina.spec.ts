@@ -105,13 +105,17 @@ test.describe("l'Officina", () => {
     expect((await officina(request, luca, 'io')).corpo.classi).toHaveLength(1);
   });
 
-  test("i parametri sono dell'allievo: due allievi, due schede diverse", async ({ request }) => {
+  test("i parametri sono dell'allievo: allievi diversi, schede diverse", async ({ request }) => {
     const { classeId, luca } = await scenario(request);
-    const sara = await allievo(request, email('sara'), 'Sara');
-    await officina(request, sara, 'entra', { classeId });
     const a = (await officina(request, luca, 'compito', { classeId, compitoId: 'salvadanaio' })).corpo;
-    const b = (await officina(request, sara, 'compito', { classeId, compitoId: 'salvadanaio' })).corpo;
-    expect(a.scheda.dati).not.toEqual(b.scheda.dati);
+    // Le combinazioni del salvadanaio sono poche: due semi a caso possono coincidere, quattro no.
+    const altre: unknown[] = [];
+    for (const nome of ['sara', 'omar', 'vera', 'ivan']) {
+      const u = await allievo(request, email(nome), nome);
+      await officina(request, u, 'entra', { classeId });
+      altre.push((await officina(request, u, 'compito', { classeId, compitoId: 'salvadanaio' })).corpo.scheda);
+    }
+    expect(altre.some((s) => JSON.stringify(s) !== JSON.stringify(a.scheda)), 'almeno una scheda diversa').toBe(true);
     const ancora = (await officina(request, luca, 'compito', { classeId, compitoId: 'salvadanaio' })).corpo;
     expect(ancora.scheda).toEqual(a.scheda);
   });
@@ -165,6 +169,29 @@ test.describe("l'Officina", () => {
     const p2 = (await officina(request, luca, 'compiti', { classeId })).corpo;
     expect(p2.media).toBe(7.5);
     expect(p2.compiti[2].stato).toBe('da-cominciare');
+  });
+
+  test('trenta domande per compito, poi il tutor si ferma (il voto no: resta 5)', async ({ request }) => {
+    const { classeId, luca, fasi } = await scenario(request);
+    const dati = { classeId, compitoId: 'salvadanaio' };
+    await request.post('/api/giro/test-setup', { data: { azione: 'domandeOfficina', classeId, uid: luca.uid, progetto: 'salvadanaio', consigli: 29 } });
+    expect((await officina(request, luca, 'compito', dati)).corpo.domandeRimaste).toBe(1);
+
+    const ultima = await officina(request, luca, 'tutor', { ...dati, domanda: 'ultima', codice: '' });
+    expect(ultima.stato, JSON.stringify(ultima.corpo)).toBe(200);
+    expect(ultima.corpo).toMatchObject({ consigli: 30, domandeRimaste: 0, votoSeFinisci: 5 });
+
+    const diTroppo = await officina(request, luca, 'tutor', { ...dati, domanda: 'ancora', codice: '' });
+    expect(diTroppo.stato).toBe(403);
+    expect(diTroppo.corpo.error).toBe('DOMANDE_FINITE');
+    expect((await officina(request, luca, 'compito', dati)).corpo).toMatchObject({ consigli: 30, domandeRimaste: 0 });
+
+    // Si va avanti lo stesso, e il compito finito vale 5 come con cinque domande.
+    for (let k = 0; k < 5; k++) {
+      const r = await officina(request, luca, 'consegna', { ...dati, fase: k, codice: fasi[k].soluzione });
+      expect(r.corpo.promosso, `fase ${k + 1}: ${JSON.stringify(r.corpo)}`).toBe(true);
+      if (k === 4) expect(r.corpo).toMatchObject({ finito: true, voto: 5 });
+    }
   });
 
   test('il tutor non consegna mai codice', async ({ request }) => {

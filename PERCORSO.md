@@ -400,6 +400,14 @@ come messaggi: «non ho capito» ha un senso), domanda fino a 6000 caratteri, ri
 un paragrafo pieno. Regola "mai codice" e filtro identici al gregario; può spiegare un
 concetto con un esempio della vita.
 
+**Tetto di 30 domande per compito** (22 ottobre 2026): a 5 il voto è già fermo, il tetto serve
+alla spesa (ogni domanda porta con sé tutta la conversazione: 30 domande ≈ 0,45 $ per
+allievo e compito, il massimo possibile) e a non far diventare il tutor una chat. L'allievo
+vede quante gliene restano sotto le dieci; a zero il pannello lo dice e si va avanti da soli.
+
+**La porta d'ingresso** (`/`, 22 ottobre 2026): allievi e docente scelgono l'attività da una
+pagina sola, Giro o Officina; l'ingresso del Giro è passato a `/giro`.
+
 **Voto.** Solo a compito finito: 10 − domande al tutor, **mai sotto 5**; arrivati a 5 gli
 aiuti restano possibili. Un compito in corso non ha voto e non pesa sulla media. L'allievo
 vede la **media dei voti** dei compiti finiti.
