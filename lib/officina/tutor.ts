@@ -51,7 +51,8 @@ export async function chiediTutor(contesto: ContestoConsiglio, storia: Scambio[]
       const risposta = await anthropic().messages.create({
         model: MODELLO_TUTOR,
         max_tokens: 1200,
-        thinking: { type: 'disabled' },
+        // Niente `thinking`: Sonnet 5.5 rifiuta `{type: 'disabled'}` (che invece serve a Haiku,
+        // vedi gregarioClient.ts) e senza il parametro risponde subito, senza ragionare prima.
         system: PROMPT_TUTOR,
         messages: messaggi,
       });
