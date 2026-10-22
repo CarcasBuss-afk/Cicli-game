@@ -515,3 +515,16 @@ variabile d'appoggio e quella con la f-string diretta.
 prodotto), il contatore di lettere (for lettera in parola, accumulare stringhe), la
 griglia del parcheggio (cicli annidati). Poi i while, che chiedono anche if e confronti
 nel micro-interprete.
+## 16. L'interruttore dell'Officina (22 ottobre 2026)
+
+Alla prima lezione vera, a fine ora, Fabio ha premuto «Chiudi la classe» credendo di uscire dall'account: la classe è rimasta chiusa e non c'era modo di riaprirla se non dalla console Firebase. Il pulsante era pensato come fine del percorso; nell'uso reale serve un'altra cosa.
+
+**Decisione**: aprire e chiudere la classe è un **interruttore**, non una fine. Il docente **chiude l'Officina a fine lezione e la riapre la volta dopo**, ogni volta. Il motivo è didattico prima che tecnico: l'Officina ha un tutor sempre disponibile, e lasciata aperta da casa diventa il modo per farsi fare i compiti dall'intelligenza artificiale (a scuola invece il prof vede chi chiede che cosa). Chiusa, costa anche zero.
+
+Che cosa fa la chiusura, in concreto:
+- gli allievi già iscritti vedono tutto come prima (scheda, fasi fatte, il loro codice, la conversazione), con un avviso «🔒 L'Officina è chiusa»; editor e tutor sono spenti, e il server rifiuta comunque consegne e domande (`CLASSE_CHIUSA`);
+- chi non è ancora iscritto non trova la classe nell'elenco;
+- il docente vede e scarica tutto come sempre;
+- niente va perso: si riapre e si riparte dalla fase in cui si era.
+
+Interfaccia: lo stato («● Officina aperta» / «🔒 Officina chiusa») e il pulsante accanto, sia nella pagina della classe sia nell'elenco delle classi, così a fine ora basta un clic. Senza conferma: è un gesto da ripetere a ogni lezione, e l'errore si corregge con un altro clic. Per uscire dall'account c'è «esci», che con la classe non c'entra.

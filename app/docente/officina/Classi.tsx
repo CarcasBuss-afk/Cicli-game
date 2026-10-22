@@ -8,6 +8,7 @@ import { getClientDb } from '@/lib/firebaseClient';
 import { Accesso } from '../Accesso';
 import { chiamaDocente } from '../api';
 import { useDocente } from '../useDocente';
+import { InterruttoreOfficina } from './InterruttoreOfficina';
 
 type Classe = { id: string; nome: string; chiusa: boolean };
 
@@ -41,6 +42,15 @@ export function Classi() {
     }
   }
 
+  async function apriChiudi(classeId: string, chiusa: boolean) {
+    setErrore('');
+    try {
+      await chiamaDocente('officina', { azione: chiusa ? 'chiudiClasse' : 'apriClasse', classeId });
+    } catch (err) {
+      setErrore(err instanceof Error ? err.message : String(err));
+    }
+  }
+
   if (stato !== 'ok') {
     return <Accesso stato={stato} messaggio={messaggio} accediGoogle={accediGoogle} accediProva={accediProva} />;
   }
@@ -50,7 +60,7 @@ export function Classi() {
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-black text-(--color-giallo)">🔧 L&apos;Officina · classi</h1>
-          <p className="text-sm text-(--color-testo-tenue)">I compiti di realtà, in autonomia, con l&apos;account della scuola. Qui si guarda e basta.</p>
+          <p className="text-sm text-(--color-testo-tenue)">I compiti di realtà, in autonomia, con l&apos;account della scuola. Apri l&apos;Officina a inizio lezione e chiudila alla fine: chiusa, nessuno consegna né chiede al tutor.</p>
         </div>
         <div className="flex items-center gap-3 text-sm text-(--color-testo-tenue)">
           <Link href="/docente" className="underline">
@@ -96,8 +106,9 @@ export function Classi() {
           <article key={c.id} className="flex flex-wrap items-center gap-4 rounded-xl border border-(--color-bordo) bg-(--color-fondo-card) p-4">
             <div className="min-w-32">
               <p className="text-lg font-bold">classe {c.nome}</p>
-              {c.chiusa && <p className="text-sm text-(--color-testo-tenue)">chiusa</p>}
+              <p className={`text-sm ${c.chiusa ? 'text-(--color-testo-tenue)' : 'text-(--color-verde)'}`}>{c.chiusa ? '🔒 Officina chiusa' : '● Officina aperta'}</p>
             </div>
+            <InterruttoreOfficina chiusa={c.chiusa} onCambia={(chiusa) => void apriChiudi(c.id, chiusa)} compatto />
             <Link
               href={`/docente/officina/${c.id}`}
               className="ml-auto rounded-lg border border-(--color-giallo) px-4 py-2 font-bold text-(--color-giallo) hover:bg-(--color-giallo)/10"

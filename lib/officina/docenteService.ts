@@ -1,6 +1,10 @@
-/* Le azioni del docente nell'Officina: creare e chiudere le classi, togliere un allievo.
- * Tutto il resto è monitoraggio, e lo fa la dashboard con onSnapshot. Il docente è quello
- * di TEACHER_EMAILS (lib/giro/docenteAuth.ts). */
+/* Le azioni del docente nell'Officina: creare le classi, aprirle e chiuderle, togliere un
+ * allievo. Tutto il resto è monitoraggio, e lo fa la dashboard con onSnapshot. Il docente
+ * è quello di TEACHER_EMAILS (lib/giro/docenteAuth.ts).
+ *
+ * Aprire e chiudere è un interruttore, non una fine: il docente chiude l'Officina a fine
+ * lezione (così da casa nessuno si fa fare i compiti dal tutor) e la riapre la volta dopo.
+ * A classe chiusa gli allievi vedono tutto ma non consegnano e non chiedono. */
 import 'server-only';
 import { FieldValue } from 'firebase-admin/firestore';
 import { getDb } from '@/lib/firebaseAdmin';
@@ -29,10 +33,17 @@ export async function creaClasse(body: Record<string, unknown>, docente: Docente
   return { classeId: ref.id };
 }
 
-export async function chiudiClasse(body: Record<string, unknown>) {
-  await classiRef().doc(idClasse(body)).update({ chiusa: true });
-  return { ok: true };
+async function impostaChiusa(body: Record<string, unknown>, chiusa: boolean) {
+  const ref = classiRef().doc(idClasse(body));
+  if (!(await ref.get()).exists) throw new ApiError(404, 'CLASSE_NON_TROVATA', 'Classe inesistente');
+  await ref.update({ chiusa });
+  return { ok: true, chiusa };
 }
+
+/** Fine lezione: niente consegne né tutor finché il docente non riapre. */
+export const chiudiClasse = (body: Record<string, unknown>) => impostaChiusa(body, true);
+/** Si ricomincia: tutto riprende da dove era. */
+export const apriClasse = (body: Record<string, unknown>) => impostaChiusa(body, false);
 
 export async function rimuoviAllievo(body: Record<string, unknown>) {
   const classeId = idClasse(body);

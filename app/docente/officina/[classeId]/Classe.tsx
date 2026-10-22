@@ -11,6 +11,7 @@ import { csvClasse, tabellaClasse, TITOLI_PERCORSO, type AllievoVisto, type Lavo
 import { Accesso } from '../../Accesso';
 import { chiamaDocente } from '../../api';
 import { useDocente } from '../../useDocente';
+import { InterruttoreOfficina } from '../InterruttoreOfficina';
 
 type ClasseDati = { nome: string; chiusa: boolean };
 
@@ -117,7 +118,9 @@ export function Classe({ classeId }: { classeId: string }) {
           </Link>
           <h1 className="text-2xl font-black">
             Classe {classe.nome}
-            {classe.chiusa && <span className="ml-2 text-base font-normal text-(--color-testo-tenue)">(chiusa)</span>}
+            <span className={`ml-2 text-base font-normal ${classe.chiusa ? 'text-(--color-testo-tenue)' : 'text-(--color-verde)'}`}>
+              {classe.chiusa ? '🔒 Officina chiusa' : '● Officina aperta'}
+            </span>
           </h1>
         </div>
         <div className="flex gap-2">
@@ -127,18 +130,15 @@ export function Classe({ classeId }: { classeId: string }) {
           >
             Scarica CSV
           </button>
-          {!classe.chiusa && (
-            <button
-              onClick={() => {
-                if (confirm('Chiudere la classe? Nessuno potrà più entrare né consegnare.')) void azione({ azione: 'chiudiClasse' });
-              }}
-              className="rounded-lg border border-(--color-bordo) px-3 py-1.5 text-sm text-(--color-testo-tenue) hover:text-(--color-testo)"
-            >
-              Chiudi la classe
-            </button>
-          )}
+          <InterruttoreOfficina chiusa={classe.chiusa} onCambia={(chiusa) => void azione({ azione: chiusa ? 'chiudiClasse' : 'apriClasse' })} />
         </div>
       </header>
+
+      <p className="text-sm text-(--color-testo-tenue)">
+        {classe.chiusa
+          ? 'A Officina chiusa gli allievi vedono i compiti e il loro codice ma non consegnano e non parlano col tutor: niente compiti fatti dall’IA a casa. Riaprila all’inizio della lezione.'
+          : 'A fine lezione chiudi l’Officina: gli allievi non potranno consegnare né chiedere al tutor fino alla prossima volta. Il lavoro resta salvato.'}
+      </p>
 
       {errore && (
         <p role="alert" className="rounded-lg border border-red-500/40 bg-red-500/10 p-3 text-red-200">

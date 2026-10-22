@@ -65,6 +65,8 @@ export type Scambio = { fase: number; domanda: string; risposta: string };
 
 export type CompitoAperto = {
   id: string;
+  /** Fine lezione: si guarda ma non si consegna né si chiede, finché il prof non riapre. */
+  classeChiusa: boolean;
   fasi: number;
   fasiTotali: number;
   consigli: number;

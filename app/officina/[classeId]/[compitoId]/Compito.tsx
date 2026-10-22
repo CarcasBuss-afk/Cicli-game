@@ -9,7 +9,7 @@ import Schermo, { RisposteDiProva } from '@/components/Schermo';
 import Testo from '@/components/Testo';
 import TutorChat from '@/components/TutorChat';
 import type { RigaSchermo } from '@/lib/giro/interprete';
-import { chiamaOfficina, messaggioErrore, type CompitoAperto, type RispostaConsegna, type RispostaTutor } from '@/lib/officina/client';
+import { chiamaOfficina, ErroreOfficina, messaggioErrore, type CompitoAperto, type RispostaConsegna, type RispostaTutor } from '@/lib/officina/client';
 import { AccessoAllievo } from '../../Accesso';
 import { useAllievo } from '../../useAllievo';
 
@@ -79,7 +79,14 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
   const chiedi = useCallback(
     async (domanda: string) => {
       if (!c) return;
-      const r = await chiamaOfficina<RispostaTutor>('tutor', { classeId, compitoId, domanda, codice: codiceRef.current });
+      let r: RispostaTutor;
+      try {
+        r = await chiamaOfficina<RispostaTutor>('tutor', { classeId, compitoId, domanda, codice: codiceRef.current });
+      } catch (e) {
+        // Il prof ha chiuso l'Officina nel frattempo: la pagina lo mostra subito.
+        if (e instanceof ErroreOfficina && e.code === 'CLASSE_CHIUSA') setC((p) => (p ? { ...p, classeChiusa: true } : p));
+        throw e;
+      }
       setC((p) =>
         p
           ? {
@@ -131,6 +138,15 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
 
       <Fasi fatte={c.fasi} totale={c.fasiTotali} />
 
+      {c.classeChiusa && !c.finito && (
+        <section role="status" aria-label="officina chiusa" className="rounded-2xl border border-(--color-bordo) bg-black/30 p-4 text-center">
+          <p className="text-lg font-bold">🔒 L&apos;Officina è chiusa</p>
+          <p className="text-(--color-testo-tenue)">
+            Il prof la riapre alla prossima lezione. Il tuo lavoro è salvato: puoi rileggere la scheda e il tuo codice, ma non consegnare né chiedere al tutor.
+          </p>
+        </section>
+      )}
+
       {c.finito && (
         <section className="rounded-2xl border border-(--color-giallo)/50 bg-(--color-giallo)/10 p-5 text-center">
           <p className="text-sm text-(--color-testo-tenue)">Programma finito! Il tuo voto</p>
@@ -164,12 +180,12 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
               codiceRef.current = v;
             }}
             onConsegna={() => void consegna()}
-            attivo={!invio}
+            attivo={!invio && !c.classeChiusa}
           />
           <div className="flex flex-wrap items-center gap-3">
             <button
               onClick={() => void consegna()}
-              disabled={invio}
+              disabled={invio || c.classeChiusa}
               className="rounded-lg bg-(--color-rosa) px-5 py-2.5 text-lg font-bold text-white hover:brightness-110 disabled:opacity-40"
             >
               {invio ? '…' : 'Esegui ▶'}
@@ -200,7 +216,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
         </section>
       )}
 
-      <TutorChat scambi={c.tutor} votoSeFinisci={c.votoSeFinisci} domandeRimaste={c.domandeRimaste} onChiedi={chiedi} attivo={!c.finito} />
+      <TutorChat scambi={c.tutor} votoSeFinisci={c.votoSeFinisci} domandeRimaste={c.domandeRimaste} onChiedi={chiedi} attivo={!c.finito && !c.classeChiusa} />
 
       {errore && (
         <section role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-200">

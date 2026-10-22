@@ -86,6 +86,10 @@ test.describe("l'Officina", () => {
       ['cartello', 'da-cominciare'],
       ['classifica', 'bloccato'],
       ['lancio', 'bloccato'],
+      ['scala', 'bloccato'],
+      ['salvadanaio', 'bloccato'],
+      ['allenamento', 'bloccato'],
+      ['scontrino', 'bloccato'],
     ]);
     expect(p.compiti[0]).toMatchObject({ titolo: 'Il cartello della festa', fasi: 0, fasiTotali: 5, consigli: 0, voto: null, votoSeFinisci: 10 });
 
@@ -231,12 +235,43 @@ test.describe("l'Officina", () => {
     expect((await api(request, '/api/docente/officina', altra, { azione: 'creaClasse', nome: 'X' })).stato).toBe(403);
   });
 
-  test('il docente toglie un allievo e chiude la classe', async ({ request }) => {
+  test("fine lezione: l'Officina si chiude, da casa non si consegna; la volta dopo si riapre", async ({ request }) => {
+    const { classeId, luca, fabio, fasi } = await scenario(request);
+    const prima = await officina(request, luca, 'consegna', { classeId, compitoId: 'cartello', fase: 0, codice: fasi[0].soluzione });
+    expect(prima.corpo.promosso).toBe(true);
+
+    const chiusa = await prof(request, fabio, 'chiudiClasse', { classeId });
+    expect(chiusa.corpo).toEqual({ ok: true, chiusa: true });
+    // Si vede tutto, ma consegne e tutor sono fermi.
+    const compito = await officina(request, luca, 'compito', { classeId, compitoId: 'cartello' });
+    expect(compito.stato).toBe(200);
+    expect(compito.corpo.classeChiusa).toBe(true);
+    expect(compito.corpo.fasi).toBe(1);
+    expect((await officina(request, luca, 'compiti', { classeId })).corpo.classe.chiusa).toBe(true);
+    const consegna = await officina(request, luca, 'consegna', { classeId, compitoId: 'cartello', fase: 1, codice: fasi[1].soluzione });
+    expect(consegna.stato).toBe(403);
+    expect(consegna.corpo.error).toBe('CLASSE_CHIUSA');
+    const tutor = await officina(request, luca, 'tutor', { classeId, compitoId: 'cartello', domanda: 'come si fa?', codice: '' });
+    expect(tutor.corpo.error).toBe('CLASSE_CHIUSA');
+    // Chi non è ancora dentro non la trova nell'elenco.
+    const altra = await allievo(request, email('ritardataria'), 'Rita');
+    expect((await officina(request, altra, 'classi')).corpo.classi.map((c: { id: string }) => c.id)).not.toContain(classeId);
+    expect((await officina(request, altra, 'entra', { classeId })).stato).toBe(404);
+
+    // La lezione dopo: si riapre e si riparte dalla fase in cui si era.
+    const riaperta = await prof(request, fabio, 'apriClasse', { classeId });
+    expect(riaperta.corpo).toEqual({ ok: true, chiusa: false });
+    expect((await officina(request, luca, 'compito', { classeId, compitoId: 'cartello' })).corpo.classeChiusa).toBe(false);
+    const dopo = await officina(request, luca, 'consegna', { classeId, compitoId: 'cartello', fase: 1, codice: fasi[1].soluzione });
+    expect(dopo.corpo.promosso, JSON.stringify(dopo.corpo)).toBe(true);
+    expect((await officina(request, altra, 'entra', { classeId })).stato).toBe(200);
+    expect((await prof(request, fabio, 'apriClasse', { classeId: 'inesistente' })).stato).toBe(404);
+  });
+
+  test('il docente toglie un allievo', async ({ request }) => {
     const { classeId, luca, fabio } = await scenario(request);
     await prof(request, fabio, 'rimuoviAllievo', { classeId, uid: luca.uid });
     expect((await officina(request, luca, 'io')).corpo.classi).toHaveLength(0);
-    await prof(request, fabio, 'chiudiClasse', { classeId });
-    expect((await officina(request, luca, 'entra', { classeId })).stato).toBe(404);
   });
 });
 
@@ -273,7 +308,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await page.getByRole('button', { name: 'Entra' }).click();
     await expect(page.getByText(`Classe ${nomeClasse}`)).toBeVisible();
     const percorso = page.getByRole('list', { name: `percorso di ${nomeClasse}` }).locator('li');
-    await expect(percorso).toHaveCount(3);
+    await expect(percorso).toHaveCount(7);
     await expect(percorso.nth(0)).toContainText('Comincia');
     await expect(percorso.nth(1)).toContainText('si sblocca');
     await expect(page.getByLabel('media')).toHaveText('–');
@@ -302,7 +337,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();
     await page.reload();
     await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();
-    await expect(page.locator('.cm-content')).toContainText('Settimana');
+    await expect(page.locator('.cm-content')).toContainText(fasi[0].soluzione.split('\n')[0]); // riparte dal codice della fase 1
     await expect(page.getByLabel('conversazione con il tutor').locator('li')).toHaveCount(1);
 
     await page.getByRole('link', { name: '← i miei compiti' }).click();
@@ -329,7 +364,7 @@ test.describe("l'Officina nella dashboard del docente", () => {
     await expect(riga).toContainText('2/5');
     await expect(riga).toContainText('🧑‍🏫 1');
     await expect(riga).toContainText('🔒');
-    await expect(riga.locator('td').nth(4)).toHaveText('10'); // la media: un solo compito finito, senza domande
+    await expect(riga.locator('td').nth(8)).toHaveText('10'); // la media (dopo i 7 compiti): un solo compito finito, senza domande
 
     await riga.getByRole('button', { name: `Luca Rossi: classifica` }).click();
     const lavoro = page.getByRole('region', { name: "lavoro dell'allievo" });
@@ -343,6 +378,6 @@ test.describe("l'Officina nella dashboard del docente", () => {
     const file = await download;
     const testo = await (await import('node:fs/promises')).readFile(await file.path(), 'utf-8');
     expect(testo).toContain('Nome;Email;Il cartello della festa · fasi;Il cartello della festa · domande;Il cartello della festa · voto;');
-    expect(testo).toContain(`Luca Rossi;${luca.email};5;0;10;2;1;;0;0;;10`);
+    expect(testo).toContain(`Luca Rossi;${luca.email};5;0;10;2;1;;${'0;0;;'.repeat(5)}10`);
   });
 });

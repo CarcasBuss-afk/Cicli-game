@@ -52,7 +52,7 @@ export function Officina() {
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-lg font-bold">
                 Classe {p.classe.nome}
-                {p.classe.chiusa && <span className="ml-2 text-sm font-normal text-(--color-testo-tenue)">(chiusa)</span>}
+                {p.classe.chiusa && <span className="ml-2 text-sm font-normal text-(--color-testo-tenue)">🔒 Officina chiusa</span>}
               </h2>
               <p className="text-(--color-testo-tenue)">
                 Media dei voti{' '}
@@ -61,6 +61,11 @@ export function Officina() {
                 </span>
               </p>
             </div>
+            {p.classe.chiusa && (
+              <p role="status" className="rounded-xl border border-(--color-bordo) bg-black/30 p-3 text-(--color-testo-tenue)">
+                Il prof ha chiuso l&apos;Officina per oggi: puoi rileggere i compiti e il tuo codice, ma consegne e tutor riprendono alla prossima lezione.
+              </p>
+            )}
             <ol aria-label={`percorso di ${p.classe.nome}`} className="flex flex-col gap-2">
               {p.compiti.map((k, i) => (
                 <li key={k.id}>

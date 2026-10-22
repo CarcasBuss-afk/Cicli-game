@@ -153,6 +153,7 @@ export async function compito(body: Record<string, unknown>, utente: Utente) {
   const daCui = lavoro.bozza || (lavoro.fasi > 0 ? lavoro.codice?.[String(lavoro.fasi - 1)] : '') || '';
   return {
     id: progetto,
+    classeChiusa: ctx.classe.chiusa,
     fasi: lavoro.fasi,
     fasiTotali: FASI_PER_COMPITO,
     consigli: lavoro.consigli,
@@ -176,7 +177,7 @@ function intero(v: unknown): number {
 
 /** Controlli comuni a consegna e tutor: classe aperta, compito sbloccato e non finito. */
 function lavoroInCorso(ctx: Contesto, body: Record<string, unknown>, uid: string) {
-  if (ctx.classe.chiusa) throw new ApiError(403, 'CLASSE_CHIUSA', 'La classe è chiusa');
+  if (ctx.classe.chiusa) throw new ApiError(403, 'CLASSE_CHIUSA', "L'Officina è chiusa: il prof la riapre alla prossima lezione");
   const { progetto, voce, lavoro } = compitoAperto(ctx.allievo, testo(body.compitoId, 64));
   if (voce.stato === 'finito') throw new ApiError(403, 'FINITO', 'Hai già finito questo compito!');
   const fasi = fasiDi(progetto, uid);
