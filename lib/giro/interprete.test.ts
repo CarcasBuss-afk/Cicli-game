@@ -244,15 +244,102 @@ describe('errori di sintassi con messaggio didattico', () => {
   });
 });
 
+describe('if, elif, else (le condizioni, PERCORSO.md §17)', () => {
+  it('if dentro il ciclo: una riga in più a un giro solo', () => {
+    expect(out('for i in range(1, 5):\n    print(i)\n    if i == 3:\n        print("omaggio")')).toEqual(['1', '2', '3', 'omaggio', '4']);
+  });
+
+  it('if/else dentro il ciclo', () => {
+    expect(out('for i in range(1, 4):\n    if i == 2:\n        print("omaggio")\n    else:\n        print(i, "€")')).toEqual(['1 €', 'omaggio', '3 €']);
+  });
+
+  it('elif: un ramo solo viene eseguito', () => {
+    const codice = 'for i in range(3):\n    if i == 0:\n        print("zero")\n    elif i == 1:\n        print("uno")\n    else:\n        print("altro")';
+    expect(out(codice)).toEqual(['zero', 'uno', 'altro']);
+  });
+
+  it('if dopo il ciclo, sul totale, con tutti i confronti', () => {
+    expect(out('t = 10\nif t >= 10:\n    print("sconto")\nif t < 10:\n    print("no")\nif t != 3:\n    print("ok")\nif t <= 10:\n    print("si")\nif t > 10:\n    print("no")')).toEqual([
+      'sconto',
+      'ok',
+      'si',
+    ]);
+  });
+
+  it('corpo in linea e accumulo dentro un ramo', () => {
+    expect(out('t = 0\nfor i in range(1, 6):\n    if i == 3: print("gratis")\n    else: t += 2\nprint(t)')).toEqual(['gratis', '8']);
+  });
+
+  it('confronto fra testi e con una variabile', () => {
+    expect(out('n = "Luca"\nif n == "Luca":\n    print("ciao")\nelse:\n    print("chi sei?")')).toEqual(['ciao']);
+  });
+
+  it('la condizione può usare un calcolo', () => {
+    expect(out('x = 4\nif x * 2 == 8:\n    print("otto")')).toEqual(['otto']);
+  });
+
+  it('= al posto di ==', () => {
+    expect(errore('x = 3\nif x = 3:\n    print("a")').messaggio).toContain('`==`');
+  });
+
+  it('if senza confronto', () => {
+    expect(errore('x = 3\nif x:\n    print("a")').messaggio).toContain('confronto');
+    expect(errore('if :\n    print("a")').messaggio).toContain('condizione');
+  });
+
+  it('due punti mancanti dopo if e dopo else', () => {
+    expect(errore('x = 3\nif x == 3\n    print("a")').messaggio).toContain('due punti');
+    expect(errore('x = 3\nif x == 3:\n    print("a")\nelse\n    print("b")').messaggio).toContain('due punti');
+  });
+
+  it('else if invece di elif', () => {
+    expect(errore('x = 3\nif x == 3:\n    print("a")\nelse if x == 4:\n    print("b")').messaggio).toContain('`elif`');
+  });
+
+  it('else senza if, elif senza if', () => {
+    expect(errore('else:\n    print("a")').messaggio).toContain('`if`');
+    expect(errore('x = 1\nelif x == 1:\n    print("a")').messaggio).toContain('`if`');
+  });
+
+  it('corpo dell\'if non indentato', () => {
+    const e = errore('x = 3\nif x == 3:\nprint("a")');
+    expect(e.messaggio).toContain('spostata a destra');
+    expect(e.riga).toBe(3);
+  });
+
+  it('and, or e not non ammessi', () => {
+    expect(errore('x = 3\nif x > 1 and x < 5:\n    print("a")').tipo).toBe('nonAmmesso');
+    expect(errore('x = 3\nif not x == 3:\n    print("a")').tipo).toBe('nonAmmesso');
+  });
+
+  it('numero confrontato con un testo: suggerisce int()', () => {
+    const esito = esegui('n = input("Quanti? ")\nif n == 3:\n    print("tre")', { risposte: ['3'] });
+    expect(esito.ok).toBe(false);
+    if (!esito.ok) expect(esito.errore.messaggio).toContain('`int()`');
+  });
+
+  it('un confronto fuori da un if non si usa', () => {
+    expect(errore('x = 3\nprint(x == 3)').messaggio).toContain('`if`');
+    expect(errore('x == 3').messaggio).toContain('`==`');
+  });
+
+  it('if in linea sulla riga del for non si può', () => {
+    expect(errore('for i in range(3): if i == 1: print(i)').messaggio).toContain('riga sua');
+  });
+
+  it('i fatti per il giudice contano gli if', () => {
+    const esito = esegui('t = 0\nfor i in range(4):\n    if i == 2:\n        print("x")\n    else:\n        t += 1\nif t > 2:\n    print(t)');
+    if (!esito.ok) throw new Error(esito.errore.messaggio);
+    expect(esito.struttura).toMatchObject({ numIf: 2, ifNelCiclo: 1, accumuliNelCiclo: 1, numFor: 1, printFuoriCiclo: 1 });
+    expect(esito.output).toEqual(['x', '3']);
+  });
+});
+
 describe('costrutti fuori dal gioco', () => {
   it('while', () => {
     const e = errore('while True:\n    print("ciao")');
     expect(e.tipo).toBe('nonAmmesso');
     expect(e.messaggio).toContain('`for`');
-  });
-
-  it('if', () => {
-    expect(errore('if 1:\n    print("a")').tipo).toBe('nonAmmesso');
   });
 
   it('input', () => {

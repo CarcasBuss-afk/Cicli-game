@@ -12,9 +12,10 @@
  * Modulo puro: niente Firestore, niente Next.
  */
 import { generatore, REGOLE, type Esercizio, type Prova } from '../giro/esercizi';
+import { fasiPromozione, schedaPromozione } from './compitiCondizioni';
 import { fasiCartello, fasiClassifica, fasiLancio, fasiScala, schedaCartello, schedaClassifica, schedaLancio, schedaScala } from './compitiIniziali';
 
-export type CompitoId = 'cartello' | 'classifica' | 'lancio' | 'scala' | 'salvadanaio' | 'allenamento' | 'scontrino';
+export type CompitoId = 'cartello' | 'classifica' | 'lancio' | 'scala' | 'salvadanaio' | 'allenamento' | 'scontrino' | 'promozione';
 
 export interface SchedaCompito {
   id: CompitoId;
@@ -427,14 +428,15 @@ const PROGETTI: Record<CompitoId, { fasi: (seme: number) => Esercizio[]; scheda:
   salvadanaio: { fasi: fasiSalvadanaio, scheda: schedaSalvadanaio },
   allenamento: { fasi: fasiAllenamento, scheda: schedaAllenamento },
   scontrino: { fasi: fasiScontrino, scheda: schedaScontrino },
+  promozione: { fasi: fasiPromozione, scheda: schedaPromozione },
 };
 
 /**
  * I compiti nell'ordine didattico, un'idea nuova ciascuno (PERCORSO.md §15): ripetere ·
  * la variabile del ciclo · il passo · la variabile in un calcolo · l'accumulatore · due
- * variabili e l'ordine nel corpo · input().
+ * variabili e l'ordine nel corpo · input() · decidere con un if (§17).
  */
-export const ELENCO_COMPITI: CompitoId[] = ['cartello', 'classifica', 'lancio', 'scala', 'salvadanaio', 'allenamento', 'scontrino'];
+export const ELENCO_COMPITI: CompitoId[] = ['cartello', 'classifica', 'lancio', 'scala', 'salvadanaio', 'allenamento', 'scontrino', 'promozione'];
 
 /** Le fasi del progetto, come chilometri della tappa. Stesso seme, stesse fasi. */
 export function generaCompito(progetto: CompitoId, seme: number): Esercizio[] {

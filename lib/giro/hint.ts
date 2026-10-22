@@ -282,7 +282,7 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
   if (tappa.codiceIniziale && normalizzaCodice(testo) === normalizzaCodice(tappa.codiceIniziale)) {
     return {
       promosso: false,
-      hint: 'Non hai cambiato niente: il codice stampa ancora le righe sbagliate. Confronta quello che stampa con quello che deve stampare',
+      hint: 'Non hai cambiato niente: il codice è ancora quello di partenza. Confronta quello che stampa con quello che deve stampare',
       output: null,
     };
   }

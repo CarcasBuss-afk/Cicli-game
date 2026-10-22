@@ -149,8 +149,9 @@ export async function compito(body: Record<string, unknown>, utente: Utente) {
   const fasi = fasiDi(progetto, utente.uid);
   const finito = voce.stato === 'finito';
   const esercizio = !finito ? fasi[lavoro.fasi] : undefined;
-  // Si riparte dall'ultima consegna, giusta o no; altrimenti dal codice della fase prima.
-  const daCui = lavoro.bozza || (lavoro.fasi > 0 ? lavoro.codice?.[String(lavoro.fasi - 1)] : '') || '';
+  // Si riparte dall'ultima consegna, giusta o no; altrimenti dal codice della fase prima;
+  // altrimenti da quello che la fase porta già scritto (la promozione riparte dallo scontrino).
+  const daCui = lavoro.bozza || (lavoro.fasi > 0 ? lavoro.codice?.[String(lavoro.fasi - 1)] : '') || esercizio?.codiceIniziale || '';
   return {
     id: progetto,
     classeChiusa: ctx.classe.chiusa,

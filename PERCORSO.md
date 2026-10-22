@@ -528,3 +528,21 @@ Che cosa fa la chiusura, in concreto:
 - niente va perso: si riapre e si riparte dalla fase in cui si era.
 
 Interfaccia: lo stato («● Officina aperta» / «🔒 Officina chiusa») e il pulsante accanto, sia nella pagina della classe sia nell'elenco delle classi, così a fine ora basta un clic. Senza conferma: è un gesto da ripetere a ogni lezione, e l'errore si corregge con un altro clic. Per uscire dall'account c'è «esci», che con la classe non c'entra.
+
+## 17. Le condizioni: la promozione del bar (22 ottobre 2026)
+
+Dopo lo scontrino l'allievo sa ripetere, usare la variabile del ciclo, i tre numeri di `range`, accumulare, tenere due variabili, leggere con `input()`. Tutto con un ciclo che sa in anticipo quante volte gira. Il passo dopo non è un'altra variazione sul `for` (per questo tabellina, lettere e griglia sono usciti dal piano) ma **decidere**: l'`if`. Gli allievi lo hanno già visto in classe, ma il compito fa come se fosse nuovo: lo incontrano prima dentro un ciclo che conoscono, legato alla variabile del ciclo, poi fuori, legato all'accumulatore. Sono i due gesti che serviranno ai `while`.
+
+**Il compito 8, la promozione del bar** (`promozione`, `lib/officina/compitiCondizioni.ts`). Il bar regala il terzo panino e fa uno sconto fedeltà sopra una soglia (quattro panini pagati). Per la prima volta la fase 1 trova l'editor **già pieno**: lo scontrino del compito prima, con i parametri nuovi (`codiceIniziale`; nel servizio dell'Officina l'editor riparte da lì quando non c'è bozza). Così tutto il lavoro è sull'`if`, senza una fase spesa a riscrivere ciò che si sa.
+
+1. **La riga in più**: `if i == 3:` dentro il ciclo, con un `print` sotto. Una cosa succede a un giro solo.
+2. **Omaggio o prezzo**: `else`. Due strade, una sola a ogni giro.
+3. **Il totale giusto**: l'accumulo sta nel ramo del prezzo. Il totale scende.
+4. **Lo sconto fedeltà**: `if totale >= soglia:` dopo il ciclo, con `>=`.
+5. **Quanto manca**: l'`else` di quell'`if`, con la differenza calcolata; e il saluto per tutti.
+
+**Tre clienti di prova per fase**, uno mostrato (omaggio e sconto) e due nascosti (due panini: niente; quattro: solo l'omaggio). L'omaggio scritto a mano, il ciclo spezzato in due, lo sconto stampato sempre cadono lì, prima del giudice. Al giudice resta la forma: la formula `(panini - 1) * prezzo` al posto dell'accumulo, l'`if` fuori dal ciclo. Sonda con Haiku vero: 8 casi su 8 con il verdetto atteso (le cinque soluzioni e una variante con la variabile d'appoggio promosse; formula e ciclo spezzato bocciati con il motivo giusto). Un `if panini >= 5` al posto di `if totale >= 16` passa: logica equivalente, e va bene così.
+
+**Il micro-interprete** ha imparato i confronti e `if`/`elif`/`else` (in linea o a blocco, dentro e fuori dai cicli). Scelte: la condizione è **un confronto solo**, niente `and`/`or`/`not` né booleani, con messaggi dedicati («Una condizione alla volta: se servono due controlli, usa due `if`»); `=` al posto di `==` ha il suo messaggio; un numero confrontato con un testo è quasi sempre un `int()` dimenticato, e l'errore lo dice; un confronto fuori da un `if` (in un `print`, in un'assegnazione) è un errore spiegato, non un valore. I fatti per il giudice contano anche gli `if` e quanti stanno dentro un ciclo.
+
+**Dopo**: il `while`, nell'ordine pensato il 22 ottobre: l'obiettivo del salvadanaio (il ciclo che non sa quante volte gira), la cassa del bar (la sentinella), indovina il numero (tutto insieme). All'interprete serviranno `while` e il tetto delle iterazioni come hint sul ciclo infinito.

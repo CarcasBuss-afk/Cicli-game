@@ -46,6 +46,7 @@ export function messaggioGiudizio(c: ContestoGiudizio): string {
     `print dentro i cicli: ${s.numPrint - s.printFuoriCiclo}`,
     `print fuori dai cicli: ${s.printFuoriCiclo}`,
     `accumuli dentro i cicli (x += ... o x = x + ...): ${s.accumuliNelCiclo}`,
+    `if: ${s.numIf} (di cui dentro un ciclo: ${s.ifNelCiclo})`,
     `chiamate a input(): ${s.numInput}`,
     `righe di output: ${c.outputAtteso.length}`,
   ];

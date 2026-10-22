@@ -16,6 +16,8 @@
  *   - corpo del ciclo sulla riga stessa (`for i in range(3): print(i)`) o indentato sotto
  *   - `input(domanda)` e `int(...)`, solo se le risposte arrivano dalle opzioni (i compiti
  *     di realtà): le domande finiscono sullo "schermo", non nell'output confrontato
+ *   - `if confronto:` / `elif confronto:` / `else:`, dentro e fuori dai cicli; la condizione
+ *     è un confronto solo (`==`, `!=`, `<`, `>`, `<=`, `>=`), niente `and`/`or`/`not`
  * Tutto il resto è un errore con un messaggio in italiano scritto per un allievo.
  */
 
@@ -56,6 +58,10 @@ export interface Struttura {
    * somma, dove senza questo controllo `for i in range(1): print(15)` passerebbe.
    */
   accumuliNelCiclo: number;
+  /** Quanti `if` (ogni `if` conta uno, con i suoi `elif`/`else`). */
+  numIf: number;
+  /** Quanti di quegli `if` stanno dentro un ciclo. */
+  ifNelCiclo: number;
 }
 
 /** Una domanda fatta con `input()` e la risposta che ha ricevuto. */
@@ -246,21 +252,31 @@ type Espr =
   /** `input(domanda)`: la risposta arriva dalle opzioni, non dalla tastiera. */
   | { k: 'input'; domanda: Espr | null }
   /** `int(x)`: da testo a numero intero. */
-  | { k: 'int'; e: Espr };
+  | { k: 'int'; e: Espr }
+  /** Un confronto: vale solo come condizione di `if`/`elif`. */
+  | { k: 'cmp'; op: Confronto; sx: Espr; dx: Espr };
+
+type Confronto = '==' | '!=' | '<' | '>' | '<=' | '>=';
+const CONFRONTI: Confronto[] = ['==', '!=', '<', '>', '<=', '>='];
 
 type Iterabile = { k: 'range'; args: Espr[] } | { k: 'espr'; espr: Espr };
+
+/** Un ramo di `if`/`elif`: la condizione e che cosa fare se è vera. */
+interface Ramo {
+  cond: Espr;
+  corpo: Istruzione[];
+  riga: number;
+}
 
 type Istruzione =
   | { k: 'assegna'; nome: string; op: '=' | '+='; espr: Espr; riga: number }
   | { k: 'print'; args: Espr[]; riga: number }
-  | { k: 'for'; variabile: string; iter: Iterabile; corpo: Istruzione[]; riga: number };
+  | { k: 'for'; variabile: string; iter: Iterabile; corpo: Istruzione[]; riga: number }
+  | { k: 'if'; rami: Ramo[]; altrimenti: Istruzione[] | null; riga: number };
 
 /** Parole chiave di Python fuori dal sottoinsieme: messaggio dedicato, non "errore di sintassi". */
 const NON_AMMESSE = [
   'while',
-  'if',
-  'elif',
-  'else',
   'def',
   'return',
   'import',
@@ -276,7 +292,7 @@ const NON_AMMESSE = [
   'pass',
 ];
 
-const RISERVATE = ['for', 'in', 'print', 'range', 'input', 'int', 'and', 'or', 'not', 'is', 'True', 'False', 'None', ...NON_AMMESSE];
+const RISERVATE = ['for', 'in', 'if', 'elif', 'else', 'print', 'range', 'input', 'int', 'and', 'or', 'not', 'is', 'True', 'False', 'None', ...NON_AMMESSE];
 
 interface Riga {
   testo: string;
@@ -406,6 +422,9 @@ function parseFattore(l: Lettore): Espr {
     if (t.v === 'True' || t.v === 'False' || t.v === 'None') {
       err('nonAmmesso', `\`${t.v}\` non è ammesso: in questo gioco ci sono solo numeri e testo`, l.riga);
     }
+    if (t.v === 'and' || t.v === 'or' || t.v === 'not') {
+      err('nonAmmesso', `Una condizione alla volta: \`${t.v}\` non si usa in questo gioco. Serve un confronto solo, per esempio \`i == 3\``, l.riga);
+    }
     if (l.prossimoEOp('(')) {
       if (t.v === 'print') {
         err('nonAmmesso', '`print` va su una riga sua, non dentro un calcolo', l.riga);
@@ -505,10 +524,32 @@ function messaggioNonAmmessa(parola: string): string {
   if (parola === 'while') {
     return 'Qui serve un ciclo `for`: `while` non è ammesso in questo gioco';
   }
-  if (parola === 'if' || parola === 'elif' || parola === 'else') {
-    return `In questo gioco si usano solo \`for\`, \`print\` e le variabili: \`${parola}\` non è ammesso`;
+  return `\`${parola}\` non è ammesso in questo gioco: si usano solo \`for\`, \`if\`, \`print\` e le variabili`;
+}
+
+/** Il confronto che segue un'espressione nella condizione di `if`/`elif`. */
+function parseCondizione(l: Lettore, parola: 'if' | 'elif'): Espr {
+  if (l.prossimoEOp(':') || l.finito()) {
+    err('sintassi', `Dopo \`${parola}\` ci vuole una condizione, per esempio \`${parola} i == 3:\``, l.riga);
   }
-  return `\`${parola}\` non è ammesso in questo gioco: si usano solo \`for\`, \`print\` e le variabili`;
+  const sx = parseEspressione(l);
+  const t = l.guarda();
+  if (t.t === 'op' && t.v === '=') {
+    err('sintassi', 'Per confrontare si usa `==` (due uguali): con uno solo si dà un valore', l.riga);
+  }
+  if (t.t !== 'op' || !CONFRONTI.includes(t.v as Confronto)) {
+    if (t.t === 'op' && t.v === ':') {
+      err('sintassi', `La condizione di \`${parola}\` deve essere un confronto, per esempio \`${parola} i == 3:\` oppure \`${parola} totale >= 20:\``, l.riga);
+    }
+    err('sintassi', `Dopo \`${parola}\` ci vuole un confronto e poi i due punti, per esempio \`${parola} i == 3:\``, l.riga);
+  }
+  l.avanti();
+  const dx = parseEspressione(l);
+  const dopo = l.guarda();
+  if (dopo.t === 'nome' && (dopo.v === 'and' || dopo.v === 'or')) {
+    err('nonAmmesso', `Una condizione alla volta: \`${dopo.v}\` non si usa in questo gioco. Se servono due controlli, usa due \`if\``, l.riga);
+  }
+  return { k: 'cmp', op: t.v as Confronto, sx, dx };
 }
 
 /* -------------------------------------------------------------- parser di istruzioni */
@@ -550,11 +591,21 @@ class Parser {
   }
 
   /** Riconosce l'istruzione dai token (usata anche per il corpo scritto in linea). */
-  private istruzioneDaLettore(l: Lettore, riga: Riga): Istruzione {
+  private istruzioneDaLettore(l: Lettore, riga: Riga, inLinea: 'for' | 'if' | null = null): Istruzione {
     const t = l.guarda();
+    if (t.t === 'nome' && (t.v === 'for' || t.v === 'if') && inLinea) {
+      err('sintassi', `Metti \`${t.v}\` su una riga sua, spostata a destra sotto il \`${inLinea}\``, riga.numero);
+    }
     if (t.t === 'nome' && t.v === 'for') {
       l.avanti();
       return this.ciclo(l, riga);
+    }
+    if (t.t === 'nome' && t.v === 'if') {
+      l.avanti();
+      return this.condizionale(l, riga);
+    }
+    if (t.t === 'nome' && (t.v === 'elif' || t.v === 'else')) {
+      err('sintassi', `\`${t.v}\` va subito dopo il blocco di un \`if\`, allineato con l'\`if\``, riga.numero);
     }
     if (t.t === 'nome' && t.v.toLowerCase() === 'print') {
       if (t.v !== 'print') {
@@ -587,7 +638,10 @@ class Parser {
         this.fineRiga(l, riga);
         return { k: 'assegna', nome, op: segno.v as '=' | '+=', espr, riga: riga.numero };
       }
-      if (segno.t === 'op' && ['-=', '*=', '=='].includes(segno.v)) {
+      if (segno.t === 'op' && segno.v === '==') {
+        err('sintassi', '`==` confronta due valori e si usa dopo `if`: per dare un valore a una variabile serve un solo `=`', riga.numero);
+      }
+      if (segno.t === 'op' && ['-=', '*='].includes(segno.v)) {
         err('nonAmmesso', `L'operatore \`${segno.v}\` non è ammesso: usa \`=\` o \`+=\``, riga.numero);
       }
       err(
@@ -596,7 +650,71 @@ class Parser {
         riga.numero,
       );
     }
-    err('sintassi', 'Questa riga non è un\'istruzione: ci vuole `for`, `print` o un\'assegnazione', riga.numero);
+    err('sintassi', 'Questa riga non è un\'istruzione: ci vuole `for`, `if`, `print` o un\'assegnazione', riga.numero);
+  }
+
+  /**
+   * Il corpo dopo i due punti di `for`/`if`/`elif`/`else`: sulla riga stessa (una o più
+   * istruzioni con `;`) oppure il blocco indentato sotto.
+   */
+  private corpoDi(l: Lettore, riga: Riga, cosa: 'for' | 'if' | 'elif' | 'else'): Istruzione[] {
+    const blocco = cosa === 'for' ? 'il ciclo' : `il blocco di \`${cosa}\``;
+    if (!l.finito()) {
+      const inLinea = cosa === 'for' ? 'for' : 'if';
+      const corpo: Istruzione[] = [this.istruzioneDaLettore(l, riga, inLinea)];
+      while (l.prossimoEOp(';')) {
+        l.avanti();
+        if (l.finito()) break;
+        corpo.push(this.istruzioneDaLettore(l, riga, inLinea));
+      }
+      const prossima = this.righe[this.pos];
+      if (prossima && prossima.indent > riga.indent) {
+        err(
+          'sintassi',
+          `Hai messo l'istruzione sulla stessa riga del \`${cosa}\`: le altre righe non possono stare sotto indentate`,
+          prossima.numero,
+        );
+      }
+      return corpo;
+    }
+    const prossima = this.righe[this.pos];
+    if (!prossima) {
+      err('sintassi', `Dopo i due punti ci vuole almeno una riga dentro ${blocco}`, riga.numero);
+    }
+    if (prossima.indent <= riga.indent) {
+      err('sintassi', `La riga dentro ${blocco} va spostata a destra (indentazione): premi Tab a inizio riga`, prossima.numero);
+    }
+    return this.blocco(prossima.indent);
+  }
+
+  /** `if cond:` con i suoi `elif` ed `else`, che devono stare allineati con l'`if`. */
+  private condizionale(l: Lettore, riga: Riga): Istruzione {
+    const rami: Ramo[] = [{ cond: parseCondizione(l, 'if'), corpo: [], riga: riga.numero }];
+    l.attesoOp(':', "Alla fine della riga dell'`if` ci vogliono i due punti `:`");
+    rami[0].corpo = this.corpoDi(l, riga, 'if');
+    let altrimenti: Istruzione[] | null = null;
+    for (;;) {
+      const seguente = this.righe[this.pos];
+      if (!seguente || seguente.indent !== riga.indent) break;
+      const parola = seguente.testo.match(/^(elif|else)\b/)?.[1];
+      if (!parola) break;
+      this.pos++;
+      const ls = new Lettore(tokenizza(seguente.testo, seguente.numero), seguente.numero);
+      ls.avanti();
+      if (parola === 'elif') {
+        const cond = parseCondizione(ls, 'elif');
+        ls.attesoOp(':', "Alla fine della riga dell'`elif` ci vogliono i due punti `:`");
+        rami.push({ cond, corpo: this.corpoDi(ls, seguente, 'elif'), riga: seguente.numero });
+        continue;
+      }
+      if (ls.prossimoENome('if')) {
+        err('sintassi', 'In Python `else if` si scrive `elif`, tutto attaccato', seguente.numero);
+      }
+      ls.attesoOp(':', 'Dopo `else` ci vogliono subito i due punti `:`');
+      altrimenti = this.corpoDi(ls, seguente, 'else');
+      break;
+    }
+    return { k: 'if', rami, altrimenti, riga: riga.numero };
   }
 
   private ciclo(l: Lettore, riga: Riga): Istruzione {
@@ -643,40 +761,7 @@ class Parser {
       err('sintassi', 'Alla fine della riga del `for` ci vogliono i due punti `:`', riga.numero);
     }
     l.avanti();
-
-    // Corpo sulla riga stessa: `for i in range(3): print(i)`
-    if (!l.finito()) {
-      const corpo: Istruzione[] = [this.istruzioneDaLettore(l, riga)];
-      while (l.prossimoEOp(';')) {
-        l.avanti();
-        if (l.finito()) break;
-        corpo.push(this.istruzioneDaLettore(l, riga));
-      }
-      const prossima = this.righe[this.pos];
-      if (prossima && prossima.indent > riga.indent) {
-        err(
-          'sintassi',
-          'Hai messo l\'istruzione sulla stessa riga del `for`: le altre righe del ciclo non possono stare sotto indentate',
-          prossima.numero,
-        );
-      }
-      return { k: 'for', variabile: varTok.v, iter, corpo, riga: riga.numero };
-    }
-
-    // Corpo indentato sotto
-    const prossima = this.righe[this.pos];
-    if (!prossima) {
-      err('sintassi', 'Dopo i due punti ci vuole almeno una riga dentro il ciclo', riga.numero);
-    }
-    if (prossima.indent <= riga.indent) {
-      err(
-        'sintassi',
-        'La riga dentro il ciclo va spostata a destra (indentazione): premi Tab a inizio riga',
-        prossima.numero,
-      );
-    }
-    const corpo = this.blocco(prossima.indent);
-    return { k: 'for', variabile: varTok.v, iter, corpo, riga: riga.numero };
+    return { k: 'for', variabile: varTok.v, iter, corpo: this.corpoDi(l, riga, 'for'), riga: riga.numero };
   }
 
   private stampa(l: Lettore, riga: Riga): Istruzione {
@@ -696,6 +781,10 @@ class Parser {
           }
         }
         args.push(parseEspressione(l));
+        const dopo = l.guarda();
+        if (dopo.t === 'op' && CONFRONTI.includes(dopo.v as Confronto)) {
+          err('sintassi', `Un confronto come \`${dopo.v}\` si usa solo nella condizione di un \`if\`, non dentro \`print\``, riga.numero);
+        }
         if (l.prossimoEOp(',')) {
           l.avanti();
           if (l.prossimoEOp(')')) break; // virgola finale: print("a",)
@@ -714,7 +803,10 @@ class Parser {
     if (l.finito() || l.prossimoEOp(';')) return;
     const t = l.guarda();
     if (t.t === 'op' && t.v === ':') {
-      err('sintassi', 'I due punti `:` vanno solo alla fine della riga del `for`', riga.numero);
+      err('sintassi', 'I due punti `:` vanno solo alla fine della riga del `for`, dell\'`if` o dell\'`else`', riga.numero);
+    }
+    if (t.t === 'op' && CONFRONTI.includes(t.v as Confronto)) {
+      err('sintassi', `Un confronto come \`${t.v}\` si usa solo nella condizione di un \`if\``, riga.numero);
     }
     err('sintassi', `Sulla riga c'è qualcosa di troppo dopo l'istruzione: \`${'v' in t ? t.v : ''}\``, riga.numero);
   }
@@ -785,7 +877,45 @@ class Macchina {
       this.ambiente.set(istr.nome, somma(precedente, valore, istr.riga));
       return;
     }
+    if (istr.k === 'if') {
+      for (const ramo of istr.rami) {
+        if (this.condizione(ramo.cond, ramo.riga)) {
+          this.esegui(ramo.corpo);
+          return;
+        }
+      }
+      if (istr.altrimenti) this.esegui(istr.altrimenti);
+      return;
+    }
     this.ciclo(istr);
+  }
+
+  /** Vero o falso di un confronto. Numeri con numeri, testo con testo: mischiarli è quasi sempre un `int()` dimenticato. */
+  private condizione(e: Espr, riga: number): boolean {
+    if (e.k !== 'cmp') err('sintassi', 'La condizione deve essere un confronto, per esempio `i == 3`', riga);
+    const sx = this.valuta(e.sx, riga);
+    const dx = this.valuta(e.dx, riga);
+    if (typeof sx !== typeof dx) {
+      err(
+        'tipo',
+        'Stai confrontando un numero con un testo: non saranno mai uguali. Se il valore viene da `input()`, ricorda che è un testo: mettilo dentro `int()`',
+        riga,
+      );
+    }
+    switch (e.op) {
+      case '==':
+        return sx === dx;
+      case '!=':
+        return sx !== dx;
+      case '<':
+        return sx < dx;
+      case '>':
+        return sx > dx;
+      case '<=':
+        return sx <= dx;
+      case '>=':
+        return sx >= dx;
+    }
   }
 
   private ciclo(istr: Istruzione & { k: 'for' }): void {
@@ -908,6 +1038,8 @@ class Macchina {
         if (typeof sx === 'number' && typeof dx === 'string') return ripeti(dx, sx, riga);
         err('tipo', 'Non si moltiplica un testo per un altro testo', riga);
       }
+      case 'cmp':
+        err('sintassi', `Un confronto come \`${e.op}\` si usa solo nella condizione di un \`if\``, riga);
     }
   }
 }
@@ -942,6 +1074,7 @@ function usaNome(e: Espr, nome: string): boolean {
     case 'nome':
       return e.v === nome;
     case 'bin':
+    case 'cmp':
       return usaNome(e.sx, nome) || usaNome(e.dx, nome);
     case 'neg':
       return usaNome(e.e, nome);
@@ -962,6 +1095,7 @@ function contaInput(e: Espr): number {
     case 'int':
       return contaInput(e.e);
     case 'bin':
+    case 'cmp':
       return contaInput(e.sx) + contaInput(e.dx);
     case 'neg':
       return contaInput(e.e);
@@ -981,11 +1115,23 @@ function struttura(corpo: Istruzione[]): Struttura {
     numRighe: 0,
     accumuliNelCiclo: 0,
     numInput: 0,
+    numIf: 0,
+    ifNelCiclo: 0,
   };
 
   const visita = (istruzioni: Istruzione[], dentroCiclo: boolean) => {
     for (const istr of istruzioni) {
       s.numRighe++;
+      if (istr.k === 'if') {
+        s.numIf++;
+        if (dentroCiclo) s.ifNelCiclo++;
+        for (const ramo of istr.rami) {
+          s.numInput += contaInput(ramo.cond);
+          visita(ramo.corpo, dentroCiclo);
+        }
+        if (istr.altrimenti) visita(istr.altrimenti, dentroCiclo);
+        continue;
+      }
       if (istr.k === 'assegna') {
         s.numInput += contaInput(istr.espr);
         if (dentroCiclo && (istr.op === '+=' || usaNome(istr.espr, istr.nome))) s.accumuliNelCiclo++;

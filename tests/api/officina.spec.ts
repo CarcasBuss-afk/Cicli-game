@@ -90,6 +90,7 @@ test.describe("l'Officina", () => {
       ['salvadanaio', 'bloccato'],
       ['allenamento', 'bloccato'],
       ['scontrino', 'bloccato'],
+      ['promozione', 'bloccato'],
     ]);
     expect(p.compiti[0]).toMatchObject({ titolo: 'Il cartello della festa', fasi: 0, fasiTotali: 5, consigli: 0, voto: null, votoSeFinisci: 10 });
 
@@ -308,7 +309,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await page.getByRole('button', { name: 'Entra' }).click();
     await expect(page.getByText(`Classe ${nomeClasse}`)).toBeVisible();
     const percorso = page.getByRole('list', { name: `percorso di ${nomeClasse}` }).locator('li');
-    await expect(percorso).toHaveCount(7);
+    await expect(percorso).toHaveCount(8);
     await expect(percorso.nth(0)).toContainText('Comincia');
     await expect(percorso.nth(1)).toContainText('si sblocca');
     await expect(page.getByLabel('media')).toHaveText('–');
@@ -364,7 +365,7 @@ test.describe("l'Officina nella dashboard del docente", () => {
     await expect(riga).toContainText('2/5');
     await expect(riga).toContainText('🧑‍🏫 1');
     await expect(riga).toContainText('🔒');
-    await expect(riga.locator('td').nth(8)).toHaveText('10'); // la media (dopo i 7 compiti): un solo compito finito, senza domande
+    await expect(riga.locator('td').nth(9)).toHaveText('10'); // la media (dopo gli 8 compiti): un solo compito finito, senza domande
 
     await riga.getByRole('button', { name: `Luca Rossi: classifica` }).click();
     const lavoro = page.getByRole('region', { name: "lavoro dell'allievo" });
@@ -378,6 +379,6 @@ test.describe("l'Officina nella dashboard del docente", () => {
     const file = await download;
     const testo = await (await import('node:fs/promises')).readFile(await file.path(), 'utf-8');
     expect(testo).toContain('Nome;Email;Il cartello della festa · fasi;Il cartello della festa · domande;Il cartello della festa · voto;');
-    expect(testo).toContain(`Luca Rossi;${luca.email};5;0;10;2;1;;${'0;0;;'.repeat(5)}10`);
+    expect(testo).toContain(`Luca Rossi;${luca.email};5;0;10;2;1;;${'0;0;;'.repeat(6)}10`);
   });
 });

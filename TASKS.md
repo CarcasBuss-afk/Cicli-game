@@ -77,4 +77,5 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 12a. Via la Cronoscalata dal Giro (temi, gregario, `consiglio`, LIM, generale); catalogo dei compiti in `lib/officina/compiti.ts`, consiglio a parole in `lib/officina/consiglio.ts`, filtro anti-codice in `lib/giro/filtroCodice.ts`.
 - [x] 12b. Il percorso a un'idea per compito (PERCORSO.md §15): i quattro compiti iniziali (cartello, classifica, lancio, scala) prima del salvadanaio, in `lib/officina/compitiIniziali.ts`.
 - [x] 12d. L'interruttore dell'Officina: `apriClasse`/`chiudiClasse` a ogni lezione, avviso agli allievi a classe chiusa (PERCORSO.md §16).
-- [ ] 12c. I compiti dopo lo scontrino: tolti dal piano tabellina, lettere e griglia (22 ottobre 2026); progressione da decidere verso `if` e `while` (servono confronti e condizioni nel micro-interprete).
+- [x] 12e. Le condizioni (PERCORSO.md §17): confronti e `if`/`elif`/`else` nel micro-interprete; il compito 8, la promozione del bar, che riparte dallo scontrino già scritto.
+- [ ] 12c. I `while`: l'obiettivo del salvadanaio, la cassa del bar (sentinella), indovina il numero; `while` nel micro-interprete con l'hint sul ciclo infinito.

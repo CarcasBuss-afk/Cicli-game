@@ -246,3 +246,76 @@ describe('lo scontrino del bar (input e int)', () => {
 function prezzoDi(seme: number): number {
   return Number(schedaCompito('scontrino', seme).dati[0].match(/(\d+) €/)![1]);
 }
+
+describe('la promozione del bar (decidere con un if)', () => {
+  const fasi = generaCompito('promozione', 23);
+  const scheda = schedaCompito('promozione', 23);
+  const prezzo = Number(scheda.dati[0].match(/(\d+) €/)![1]);
+  const [, sconto, soglia] = scheda.dati[2].match(/(\d+) € da (\d+) €/)!.map(Number);
+
+  it('la fase 1 riparte dallo scontrino già scritto, e consegnarlo tale e quale non vale', () => {
+    expect(fasi[0].codiceIniziale).toContain('for i in range(1, panini + 1):');
+    expect(fasi[0].codiceIniziale).toContain(`totale += ${prezzo}`);
+    expect(fasi.slice(1).every((f) => f.codiceIniziale === undefined)).toBe(true);
+    const esito = valutaRisposta(fasi[0], fasi[0].codiceIniziale!);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/Non hai cambiato niente/);
+  });
+
+  it('ogni fase ha tre clienti di prova: con omaggio e sconto, senza niente, con il solo omaggio', () => {
+    for (const fase of fasi) {
+      expect(fase.prove).toHaveLength(3);
+      const panini = fase.prove!.map((p) => Number(p.risposte[1]));
+      expect(panini[0]).toBeGreaterThanOrEqual(5);
+      expect(panini[1]).toBe(2);
+      expect(panini[2]).toBe(4);
+    }
+    const [conTutto, senza, soloOmaggio] = fasi[4].prove!;
+    expect(conTutto.output).toContain(`Sconto fedeltà: -${sconto} €`);
+    expect(senza.output.join('\n')).not.toContain('omaggio');
+    expect(senza.output.join('\n')).toContain('Ti mancano');
+    expect(soloOmaggio.output).toContain('Panino 3: omaggio');
+    expect(soloOmaggio.output.join('\n')).not.toContain('Sconto');
+    expect(soloOmaggio.output).toContain(`Ti mancano ${soglia - 3 * prezzo} € per lo sconto`);
+  });
+
+  it("l'omaggio scritto a mano, senza if, passa la prova mostrata ma cade su quella nascosta", () => {
+    // Il ciclo spezzato in due attorno al terzo panino: con 5 panini l'output è giusto.
+    const furbo = [
+      'nome = input("Come ti chiami? ")',
+      'print(f"Scontrino di {nome}")',
+      'panini = int(input("Quanti panini? "))',
+      'print(f"Panini: {panini}")',
+      `totale = ${3 * prezzo}`,
+      `for i in range(1, 3):\n    print(f"Panino {i}: ${prezzo} €")`,
+      `print("Panino 3: ${prezzo} €")\nprint("Il panino 3 è in omaggio!")`,
+      `for i in range(4, panini + 1):\n    totale += ${prezzo}\n    print(f"Panino {i}: ${prezzo} €")`,
+      'print(f"Totale: {totale} €")',
+    ].join('\n');
+    expect(esegui(furbo, { risposte: fasi[0].prove![0].risposte })).toMatchObject({ ok: true, output: fasi[0].outputAtteso });
+    // Con due panini la riga dell'omaggio non deve comparire: lo scopre la prova nascosta.
+    const esito = valutaRisposta(fasi[0], furbo);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/stampa un'altra cosa|rispondendo/);
+  });
+
+  it('lo sconto stampato sempre, senza if sul totale, cade sui clienti sotto soglia', () => {
+    const sempre = fasi[2].soluzione + `\nprint("Sconto fedeltà: -${sconto} €")\nprint(f"Da pagare: {totale - ${sconto}} €")`;
+    const esito = valutaRisposta(fasi[3], sempre);
+    expect(esito.promosso).toBe(false);
+  });
+
+  it('il totale calcolato con una formula passa il micro-interprete: lo ferma la regola del giudice', () => {
+    expect(fasi[2].regola).toContain('`(panini - 1) * prezzo`');
+    expect(fasi[0].regola).toMatch(/`if` dentro il ciclo/);
+    expect(fasi[3].regola).toMatch(/sul totale, dopo il ciclo/);
+    expect(fasi[4].regola).toMatch(/`else`/);
+  });
+
+  it('la scheda mostra la promozione e il prodotto finale con il saluto', () => {
+    expect(scheda.committente).toContain('omaggio');
+    expect(scheda.outputFinale[scheda.outputFinale.length - 1]).toMatch(/^Grazie, \w+!$/);
+    expect(scheda.outputFinale).toContain('Panino 3: omaggio');
+    expect(scheda.outputFinale.length).toBeLessThanOrEqual(12);
+  });
+});
