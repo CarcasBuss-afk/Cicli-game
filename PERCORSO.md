@@ -511,10 +511,10 @@ I quattro nuovi stanno in `lib/officina/compitiIniziali.ts`. Provati con il giud
 (Haiku) su dodici casi, onesti e furbi: tutti giusti, compresa la variante con la
 variabile d'appoggio e quella con la f-string diretta.
 
-**Idee per dopo**, quando la classe ci arriva: la tabellina del nonno (due input e il
-prodotto), il contatore di lettere (for lettera in parola, accumulare stringhe), la
-griglia del parcheggio (cicli annidati). Poi i while, che chiedono anche if e confronti
-nel micro-interprete.
+**Dopo lo scontrino** (deciso il 22 ottobre 2026): niente tabellina, contatore di lettere
+né griglia con i cicli annidati, che erano variazioni sul `for` e non un'idea nuova. Il
+passo successivo si ragiona a parte: la direzione è `if` e poi `while`, che chiedono
+confronti e condizioni nel micro-interprete.
 ## 16. L'interruttore dell'Officina (22 ottobre 2026)
 
 Alla prima lezione vera, a fine ora, Fabio ha premuto «Chiudi la classe» credendo di uscire dall'account: la classe è rimasta chiusa e non c'era modo di riaprirla se non dalla console Firebase. Il pulsante era pensato come fine del percorso; nell'uso reale serve un'altra cosa.
