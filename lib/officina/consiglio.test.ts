@@ -1,9 +1,9 @@
-/* Test del Gregario: il filtro anti-codice è la regola che il docente ha dato ("i
+/* Test del consiglio a parole: il filtro anti-codice è la regola che il docente ha dato ("i
  * consigli non sono mai la scrittura del codice"), e deve reggere anche quando il modello
  * sbaglia. */
 import { describe, expect, it } from 'vitest';
-import { consiglioFinto, contieneCodice, messaggioConsiglio, normalizzaDomanda, pulisciConsiglio, type ContestoConsiglio } from './gregario';
-import { generaCronoscalata, schedaProgetto } from './progetti';
+import { consiglioFinto, contieneCodice, messaggioConsiglio, normalizzaDomanda, pulisciConsiglio, type ContestoConsiglio } from './consiglio';
+import { generaCompito, schedaCompito } from './compiti';
 
 describe('contieneCodice', () => {
   it('lascia passare i consigli a parole, anche con nomi fra apici', () => {
@@ -47,8 +47,8 @@ describe('contieneCodice', () => {
 });
 
 describe('il messaggio al modello', () => {
-  const scheda = schedaProgetto('salvadanaio', 3);
-  const fasi = generaCronoscalata('salvadanaio', 3);
+  const scheda = schedaCompito('salvadanaio', 3);
+  const fasi = generaCompito('salvadanaio', 3);
   const base: ContestoConsiglio = {
     scheda,
     fase: 3,
@@ -100,9 +100,9 @@ describe('pulizia', () => {
   });
 });
 
-describe('il gregario finto', () => {
-  const scheda = schedaProgetto('salvadanaio', 1);
-  const fasi = generaCronoscalata('salvadanaio', 1);
+describe('il consiglio finto', () => {
+  const scheda = schedaCompito('salvadanaio', 1);
+  const fasi = generaCompito('salvadanaio', 1);
   const ctx = (domanda: string): ContestoConsiglio => ({
     scheda,
     fase: 1,

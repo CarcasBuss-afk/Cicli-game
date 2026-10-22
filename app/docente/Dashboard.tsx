@@ -129,7 +129,7 @@ export function Dashboard() {
                     {i + 1}. {t.nome}
                   </span>
                   <span className="text-sm text-(--color-testo-tenue)">
-                    {t.descrizione} · {t.durataMinuti === null ? 'senza cronometro' : `${t.durataMinuti} min`}
+                    {t.descrizione} · {t.durataMinuti} min
                   </span>
                 </label>
               ))}

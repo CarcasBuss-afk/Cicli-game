@@ -11,7 +11,7 @@ import { ApiError } from '@/lib/giro/http';
 import { valutaRisposta } from '@/lib/giro/hint';
 import { verificaConsegna } from '@/lib/giro/verifica';
 import { esegui } from '@/lib/giro/interprete';
-import { eProgetto, generaCronoscalata, schedaProgetto, type Progetto } from '@/lib/giro/progetti';
+import { eCompito, generaCompito, schedaCompito, type CompitoId } from '@/lib/officina/compiti';
 import { richiestaAmmessa } from '@/lib/giro/rateLimit';
 import type { Utente } from './auth';
 import { FASI_PER_COMPITO, mediaVoti, percorsoDi, semeDa, votoSeFinisce } from './regole';
@@ -114,15 +114,15 @@ async function contesto(body: Record<string, unknown>, utente: Utente, tx?: Fire
   return { classeId, classe, allievo, allievoRef };
 }
 
-const semeDi = (uid: string, progetto: Progetto) => semeDa(`${uid}|${progetto}`);
+const semeDi = (uid: string, progetto: CompitoId) => semeDa(`${uid}|${progetto}`);
 
-function fasiDi(progetto: Progetto, uid: string): Esercizio[] {
-  return generaCronoscalata(progetto, semeDi(uid, progetto));
+function fasiDi(progetto: CompitoId, uid: string): Esercizio[] {
+  return generaCompito(progetto, semeDi(uid, progetto));
 }
 
 /** Il compito richiesto, se è nel percorso e sbloccato per questo allievo. */
 function compitoAperto(allievo: AllievoOfficinaDoc, compitoId: string) {
-  if (!eProgetto(compitoId)) throw new ApiError(404, 'COMPITO_NON_TROVATO', 'Compito inesistente');
+  if (!eCompito(compitoId)) throw new ApiError(404, 'COMPITO_NON_TROVATO', 'Compito inesistente');
   const voce = percorsoDi(allievo.lavori ?? {}).find((v) => v.id === compitoId);
   if (!voce) throw new ApiError(404, 'COMPITO_NON_TROVATO', 'Compito inesistente');
   if (voce.stato === 'bloccato') throw new ApiError(403, 'BLOCCATO', 'Questo compito si sblocca quando finisci il precedente');
@@ -137,7 +137,7 @@ export async function compiti(body: Record<string, unknown>, utente: Utente) {
   const voci = percorsoDi(ctx.allievo.lavori ?? {});
   return {
     classe: { id: ctx.classeId, nome: ctx.classe.nome, chiusa: ctx.classe.chiusa },
-    compiti: voci.map((v) => ({ ...v, fasiTotali: FASI_PER_COMPITO, titolo: schedaProgetto(v.id, 1).titolo, votoSeFinisci: votoSeFinisce(v.consigli) })),
+    compiti: voci.map((v) => ({ ...v, fasiTotali: FASI_PER_COMPITO, titolo: schedaCompito(v.id, 1).titolo, votoSeFinisci: votoSeFinisce(v.consigli) })),
     media: mediaVoti(voci),
   };
 }
@@ -160,7 +160,7 @@ export async function compito(body: Record<string, unknown>, utente: Utente) {
     finito,
     voto: voce.voto,
     votoSeFinisci: votoSeFinisce(lavoro.consigli),
-    scheda: schedaProgetto(progetto, semeDi(utente.uid, progetto)),
+    scheda: schedaCompito(progetto, semeDi(utente.uid, progetto)),
     esercizio: esercizio ? { ...esercizioPerAllievo(esercizio), codiceIniziale: daCui || undefined } : null,
     codice: lavoro.codice ?? {},
     tutor: (lavoro.tutor ?? []).map((s) => ({ fase: s.fase + 1, domanda: s.domanda, risposta: s.risposta })),
@@ -269,7 +269,7 @@ export async function tutor(body: Record<string, unknown>, utente: Utente) {
   const valutazione = codice.trim() ? valutaRisposta(esercizio, codice) : null;
   const risposta = await chiediTutor(
     {
-      scheda: schedaProgetto(progetto, semeDi(utente.uid, progetto)),
+      scheda: schedaCompito(progetto, semeDi(utente.uid, progetto)),
       fase: lavoro.fasi + 1,
       fasiTotali: FASI_PER_COMPITO,
       esercizio,

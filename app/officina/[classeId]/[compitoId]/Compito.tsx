@@ -1,6 +1,6 @@
 'use client';
 /* Il compito di realtà, fase per fase: la scheda, la consegna della fase, l'editor che
- * riparte da dove si era, il tutor. Come la Cronoscalata, ma da soli e senza fretta. */
+ * riparte da dove si era, il tutor. Da soli e senza fretta: non è una gara. */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import EditorPython from '@/components/EditorPython';

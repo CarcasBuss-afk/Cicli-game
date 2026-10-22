@@ -1,22 +1,22 @@
-/* La Cronoscalata: il compito di realtà guidato (vedi PERCORSO.md §11).
+/* I compiti di realtà dell'Officina (PERCORSO.md §12 e §14).
  *
- * Una tappa speciale del Giro, senza cronometro, i cui chilometri sono le **fasi di
- * costruzione di un solo programma**: a ogni fase l'allievo aggiunge una riga o due a
- * quello che ha già, finché il programma non è il prodotto finito. Ogni fase è un
- * `Esercizio` come gli altri, così validazione e hint restano quelli del Giro; cambia la
- * cornice: la scheda del compito (committente, prodotto, output finale) e il voto.
+ * Un compito è un solo programma costruito in **fasi**: a ogni fase l'allievo aggiunge
+ * una riga o due a quello che ha già, finché il programma non è il prodotto finito. Ogni
+ * fase è un `Esercizio` del motore comune (lib/giro: interprete, hint, giudice), così
+ * validazione e hint sono quelli di sempre; cambia la cornice: la scheda del compito
+ * (committente, prodotto, output finale) e il voto.
  *
- * I parametri del progetto escono dal seme della tappa, uguali per tutti gli allievi:
- * l'output atteso si ricalcola dal seme ovunque serva, senza salvarlo due volte.
+ * I parametri del compito escono da un seme (nell'Officina: dell'allievo), e l'output
+ * atteso si ricalcola dal seme ovunque serva, senza salvarlo due volte.
  *
  * Modulo puro: niente Firestore, niente Next.
  */
-import { generatore, REGOLE, type Esercizio, type Prova } from './esercizi';
+import { generatore, REGOLE, type Esercizio, type Prova } from '../giro/esercizi';
 
-export type Progetto = 'salvadanaio' | 'allenamento' | 'scontrino';
+export type CompitoId = 'salvadanaio' | 'allenamento' | 'scontrino';
 
-export interface SchedaProgetto {
-  id: Progetto;
+export interface SchedaCompito {
+  id: CompitoId;
   titolo: string;
   /** Chi chiede il programma e perché: il contesto di realtà. */
   committente: string;
@@ -28,12 +28,10 @@ export interface SchedaProgetto {
   outputFinale: string[];
 }
 
-/** Il voto parte da qui e scende di uno a consiglio. */
+/** Il voto parte da qui e scende di uno a domanda al tutor. */
 export const VOTO_MASSIMO = 10;
-/** Sotto questo non si scende se si arriva in fondo: i consigli servono a imparare, non a bocciare. */
+/** Sotto questo non si scende: le domande servono a imparare, non a bocciare. */
 export const VOTO_MINIMO_FINITO = 5;
-/** Pavimento per chi non finisce. */
-export const VOTO_MINIMO = 2;
 
 /* -------------------------------------------------------------- il salvadanaio */
 
@@ -149,7 +147,7 @@ function fasiSalvadanaio(seme: number): Esercizio[] {
   ];
 }
 
-function schedaSalvadanaio(seme: number): SchedaProgetto {
+function schedaSalvadanaio(seme: number): SchedaCompito {
   const p = parametriSalvadanaio(seme);
   const obiettivo = p.quota * p.settimane;
   return {
@@ -269,7 +267,7 @@ function fasiAllenamento(seme: number): Esercizio[] {
   ];
 }
 
-function schedaAllenamento(seme: number): SchedaProgetto {
+function schedaAllenamento(seme: number): SchedaCompito {
   const p = parametriAllenamento(seme);
   const { righe, totale } = righeAllenamento(p, 4);
   return {
@@ -403,7 +401,7 @@ function fasiScontrino(seme: number): Esercizio[] {
   ];
 }
 
-function schedaScontrino(seme: number): SchedaProgetto {
+function schedaScontrino(seme: number): SchedaCompito {
   const p = parametriScontrino(seme);
   const [a] = p.clienti;
   return {
@@ -420,48 +418,36 @@ function schedaScontrino(seme: number): SchedaProgetto {
 
 /* ------------------------------------------------------------------- catalogo */
 
-const PROGETTI: Record<Progetto, { fasi: (seme: number) => Esercizio[]; scheda: (seme: number) => SchedaProgetto }> = {
+const PROGETTI: Record<CompitoId, { fasi: (seme: number) => Esercizio[]; scheda: (seme: number) => SchedaCompito }> = {
   salvadanaio: { fasi: fasiSalvadanaio, scheda: schedaSalvadanaio },
   allenamento: { fasi: fasiAllenamento, scheda: schedaAllenamento },
   scontrino: { fasi: fasiScontrino, scheda: schedaScontrino },
 };
 
 /** I progetti nell'ordine didattico: ognuno è un passo avanti rispetto al precedente. */
-export const ELENCO_PROGETTI: Progetto[] = ['salvadanaio', 'allenamento', 'scontrino'];
+export const ELENCO_COMPITI: CompitoId[] = ['salvadanaio', 'allenamento', 'scontrino'];
 
 /** Le fasi del progetto, come chilometri della tappa. Stesso seme, stesse fasi. */
-export function generaCronoscalata(progetto: Progetto, seme: number): Esercizio[] {
+export function generaCompito(progetto: CompitoId, seme: number): Esercizio[] {
   return PROGETTI[progetto].fasi(seme);
 }
 
 /** La scheda del compito, ricalcolata dal seme della tappa ovunque serva. */
-export function schedaProgetto(progetto: Progetto, seme: number): SchedaProgetto {
+export function schedaCompito(progetto: CompitoId, seme: number): SchedaCompito {
   return PROGETTI[progetto].scheda(seme);
 }
 
-export function eProgetto(valore: unknown): valore is Progetto {
+export function eCompito(valore: unknown): valore is CompitoId {
   return typeof valore === 'string' && valore in PROGETTI;
 }
 
 /* ----------------------------------------------------------------------- voto */
 
 /**
- * Il voto che l'allievo vede mentre corre: quello che prende se arriva in fondo, 10 meno
- * un punto a consiglio, pavimento 5. È il numero che gli si mostra prima di chiedere un
+ * Il voto che l'allievo vede mentre lavora: quello che prende se arriva in fondo, 10 meno
+ * un punto a domanda, pavimento 5. È il numero che gli si mostra prima di chiedere un
  * consiglio («costa 1 punto: voto attuale 9»).
  */
 export function votoSeFinisce(consigli: number): number {
   return Math.max(VOTO_MINIMO_FINITO, VOTO_MASSIMO - Math.max(0, consigli));
-}
-
-/**
- * Il voto proposto al docente a tappa chiusa: `votoSeFinisce` per chi arriva in fondo;
- * chi non finisce parte da un voto proporzionale alle fasi fatte (3 su 5 → 6), sempre
- * meno i consigli, pavimento 2. È una proposta: il docente la cambia prima di esportare.
- */
-export function votoProposto(fasiFatte: number, fasiTotali: number, consigli: number): number {
-  const finito = fasiTotali > 0 && fasiFatte >= fasiTotali;
-  if (finito) return votoSeFinisce(consigli);
-  const base = fasiTotali > 0 ? Math.round((VOTO_MASSIMO * fasiFatte) / fasiTotali) : 0;
-  return Math.max(VOTO_MINIMO, base - Math.max(0, consigli));
 }

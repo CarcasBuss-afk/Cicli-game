@@ -552,9 +552,9 @@ const GENERATORI: Record<TipoEsercizio, (rnd: () => number, d: Difficolta) => Es
   'conta-giri': tappaContaGiri,
   fstring: tappaFstring,
   'conta-lettere': tappaContaLettere,
-  // Le fasi di un progetto non escono a caso da un piano: le genera `generaCronoscalata`.
+  // Le fasi di un progetto non escono a caso da un piano: le genera `generaCompito`.
   progetto: () => {
-    throw new Error('Le fasi di un progetto si generano con generaCronoscalata (lib/giro/progetti.ts)');
+    throw new Error('Le fasi di un progetto si generano con generaCompito (lib/giro/progetti.ts)');
   },
 };
 

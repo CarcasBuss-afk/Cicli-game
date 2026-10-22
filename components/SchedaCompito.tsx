@@ -1,10 +1,10 @@
-/* La scheda del compito di realtà (Cronoscalata): chi lo chiede, che cosa deve venire
+/* La scheda del compito di realtà: chi lo chiede, che cosa deve venire
  * fuori, i dati, e il prodotto finale per intero. Resta sopra l'editor per tutta la tappa:
  * è il bersaglio, e nel compito di realtà il bersaglio si vede. */
 import { useState } from 'react';
-import type { SchedaProgetto } from '@/lib/giro/progetti';
+import type { SchedaCompito } from '@/lib/officina/compiti';
 
-export default function SchedaCompito({ scheda, fase, fasi }: { scheda: SchedaProgetto; fase: number; fasi: number }) {
+export default function SchedaCompito({ scheda, fase, fasi }: { scheda: SchedaCompito; fase: number; fasi: number }) {
   // Dalla seconda fase la scheda si richiude da sola: lo spazio serve al codice.
   const [aperta, setAperta] = useState(fase === 1);
   return (

@@ -72,3 +72,7 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 ## Task 11 — Il Giudice al posto dei vincoli (PERCORSO.md §13)
 - [x] 11a. Via `Vincoli` da esercizi e progetti; `Esercizio.regola` a parole (`REGOLE`); l'interprete espone i `giri`; `hint.ts` guarda solo l'output.
 - [x] 11b. `giudice.ts` (prompt, messaggio con i fatti, lettura del verdetto, hint senza codice, giudice finto) e `giudiceClient.ts` (Haiku, fail-open); `verificaConsegna` chiamata fuori dalle transazioni nel Giro e nell'Officina.
+
+## Task 12 — Due attività separate (PERCORSO.md §14)
+- [x] 12a. Via la Cronoscalata dal Giro (temi, gregario, `consiglio`, LIM, generale); catalogo dei compiti in `lib/officina/compiti.ts`, consiglio a parole in `lib/officina/consiglio.ts`, filtro anti-codice in `lib/giro/filtroCodice.ts`.
+- [ ] 12b. La didattica progressiva dell'Officina: nuovi compiti sui cicli `for` a gradini piccoli (da decidere con il docente), poi i `while`.

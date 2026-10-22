@@ -466,3 +466,23 @@ chiede la tappa: …»), filtrato come i consigli del gregario: mai codice. Cost
 di centesimo a consegna promossa. I Giri creati prima di oggi hanno esercizi senza regola
 e non passano dal giudice. Nei test il giudice finto boccia solo il codice con il commento
 `# furbo`.
+
+## 14. Due attività separate: il Giro e l'Officina (22 ottobre 2026)
+
+**La decisione.** Il Giro è la gara a tappe e basta; i compiti di realtà vivono solo
+nell'Officina. La Cronoscalata (§11) nasceva come tappa speciale del Giro per portare il
+compito in classe con il gregario; con l'Officina (§12) quel bisogno è coperto meglio, da
+soli e senza fretta, e tenere i compiti anche dentro la gara legava le due attività in un
+modo che confondeva: stessi progetti in due posti, voto e punti mescolati sulla LIM.
+
+**Che cosa è cambiato nel codice.** Via dal Giro i temi Cronoscalata, il gregario e la
+rotta `consiglio`, il voto alla LIM, la regola «fuori dalla generale». Il catalogo dei
+compiti è passato da `lib/giro/progetti.ts` a `lib/officina/compiti.ts` (`ELENCO_COMPITI`,
+`generaCompito`, `schedaCompito`); il contesto del consiglio a parole sta in
+`lib/officina/consiglio.ts`, e il filtro anti-codice, che serve anche al giudice, nel motore
+(`lib/giro/filtroCodice.ts`). Il motore (interprete, hint, giudice, editor) resta comune in
+`lib/giro/`: è lo stesso Python, con le stesse regole.
+
+**Da qui in avanti.** L'Officina cresce per conto suo: nuovi compiti di realtà che salgono di
+difficoltà un gradino alla volta, uno sbloccato alla volta, prima sui cicli `for` e poi sui
+`while`. Il Giro resta per le gare in classe sulle tappe tematiche.

@@ -1,7 +1,7 @@
 /* La tabella della classe per la dashboard dell'Officina: allievi × compiti del percorso,
  * con fasi, domande al tutor, voto e media; e il CSV per il registro. Funzioni pure,
  * girano nel browser del docente sui dati che arrivano da Firestore in tempo reale. */
-import { schedaProgetto } from '../giro/progetti';
+import { schedaCompito } from './compiti';
 import { mediaVoti, PERCORSO, percorsoDi, type VoceCompito } from './regole';
 
 export type LavoroVisto = {
@@ -25,7 +25,7 @@ export type AllievoVisto = {
 export type RigaTabella = { uid: string; nome: string; email: string; voci: VoceCompito[]; media: number | null };
 
 /** I titoli dei compiti del percorso, nell'ordine. */
-export const TITOLI_PERCORSO = PERCORSO.map((id) => ({ id, titolo: schedaProgetto(id, 1).titolo }));
+export const TITOLI_PERCORSO = PERCORSO.map((id) => ({ id, titolo: schedaCompito(id, 1).titolo }));
 
 /** Una riga per allievo, in ordine alfabetico, con il percorso e la media. */
 export function tabellaClasse(allievi: AllievoVisto[]): RigaTabella[] {

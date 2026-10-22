@@ -1,19 +1,18 @@
-/* Test della Cronoscalata: le fasi del progetto, la scheda, il voto. La proprietà che
+/* Test dei compiti di realtà: le fasi, la scheda, il voto. La proprietà che
  * conta è la stessa dei generatori: la soluzione di riferimento passa sempre, e ogni fase
  * è la precedente più un pezzo. */
 import { describe, expect, it } from 'vitest';
-import { valutaRisposta } from './hint';
-import { esegui } from './interprete';
-import { ELENCO_PROGETTI, generaCronoscalata, schedaProgetto, votoProposto, votoSeFinisce } from './progetti';
-import { esercizioPerAllievo } from './esercizi';
-import { generaTappa, infoTema, TEMI_DEL_GIRO } from './giro';
+import { valutaRisposta } from '../giro/hint';
+import { esegui } from '../giro/interprete';
+import { ELENCO_COMPITI, generaCompito, schedaCompito, votoSeFinisce } from './compiti';
+import { esercizioPerAllievo } from '../giro/esercizi';
 
 const SEMI = Array.from({ length: 40 }, (_, i) => (i + 1) * 1013);
 
-describe.each(ELENCO_PROGETTI)('ogni progetto: %s', (progetto) => {
+describe.each(ELENCO_COMPITI)('ogni progetto: %s', (progetto) => {
   it('ha cinque fasi e la soluzione di riferimento passa ognuna, su molti semi', () => {
     for (const seme of SEMI) {
-      const fasi = generaCronoscalata(progetto, seme);
+      const fasi = generaCompito(progetto, seme);
       expect(fasi).toHaveLength(5);
       fasi.forEach((fase, i) => {
         const esito = valutaRisposta(fase, fase.soluzione);
@@ -24,13 +23,13 @@ describe.each(ELENCO_PROGETTI)('ogni progetto: %s', (progetto) => {
   });
 
   it('è riproducibile dal seme e cambia con il seme', () => {
-    expect(generaCronoscalata(progetto, 7)).toEqual(generaCronoscalata(progetto, 7));
-    const diverse = new Set(SEMI.map((s) => generaCronoscalata(progetto, s)[4].outputAtteso.join('\n')));
+    expect(generaCompito(progetto, 7)).toEqual(generaCompito(progetto, 7));
+    const diverse = new Set(SEMI.map((s) => generaCompito(progetto, s)[4].outputAtteso.join('\n')));
     expect(diverse.size).toBeGreaterThan(5);
   });
 
   it('ogni fase mostra il suo output: in un compito di realtà il bersaglio si vede', () => {
-    for (const fase of generaCronoscalata(progetto, 42)) {
+    for (const fase of generaCompito(progetto, 42)) {
       expect(fase.mostraOutput).toBe(true);
       expect(fase.tipo).toBe('progetto');
       expect(fase.risposta).toBe('codice');
@@ -39,7 +38,7 @@ describe.each(ELENCO_PROGETTI)('ogni progetto: %s', (progetto) => {
 
   it("l'output resta leggibile: al massimo 11 righe", () => {
     for (const seme of SEMI) {
-      for (const fase of generaCronoscalata(progetto, seme)) {
+      for (const fase of generaCompito(progetto, seme)) {
         expect(fase.outputAtteso.length).toBeLessThanOrEqual(12);
         expect(fase.outputAtteso.length).toBeGreaterThanOrEqual(1);
       }
@@ -48,7 +47,7 @@ describe.each(ELENCO_PROGETTI)('ogni progetto: %s', (progetto) => {
 
   it('la soluzione di una fase non passa la fase dopo: ogni fase aggiunge un pezzo', () => {
     for (const seme of SEMI.slice(0, 10)) {
-      const fasi = generaCronoscalata(progetto, seme);
+      const fasi = generaCompito(progetto, seme);
       for (let i = 1; i < fasi.length; i++) {
         expect(valutaRisposta(fasi[i], fasi[i - 1].soluzione).promosso, `seme ${seme}, fase ${i + 1}`).toBe(false);
       }
@@ -56,25 +55,19 @@ describe.each(ELENCO_PROGETTI)('ogni progetto: %s', (progetto) => {
   });
 
   it('la scheda mostra per intero il prodotto finale, che è l\'output della fase 5', () => {
-    const scheda = schedaProgetto(progetto, 99);
-    const fasi = generaCronoscalata(progetto, 99);
+    const scheda = schedaCompito(progetto, 99);
+    const fasi = generaCompito(progetto, 99);
     expect(scheda.id).toBe(progetto);
     expect(scheda.outputFinale).toEqual(fasi[4].outputAtteso);
     expect(scheda.committente.length).toBeGreaterThan(40);
   });
 
-  it('è un tema del Giro senza cronometro', () => {
-    const tema = TEMI_DEL_GIRO.find((t) => t.progetto === progetto);
-    expect(tema).toBeDefined();
-    expect(tema!.durataMinuti).toBeNull();
-    expect(generaTappa(tema!.id, 3)).toEqual(generaCronoscalata(progetto, 3));
-  });
 });
 
 describe('il salvadanaio', () => {
 
   it('la fase 2 si passa anche senza f-string, con print a più argomenti? no: lo spazio prima dei due punti tradisce', () => {
-    const [, fase2] = generaCronoscalata('salvadanaio', 5);
+    const [, fase2] = generaCompito('salvadanaio', 5);
     const quota = fase2.outputAtteso[0].match(/: (\d+) €/)![1];
     const n = fase2.outputAtteso.length;
     const esito = valutaRisposta(fase2, `for i in range(1, ${n + 1}):\n    print("Settimana", i, ": ${quota} €")`);
@@ -83,7 +76,7 @@ describe('il salvadanaio', () => {
   });
 
   it('dalla fase 3 il totale deve nascere da un accumulo, non da quota * i: lo dice la regola per il giudice', () => {
-    const fasi = generaCronoscalata('salvadanaio', 11);
+    const fasi = generaCompito('salvadanaio', 11);
     const fase3 = fasi[2];
     const quota = Number(fase3.outputAtteso[0].match(/: (\d+) €/)![1]);
     const n = fase3.outputAtteso.length;
@@ -98,7 +91,7 @@ describe('il salvadanaio', () => {
   });
 
   it('la riga finale si può scrivere con il numero a mano: il micro-interprete non lo distingue, e va bene', () => {
-    const fasi = generaCronoscalata('salvadanaio', 11);
+    const fasi = generaCompito('salvadanaio', 11);
     const fase5 = fasi[4];
     const finale = fase5.outputAtteso[fase5.outputAtteso.length - 1];
     const codice = fasi[3].soluzione + `\nprint("${finale}")`;
@@ -106,8 +99,8 @@ describe('il salvadanaio', () => {
   });
 
   it('la scheda racconta il compito e mostra per intero il prodotto finale', () => {
-    const scheda = schedaProgetto('salvadanaio', 99);
-    const fasi = generaCronoscalata('salvadanaio', 99);
+    const scheda = schedaCompito('salvadanaio', 99);
+    const fasi = generaCompito('salvadanaio', 99);
     expect(scheda.outputFinale).toEqual(fasi[4].outputAtteso);
     expect(scheda.dati).toHaveLength(3);
     expect(scheda.committente).toContain('€');
@@ -118,8 +111,8 @@ describe('il salvadanaio', () => {
 });
 
 describe("la tabella d'allenamento", () => {
-  const fasi = generaCronoscalata('allenamento', 17);
-  const scheda = schedaProgetto('allenamento', 17);
+  const fasi = generaCompito('allenamento', 17);
+  const scheda = schedaCompito('allenamento', 17);
   const partenza = Number(scheda.dati[0].match(/(\d+) km/)![1]);
   const incremento = Number(scheda.dati[1].match(/\+(\d+) km/)![1]);
   const n = fasi[0].outputAtteso.length;
@@ -171,36 +164,20 @@ describe("la tabella d'allenamento", () => {
     expect(fasi[0].regola).toMatch(/giro solo/);
   });
 
-  it("i temi Cronoscalata sono nell'elenco del docente, uno per progetto", () => {
-    expect(infoTema('allenamento').progetto).toBe('allenamento');
-    expect(TEMI_DEL_GIRO.filter((t) => t.progetto).map((t) => t.progetto)).toEqual(ELENCO_PROGETTI);
-  });
 });
 
-describe('il voto proposto', () => {
-  it('mentre corre, l\'allievo vede il voto che prende se finisce: 10 meno i consigli, mai sotto 5', () => {
+describe('il voto', () => {
+  it('mentre lavora, l\'allievo vede il voto che prende se finisce: 10 meno le domande, mai sotto 5', () => {
     expect(votoSeFinisce(0)).toBe(10);
     expect(votoSeFinisce(3)).toBe(7);
     expect(votoSeFinisce(30)).toBe(5);
   });
 
-  it('parte da 10 e scende di uno a consiglio, fino a 5, per chi finisce', () => {
-    expect(votoProposto(5, 5, 0)).toBe(10);
-    expect(votoProposto(5, 5, 3)).toBe(7);
-    expect(votoProposto(5, 5, 8)).toBe(5);
-  });
-
-  it('per chi non finisce è proporzionale alle fasi, meno i consigli, pavimento 2', () => {
-    expect(votoProposto(3, 5, 0)).toBe(6);
-    expect(votoProposto(3, 5, 2)).toBe(4);
-    expect(votoProposto(0, 5, 0)).toBe(2);
-    expect(votoProposto(1, 5, 4)).toBe(2);
-  });
 });
 
 describe('lo scontrino del bar (input e int)', () => {
-  const fasi = generaCronoscalata('scontrino', 23);
-  const scheda = schedaProgetto('scontrino', 23);
+  const fasi = generaCompito('scontrino', 23);
+  const scheda = schedaCompito('scontrino', 23);
   const prezzo = Number(scheda.dati[0].match(/(\d+) €/)![1]);
   const [nome, panini] = fasi[1].prove![0].risposte;
 
@@ -257,7 +234,7 @@ describe('lo scontrino del bar (input e int)', () => {
 
   it('il resto torna: paga con una banconota che copre il totale', () => {
     for (let seme = 1; seme <= 30; seme++) {
-      for (const prova of generaCronoscalata('scontrino', seme)[4].prove!) {
+      for (const prova of generaCompito('scontrino', seme)[4].prove!) {
         const m = prova.output[prova.output.length - 1].match(/Hai dato (\d+) €, resto (\d+) €/)!;
         expect(Number(m[2])).toBeGreaterThanOrEqual(0);
         expect(Number(m[1]) - Number(m[2])).toBe(Number(prova.risposte[1]) * prezzoDi(seme));
@@ -267,5 +244,5 @@ describe('lo scontrino del bar (input e int)', () => {
 });
 
 function prezzoDi(seme: number): number {
-  return Number(schedaProgetto('scontrino', seme).dati[0].match(/(\d+) €/)![1]);
+  return Number(schedaCompito('scontrino', seme).dati[0].match(/(\d+) €/)![1]);
 }

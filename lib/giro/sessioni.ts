@@ -116,10 +116,9 @@ function validaDurata(minuti: unknown, predefinita: number | null): number | nul
 
 /* ------------------------------------------------------------------------ creazione */
 
-/** Durata proposta dal tema, in secondi; null per le tappe senza cronometro. */
-function durataProposta(tema: Tema): number | null {
-  const minuti = infoTema(tema).durataMinuti;
-  return minuti === null ? null : minuti * 60;
+/** Durata proposta dal tema, in secondi. */
+function durataProposta(tema: Tema): number {
+  return infoTema(tema).durataMinuti * 60;
 }
 
 function tappaDaCorrere(tema: Tema, km: number, durataSec: number | null): TappaDoc {
@@ -203,25 +202,19 @@ export function indiceTappa(valore: unknown, sessione: SessioneDoc): number {
 
 /* ------------------------------------------------------------ punti alla chiusura */
 
-/** Le tappe che non entrano nella generale: la Cronoscalata (il compito di realtà) fa voto, non punti. */
-function fuoriGenerale(tappe: TappaDoc[]): Set<string> {
-  return new Set(tappe.map((t, i) => (infoTema(t.tema).progetto ? String(i) : null)).filter((i): i is string => i !== null));
-}
-
 /** Classifica generale dai punti salvati, con in più quelli appena calcolati per una tappa. */
 function calcolaGenerale(
   sessione: Pick<SessioneDoc, 'migliori' | 'tappe'>,
   allievi: AllievoLetto[],
   appena?: { indice: number; punti: Map<string, number> },
 ): RigaGeneraleDoc[] {
-  const escluse = fuoriGenerale(sessione.tappe);
   const righe = classificaGenerale(
     allievi.map((a) => {
       const punti: Record<string, number> = {};
       for (const [t, p] of Object.entries(a.dati.tappe ?? {})) {
-        if (typeof p.punti === 'number' && !escluse.has(t)) punti[t] = p.punti;
+        if (typeof p.punti === 'number') punti[t] = p.punti;
       }
-      if (appena && a.dati.tappe?.[String(appena.indice)] && !escluse.has(String(appena.indice))) {
+      if (appena && a.dati.tappe?.[String(appena.indice)]) {
         punti[String(appena.indice)] = appena.punti.get(a.id) ?? 0;
       }
       return { id: a.id, name: a.dati.name, numero: a.dati.numero ?? null, punti };
@@ -256,8 +249,6 @@ function fissaPunti(tx: Transaction, sessione: SessioneDoc, indice: number, alli
     }),
   );
   const perId = new Map(righe.map((r) => [r.id, r]));
-  // La Cronoscalata dà un voto, non punti: resta fuori dalla generale.
-  const progetto = Boolean(infoTema(sessione.tappe[indice].tema).progetto);
 
   // Ricevono posizione e punti solo quelli che hanno corso questa tappa: l'assente non
   // ha la voce, ed è proprio questo che le "migliori N tappe" compensano.
@@ -266,7 +257,7 @@ function fissaPunti(tx: Transaction, sessione: SessioneDoc, indice: number, alli
     const riga = perId.get(a.id)!;
     tx.update(a.ref, {
       [`tappe.${indice}.posizione`]: riga.posizione,
-      [`tappe.${indice}.punti`]: progetto ? 0 : riga.punti,
+      [`tappe.${indice}.punti`]: riga.punti,
     });
   }
   return calcolaGenerale(sessione, allievi, {

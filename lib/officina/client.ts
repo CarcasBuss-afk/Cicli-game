@@ -4,7 +4,7 @@
  * voluta, vedi PERCORSO.md §12. */
 import type { EsercizioPubblico } from '@/lib/giro/esercizi';
 import type { RigaSchermo } from '@/lib/giro/interprete';
-import type { SchedaProgetto } from '@/lib/giro/progetti';
+import type { SchedaCompito } from '@/lib/officina/compiti';
 import { getClientAuth } from '@/lib/firebaseClient';
 import type { StatoCompito } from './regole';
 
@@ -73,7 +73,7 @@ export type CompitoAperto = {
   finito: boolean;
   voto: number | null;
   votoSeFinisci: number;
-  scheda: SchedaProgetto;
+  scheda: SchedaCompito;
   esercizio: EsercizioPubblico | null;
   codice: Record<string, string>;
   tutor: Scambio[];

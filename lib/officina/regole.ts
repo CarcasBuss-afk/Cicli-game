@@ -7,13 +7,13 @@
  *
  * Modulo puro: niente Firestore, niente Next.
  */
-import { ELENCO_PROGETTI, votoSeFinisce, type Progetto } from '../giro/progetti';
+import { ELENCO_COMPITI, votoSeFinisce, type CompitoId } from './compiti';
 
 /** Le fasi di un compito: i progetti ne hanno cinque. */
 export const FASI_PER_COMPITO = 5;
 
 /** I compiti del percorso, nell'ordine in cui si sbloccano. */
-export const PERCORSO: Progetto[] = ELENCO_PROGETTI;
+export const PERCORSO: CompitoId[] = ELENCO_COMPITI;
 
 /**
  * Il seme del compito per un allievo: dal suo uid e dal compito, così i parametri sono
@@ -34,7 +34,7 @@ export type ProgressoCompito = { fasi: number; consigli: number };
 export type StatoCompito = 'finito' | 'in-corso' | 'da-cominciare' | 'bloccato';
 
 export type VoceCompito = {
-  id: Progetto;
+  id: CompitoId;
   stato: StatoCompito;
   fasi: number;
   consigli: number;

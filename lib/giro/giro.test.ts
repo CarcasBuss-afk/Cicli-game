@@ -19,8 +19,7 @@ import {
 describe('temi delle tappe', () => {
   it('ogni tappa tematica ha 5 chilometri', () => {
     for (const tema of TEMI_DEL_GIRO) {
-      // Una Cronoscalata non ha un piano: le sue fasi le genera il progetto, ma sono 5 anche loro.
-      if (!tema.progetto) expect(tema.piano, tema.id).toHaveLength(KM_PER_TAPPA);
+      expect(tema.piano, tema.id).toHaveLength(KM_PER_TAPPA);
       expect(generaTappa(tema.id, 1), tema.id).toHaveLength(KM_PER_TAPPA);
     }
   });
@@ -60,7 +59,7 @@ describe('temi delle tappe', () => {
   });
 
   it('la cronometro è più corta', () => {
-    expect(infoTema('cronometro').durataMinuti!).toBeLessThan(infoTema('passo').durataMinuti!);
+    expect(infoTema('cronometro').durataMinuti).toBeLessThan(infoTema('passo').durataMinuti);
   });
 });
 

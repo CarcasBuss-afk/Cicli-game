@@ -9,7 +9,7 @@ import { Timestamp } from 'firebase-admin/firestore';
 import { ApiError, handler } from '@/lib/giro/http';
 import { apriTappa, chiudiGiro, chiudiTappa, creaGiro, eliminaTappa } from '@/lib/giro/sessioni';
 import { allieviRef, sessioniRef, type AllievoDoc, type SessioneDoc } from '@/lib/giro/store';
-import { eProgetto, generaCronoscalata } from '@/lib/giro/progetti';
+import { eCompito, generaCompito } from '@/lib/officina/compiti';
 import { semeDa } from '@/lib/officina/regole';
 import { allieviRef as allieviOfficinaRef, lavoroVuoto, type AllievoOfficinaDoc } from '@/lib/officina/store';
 
@@ -149,8 +149,8 @@ export const POST = handler(async (body) => {
     // Le fasi di un compito dell'Officina per un allievo, con le soluzioni: dal suo seme.
     const uid = typeof body.uid === 'string' ? body.uid : '';
     const progetto = body.progetto;
-    if (!eProgetto(progetto)) throw new ApiError(400, 'INVALID_BODY', 'Progetto sconosciuto');
-    return { fasi: generaCronoscalata(progetto, semeDa(`${uid}|${progetto}`)) };
+    if (!eCompito(progetto)) throw new ApiError(400, 'INVALID_BODY', 'Compito sconosciuto');
+    return { fasi: generaCompito(progetto, semeDa(`${uid}|${progetto}`)) };
   }
 
   if (azione === 'domandeOfficina') {
@@ -159,7 +159,7 @@ export const POST = handler(async (body) => {
     const uid = typeof body.uid === 'string' ? body.uid : '';
     const progetto = body.progetto;
     const consigli = typeof body.consigli === 'number' ? body.consigli : Number.NaN;
-    if (!classeId || !uid || !eProgetto(progetto) || !Number.isInteger(consigli)) throw new ApiError(400, 'INVALID_BODY', 'Servono classeId, uid, progetto e consigli');
+    if (!classeId || !uid || !eCompito(progetto) || !Number.isInteger(consigli)) throw new ApiError(400, 'INVALID_BODY', 'Servono classeId, uid, progetto e consigli');
     const ref = allieviOfficinaRef(classeId).doc(uid);
     const snap = await ref.get();
     const lavoro = (snap.data() as AllievoOfficinaDoc | undefined)?.lavori?.[progetto] ?? lavoroVuoto();

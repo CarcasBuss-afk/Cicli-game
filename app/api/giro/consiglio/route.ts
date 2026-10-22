@@ -1,5 +1,0 @@
-import { handler } from '@/lib/giro/http';
-import { consiglio } from '@/lib/giro/service';
-
-export const dynamic = 'force-dynamic';
-export const POST = handler(consiglio);

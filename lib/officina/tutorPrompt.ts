@@ -1,4 +1,4 @@
-/* Il tutor dell'Officina: come il gregario del Giro, ma con una conversazione vera. Qui
+/* Il tutor dell'Officina: un consiglio a parole, con una conversazione vera. Qui
  * l'allievo lavora da solo e può insistere finché capisce; il tutor può spiegare un
  * concetto con un esempio preso dalla vita, non solo indicare dove guardare. La regola
  * che non cambia: mai scrivere il codice. Modulo puro. */

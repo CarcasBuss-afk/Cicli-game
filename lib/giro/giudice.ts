@@ -9,7 +9,7 @@
  * Qui stanno le parti pure: il prompt, il messaggio, la lettura del verdetto, il giudice
  * finto dei test. La chiamata al modello sta in giudiceClient.ts (server-only).
  */
-import { contieneCodice } from './gregario';
+import { contieneCodice } from './filtroCodice';
 import type { Struttura } from './interprete';
 
 export const PROMPT_GIUDICE = `Sei il giudice di una gara di programmazione per allievi di 14-16 anni che imparano i cicli for in Python. Il programma dell'allievo produce già l'output giusto: tu devi dire solo se è fatto nel modo che la tappa vuole insegnare, secondo la REGOLA che ti viene data.

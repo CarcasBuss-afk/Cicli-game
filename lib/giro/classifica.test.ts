@@ -1,17 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
   cronaca,
-  csvCronoscalata,
   formattaSecondi,
   riepilogoErrori,
-  righeCronoscalata,
   type AllievoLim,
   type ProgressoLim,
 } from './classifica';
 
 const t = (minuti: number) => new Date(2026, 0, 1, 10, minuti, 0);
 
-function progresso(km: number, ultimoMinuto: number, erroriKm: Record<string, number> = {}, consigli = 0): ProgressoLim {
+function progresso(km: number, ultimoMinuto: number, erroriKm: Record<string, number> = {}): ProgressoLim {
   const kmAt: Record<string, Date> = {};
   for (let i = 0; i < km; i++) kmAt[String(i)] = t(ultimoMinuto - (km - 1 - i));
   const errori = Object.values(erroriKm).reduce((s, v) => s + v, 0);
@@ -24,8 +22,6 @@ function progresso(km: number, ultimoMinuto: number, erroriKm: Record<string, nu
     ordineArrivo: null,
     posizione: null,
     punti: null,
-    consigli,
-    gregario: [],
     codice: {},
   };
 }
@@ -75,41 +71,6 @@ describe('riepilogo degli errori per tipo', () => {
     const tipi = [['output-range', 'output-range', 'output-range', 'scala']] as const;
     const classe = [allievo('A', { '0': progresso(4, 9, { '0': 2, '1': 2, '2': 2, '3': 4 }) })];
     expect(riepilogoErrori([[...tipi[0]]], classe)[0].tipo).toBe('scala');
-  });
-});
-
-describe('la tabella della Cronoscalata', () => {
-  const classe = [
-    allievo('Bea', { '0': progresso(5, 30, { '2': 2 }, 2) }), // finita con 2 consigli: 8
-    allievo('Ada', { '0': progresso(5, 20, {}, 0) }), // finita da sola: 10
-    allievo('Caio', { '0': progresso(3, 25, { '1': 1 }, 1) }), // 3 su 5 → 6, meno 1: 5
-    allievo('Dino', {}), // mai consegnato: il pavimento
-  ];
-
-  it('un allievo per riga, anche chi non ha consegnato, in ordine di voto', () => {
-    const righe = righeCronoscalata(classe, 0, 5);
-    expect(righe.map((r) => [r.name, r.voto])).toEqual([
-      ['Ada', 10],
-      ['Bea', 8],
-      ['Caio', 5],
-      ['Dino', 2],
-    ]);
-    expect(righe[1]).toMatchObject({ fasi: 5, consigli: 2, errori: 2 });
-    expect(righe[3]).toMatchObject({ fasi: 0, consigli: 0, errori: 0 });
-  });
-
-  it('il CSV ha il punto e virgola e una riga per allievo', () => {
-    const csv = csvCronoscalata(righeCronoscalata(classe, 0, 5), 5);
-    const righe = csv.trim().split('\n');
-    expect(righe[0]).toBe('Nome;Numero;Fasi su 5;Consigli;Errori;Voto proposto');
-    expect(righe).toHaveLength(5);
-    expect(righe[1]).toBe('Ada;;5;0;0;10');
-    expect(righe[2]).toBe('Bea;;5;2;2;8');
-  });
-
-  it('i nomi con il punto e virgola finiscono fra virgolette', () => {
-    const csv = csvCronoscalata(righeCronoscalata([allievo('Lu;ca', {})], 0, 5), 5);
-    expect(csv).toContain('"Lu;ca";;0;0;0;2');
   });
 });
 

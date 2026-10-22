@@ -1,5 +1,5 @@
 /* La chiamata al modello per il Giudice. Haiku: una lettura di dieci righe con i fatti
- * già misurati, veloce e da un decimo di centesimo. Stessa chiave del gregario.
+ * già misurati, veloce e da un decimo di centesimo. Stessa chiave del tutor.
  *
  * Se il modello non risponde, o risponde una cosa che non si capisce, la consegna
  * **passa**: un'ora di laboratorio non si ferma per un disservizio dell'API, e nei log
@@ -32,7 +32,7 @@ export async function giudica(contesto: ContestoGiudizio): Promise<Verdetto> {
     const risposta = await anthropic().messages.create({
       model: MODELLO_GIUDICE,
       max_tokens: 200,
-      // Come per il gregario: senza, Haiku ragiona e il ragionamento si mangia i token.
+      // Senza questo Haiku ragiona e il ragionamento si mangia i token.
       thinking: { type: 'disabled' },
       system: PROMPT_GIUDICE,
       messages: [{ role: 'user', content: messaggioGiudizio(contesto) }],
