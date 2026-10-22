@@ -53,6 +53,8 @@ export interface Struttura {
   numRighe: number;
   /** Quante chiamate a `input()` nel codice. */
   numInput: number;
+  /** Quante di quelle `input()` stanno dentro un ciclo (la domanda che si ripete a ogni giro). */
+  inputNelCiclo: number;
   /**
    * Accumuli dentro un ciclo: `x += ...` oppure `x = x + ...`. Serve alle tappe della
    * somma, dove senza questo controllo `for i in range(1): print(15)` passerebbe.
@@ -1115,31 +1117,36 @@ function struttura(corpo: Istruzione[]): Struttura {
     numRighe: 0,
     accumuliNelCiclo: 0,
     numInput: 0,
+    inputNelCiclo: 0,
     numIf: 0,
     ifNelCiclo: 0,
   };
 
   const visita = (istruzioni: Istruzione[], dentroCiclo: boolean) => {
+    const input = (n: number) => {
+      s.numInput += n;
+      if (dentroCiclo) s.inputNelCiclo += n;
+    };
     for (const istr of istruzioni) {
       s.numRighe++;
       if (istr.k === 'if') {
         s.numIf++;
         if (dentroCiclo) s.ifNelCiclo++;
         for (const ramo of istr.rami) {
-          s.numInput += contaInput(ramo.cond);
+          input(contaInput(ramo.cond));
           visita(ramo.corpo, dentroCiclo);
         }
         if (istr.altrimenti) visita(istr.altrimenti, dentroCiclo);
         continue;
       }
       if (istr.k === 'assegna') {
-        s.numInput += contaInput(istr.espr);
+        input(contaInput(istr.espr));
         if (dentroCiclo && (istr.op === '+=' || usaNome(istr.espr, istr.nome))) s.accumuliNelCiclo++;
         continue;
       }
       if (istr.k === 'print') {
         s.numPrint++;
-        s.numInput += istr.args.reduce((n, a) => n + contaInput(a), 0);
+        input(istr.args.reduce((n, a) => n + contaInput(a), 0));
         if (!dentroCiclo) s.printFuoriCiclo++;
         continue;
       }

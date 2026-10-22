@@ -545,4 +545,20 @@ Dopo lo scontrino l'allievo sa ripetere, usare la variabile del ciclo, i tre num
 
 **Il micro-interprete** ha imparato i confronti e `if`/`elif`/`else` (in linea o a blocco, dentro e fuori dai cicli). Scelte: la condizione è **un confronto solo**, niente `and`/`or`/`not` né booleani, con messaggi dedicati («Una condizione alla volta: se servono due controlli, usa due `if`»); `=` al posto di `==` ha il suo messaggio; un numero confrontato con un testo è quasi sempre un `int()` dimenticato, e l'errore lo dice; un confronto fuori da un `if` (in un `print`, in un'assegnazione) è un errore spiegato, non un valore. I fatti per il giudice contano anche gli `if` e quanti stanno dentro un ciclo.
 
-**Dopo**: il `while`, nell'ordine pensato il 22 ottobre: l'obiettivo del salvadanaio (il ciclo che non sa quante volte gira), la cassa del bar (la sentinella), indovina il numero (tutto insieme). All'interprete serviranno `while` e il tetto delle iterazioni come hint sul ciclo infinito.
+**Dopo**: non subito il `while`. Deciso il 22 ottobre sera: ancora tre compiti sul `for` (§18), poi un **test finale per il patentino dei cicli `for`**, e solo dopo il `while`, in una **sezione separata** del percorso, così l'allievo vede i due cicli come due capitoli. Il `while` resta nell'ordine pensato: l'obiettivo del salvadanaio (il ciclo che non sa quante volte gira), la cassa del bar (la sentinella), indovina il numero (tutto insieme); all'interprete serviranno `while` e il tetto delle iterazioni come hint sul ciclo infinito.
+
+## 18. Il diario delle uscite: gli ultimi tre compiti sul `for` (22 ottobre 2026)
+
+**Che cosa manca al `for`.** Dopo la promozione l'allievo ha accumulato sempre una costante o la variabile del ciclo, e le domande di `input()` le ha fatte **fuori** dal ciclo: nello scontrino decidevano solo quante volte girare. Manca il ciclo che lavora su dati che arrivano **durante** i giri. I tre compiti stanno nello stesso scenario, il diario delle uscite in bici, e sono in `lib/officina/compitiDiario.ts`; i tre mesi di prova per fase (uno mostrato, uno da due uscite, uno da sei) sono costruiti perché i valori scritti a mano cadano lì.
+
+| # | Compito | Idea nuova | Le fasi |
+|---|---|---|---|
+| 9 | Il diario delle uscite | `input()` dentro il ciclo: la domanda si ripete, la risposta cambia, il totale cresce di quello che si risponde | quante uscite · i km chiesti nel ciclo · il totale · il totale fin lì nella riga · l'obiettivo del mese con `if`/`else` |
+| 10 | Il record del mese | la variabile che ricorda il migliore: confronta e sostituisce, non somma | la più lunga (`if km > record`) · quale uscita · «nuovo record!» nella riga (il confronto prima dell'aggiornamento) · la più corta da un numero grande · la differenza |
+| 11 | Le uscite che contano | il contatore in un ramo: `lunghe += 1` solo dentro l'`if` | «lunga!» da una soglia · quante lunghe · quante corte (nell'`else`) · i km delle sole lunghe · l'obiettivo dell'allenatore |
+
+Il record e il conteggio **ripartono dal diario già scritto** (`codiceIniziale`), come la promozione dallo scontrino. Nel mese mostrato del record la più lunga non è mai la prima uscita, nel mese nascosto da sei lo è; i km di un mese sono tutti diversi, così `>` e `>=` trovano lo stesso record. Nel conteggio il mese mostrato raggiunge l'obiettivo, quello da due uscite ha zero lunghe, quello da sei ne ha una in meno.
+
+**Il giudice e le `input()` nel ciclo.** L'interprete conta un fatto in più, `inputNelCiclo`, e il messaggio al giudice separa le `input()` dentro e fuori dai cicli. Alla prima sonda Haiku bocciava a volte (2 su 4) la soluzione giusta della fase 2 del conteggio sostenendo che la domanda stava fuori dal ciclo, contro i fatti: aggiunta al prompt la frase «i fatti misurati sono esatti, non contraddirli» e riformulata la regola, 0 bocciature sbagliate su 36 ripetizioni delle soluzioni con `input()` nel ciclo, e i furbi di prima (km scritti a mano, formula al posto dell'accumulo) ancora bocciati.
+
+**Dopo**: il patentino dei cicli `for` (un compito-esame con il tutor spento) e le sezioni del percorso; poi il `while`.

@@ -13,9 +13,21 @@
  */
 import { generatore, REGOLE, type Esercizio, type Prova } from '../giro/esercizi';
 import { fasiPromozione, schedaPromozione } from './compitiCondizioni';
+import { fasiConteggio, fasiDiario, fasiRecord, schedaConteggio, schedaDiario, schedaRecord } from './compitiDiario';
 import { fasiCartello, fasiClassifica, fasiLancio, fasiScala, schedaCartello, schedaClassifica, schedaLancio, schedaScala } from './compitiIniziali';
 
-export type CompitoId = 'cartello' | 'classifica' | 'lancio' | 'scala' | 'salvadanaio' | 'allenamento' | 'scontrino' | 'promozione';
+export type CompitoId =
+  | 'cartello'
+  | 'classifica'
+  | 'lancio'
+  | 'scala'
+  | 'salvadanaio'
+  | 'allenamento'
+  | 'scontrino'
+  | 'promozione'
+  | 'diario'
+  | 'record'
+  | 'conteggio';
 
 export interface SchedaCompito {
   id: CompitoId;
@@ -429,14 +441,30 @@ const PROGETTI: Record<CompitoId, { fasi: (seme: number) => Esercizio[]; scheda:
   allenamento: { fasi: fasiAllenamento, scheda: schedaAllenamento },
   scontrino: { fasi: fasiScontrino, scheda: schedaScontrino },
   promozione: { fasi: fasiPromozione, scheda: schedaPromozione },
+  diario: { fasi: fasiDiario, scheda: schedaDiario },
+  record: { fasi: fasiRecord, scheda: schedaRecord },
+  conteggio: { fasi: fasiConteggio, scheda: schedaConteggio },
 };
 
 /**
  * I compiti nell'ordine didattico, un'idea nuova ciascuno (PERCORSO.md §15): ripetere ·
  * la variabile del ciclo · il passo · la variabile in un calcolo · l'accumulatore · due
- * variabili e l'ordine nel corpo · input() · decidere con un if (§17).
+ * variabili e l'ordine nel corpo · input() · decidere con un if (§17) · input() dentro il
+ * ciclo · la variabile che ricorda il migliore · il contatore in un ramo (§18).
  */
-export const ELENCO_COMPITI: CompitoId[] = ['cartello', 'classifica', 'lancio', 'scala', 'salvadanaio', 'allenamento', 'scontrino', 'promozione'];
+export const ELENCO_COMPITI: CompitoId[] = [
+  'cartello',
+  'classifica',
+  'lancio',
+  'scala',
+  'salvadanaio',
+  'allenamento',
+  'scontrino',
+  'promozione',
+  'diario',
+  'record',
+  'conteggio',
+];
 
 /** Le fasi del progetto, come chilometri della tappa. Stesso seme, stesse fasi. */
 export function generaCompito(progetto: CompitoId, seme: number): Esercizio[] {

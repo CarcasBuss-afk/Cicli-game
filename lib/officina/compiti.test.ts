@@ -319,3 +319,166 @@ describe('la promozione del bar (decidere con un if)', () => {
     expect(scheda.outputFinale.length).toBeLessThanOrEqual(12);
   });
 });
+
+/** I km del mese mostrato, letti dalle risposte della fase 2 (la prima è quante uscite). */
+function kmDi(fase: ReturnType<typeof generaCompito>[number]): number[] {
+  return fase.prove![0].risposte.slice(1).map(Number);
+}
+
+describe('il diario delle uscite (input dentro il ciclo)', () => {
+  const fasi = generaCompito('diario', 23);
+  const scheda = schedaCompito('diario', 23);
+  const obiettivo = Number(scheda.dati[0].match(/(\d+) km/)![1]);
+  const km = kmDi(fasi[1]);
+
+  it('ogni fase ha tre mesi di prova: quello mostrato (3-5 uscite), uno da due uscite, uno da sei', () => {
+    for (const f of fasi) {
+      expect(f.prove).toHaveLength(3);
+      expect(f.prove!.map((p) => Number(p.risposte[0]))).toEqual([km.length, 2, 6]);
+      expect(f.prove![0].output).toEqual(f.outputAtteso);
+    }
+    // Alla fase 1 si risponde solo quante uscite; dalla 2 anche i km, uno per uscita.
+    expect(fasi[0].prove![0].risposte).toHaveLength(1);
+    expect(fasi[1].prove![0].risposte).toHaveLength(km.length + 1);
+    expect(km.length).toBeGreaterThanOrEqual(3);
+    expect(km.length).toBeLessThanOrEqual(5);
+  });
+
+  it("il mese mostrato raggiunge l'obiettivo, quello corto no: l'else si vede solo sulla prova nascosta", () => {
+    const [mostrato, corto] = fasi[4].prove!;
+    expect(mostrato.output[mostrato.output.length - 1]).toBe(`Obiettivo di ${obiettivo} km raggiunto!`);
+    expect(corto.output[corto.output.length - 1]).toMatch(/^Mancano \d+ km all'obiettivo/);
+    expect(obiettivo % 10).toBe(0);
+  });
+
+  it('la domanda sui km fuori dal ciclo stampa gli stessi km a ogni riga: cade già sulla prova mostrata', () => {
+    const fuori = 'uscite = int(input("Quante uscite? "))\nkm = int(input("Km? "))\nfor i in range(1, uscite + 1):\n    print(f"Uscita {i}: {km} km")';
+    const esito = valutaRisposta(fasi[1], fuori);
+    expect(esito.promosso).toBe(false);
+  });
+
+  it('i km scritti nel programma passano la prova mostrata ma cadono su quella nascosta', () => {
+    const aMano = ['uscite = int(input("Quante uscite? "))', 'for i in range(1, uscite + 1):', '    km = int(input("Km? "))', ...km.map((k, i) => `    if i == ${i + 1}:\n        print("Uscita ${i + 1}: ${k} km")`)].join('\n');
+    expect(esegui(aMano, { risposte: fasi[1].prove![0].risposte })).toMatchObject({ ok: true, output: fasi[1].outputAtteso });
+    const esito = valutaRisposta(fasi[1], aMano);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/altre risposte|rispondendo/);
+  });
+
+  it("l'interprete conta le input() dentro il ciclo: un fatto in più per il giudice", () => {
+    const esito = esegui(fasi[1].soluzione, { risposte: fasi[1].prove![0].risposte });
+    if (!esito.ok) throw new Error(esito.errore.messaggio);
+    expect(esito.struttura).toMatchObject({ numInput: 2, inputNelCiclo: 1 });
+    expect(fasi[0].regola).not.toMatch(/dentro il ciclo/);
+    expect(fasi[1].regola).toMatch(/dentro il ciclo/);
+    expect(fasi[2].regola).toMatch(/cresce a ogni giro dei km risposti/);
+    expect(fasi[4].regola).toMatch(/`else`/);
+  });
+
+  it('alla fase 4 il totale si aggiorna prima della riga: aggiornarlo dopo sbaglia la prima riga', () => {
+    const dopo = 'uscite = int(input("Quante uscite? "))\ntotale = 0\nfor i in range(1, uscite + 1):\n    km = int(input("Km? "))\n    print(f"Uscita {i}: {km} km (finora {totale} km)")\n    totale += km\nprint(f"Totale: {totale} km")';
+    const esito = valutaRisposta(fasi[3], dopo);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('riga 1');
+  });
+
+  it('la scheda dice la differenza con lo scontrino e mostra il mese di prova', () => {
+    expect(scheda.committente).toContain('scontrino');
+    expect(scheda.dati[1]).toBe(`Risposte di prova: ${km.length} uscite · ${km.join(', ')} km`);
+    expect(scheda.outputFinale).toEqual(fasi[4].outputAtteso);
+  });
+});
+
+describe('il record del mese (la variabile che ricorda il migliore)', () => {
+  const fasi = generaCompito('record', 23);
+  const km = kmDi(fasi[0]);
+  const record = Math.max(...km);
+
+  it('riparte dal diario già scritto, e consegnarlo tale e quale non vale', () => {
+    expect(fasi[0].codiceIniziale).toContain('totale += km');
+    expect(fasi[0].codiceIniziale).toContain('km = int(input(');
+    expect(fasi.slice(1).every((f) => f.codiceIniziale === undefined)).toBe(true);
+    const esito = valutaRisposta(fasi[0], fasi[0].codiceIniziale!);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/Non hai cambiato niente/);
+  });
+
+  it('nel mese mostrato la più lunga non è la prima; in quello nascosto da sei uscite lo è; i km sono tutti diversi', () => {
+    for (let seme = 1; seme <= 30; seme++) {
+      const [mostrato, corto, lungo] = generaCompito('record', seme)[0].prove!.map((p) => p.risposte.slice(1).map(Number));
+      expect(mostrato.indexOf(Math.max(...mostrato))).toBeGreaterThan(0);
+      expect(lungo.indexOf(Math.max(...lungo))).toBe(0);
+      expect(corto).toHaveLength(2);
+      for (const m of [mostrato, corto, lungo]) expect(new Set(m).size).toBe(m.length);
+    }
+  });
+
+  it('il record scritto a mano passa la prova mostrata ma cade su quella nascosta', () => {
+    const aMano = `${fasi[0].codiceIniziale}\nprint("Uscita più lunga: ${record} km")`;
+    expect(esegui(aMano, { risposte: fasi[0].prove![0].risposte })).toMatchObject({ ok: true, output: fasi[0].outputAtteso });
+    expect(valutaRisposta(fasi[0], aMano).promosso).toBe(false);
+  });
+
+  it('`>=` al posto di `>` va bene: i km sono tutti diversi', () => {
+    expect(valutaRisposta(fasi[0], fasi[0].soluzione.replace('if km > record:', 'if km >= record:')).promosso).toBe(true);
+  });
+
+  it("alla fase 3 l'ordine conta: aggiornare il record prima del confronto non trova mai il nuovo record", () => {
+    const invertito = fasi[2].soluzione.replace('    if km > record:\n        record = km\n', '    record = km\n    if km > record:\n');
+    expect(invertito).not.toBe(fasi[2].soluzione);
+    expect(valutaRisposta(fasi[2], invertito).promosso).toBe(false);
+  });
+
+  it('la fase 4 vuole la più corta da un numero grande, la 5 la differenza calcolata', () => {
+    expect(fasi[3].outputAtteso).toContain(`Uscita più corta: la ${km.indexOf(Math.min(...km)) + 1} (${Math.min(...km)} km)`);
+    expect(fasi[4].outputAtteso[fasi[4].outputAtteso.length - 1]).toBe(`Fra la più corta e la più lunga: ${record - Math.min(...km)} km di differenza`);
+    expect(fasi[3].regola).toMatch(/più grande di qualunque uscita/);
+    expect(fasi[0].regola).toMatch(/sostituisce/);
+  });
+});
+
+describe('le uscite che contano (il contatore in un ramo)', () => {
+  const fasi = generaCompito('conteggio', 23);
+  const scheda = schedaCompito('conteggio', 23);
+  const soglia = Number(scheda.dati[0].match(/da (\d+) km/)![1]);
+  const obiettivo = Number(scheda.dati[1].match(/almeno (\d+)/)![1]);
+  const km = kmDi(fasi[0]);
+  const lunghe = km.filter((k) => k >= soglia).length;
+
+  it("il mese mostrato raggiunge l'obiettivo e ha almeno una corta; quello da due non ha lunghe; quello da sei ne ha una in meno", () => {
+    expect(lunghe).toBeGreaterThanOrEqual(obiettivo);
+    expect(lunghe).toBeLessThan(km.length);
+    const [mostrato, corto, lungo] = fasi[4].prove!;
+    expect(mostrato.output).toContain(`Obiettivo raggiunto: ${lunghe} uscite lunghe`);
+    expect(corto.output).toContain('Uscite lunghe: 0');
+    expect(corto.output).toContain('Km nelle uscite lunghe: 0');
+    expect(corto.output).toContain(`Uscite lunghe mancanti: ${obiettivo}`);
+    expect(lungo.output).toContain('Uscite lunghe mancanti: 1');
+  });
+
+  it('riparte dal diario e la scritta «lunga!» sta nelle righe giuste', () => {
+    expect(fasi[0].codiceIniziale).toContain('totale += km');
+    km.forEach((k, i) => {
+      expect(fasi[0].outputAtteso[i]).toBe(`Uscita ${i + 1}: ${k} km${k >= soglia ? ' - lunga!' : ''}`);
+    });
+  });
+
+  it('il contatore che cresce a ogni giro, fuori dall\'if, conta tutte le uscite: cade sulla prova mostrata', () => {
+    const sempre = fasi[1].soluzione.replace('        lunghe += 1\n', '').replace('    totale += km\n', '    totale += km\n    lunghe += 1\n');
+    expect(sempre).not.toBe(fasi[1].soluzione);
+    expect(valutaRisposta(fasi[1], sempre).promosso).toBe(false);
+  });
+
+  it('le corte come `uscite - lunghe` passano l\'interprete: la regola per il giudice chiede il contatore nell\'else', () => {
+    const calcolate = fasi[1].soluzione + '\nprint(f"Uscite corte: {uscite - lunghe}")';
+    expect(valutaRisposta(fasi[2], calcolate).promosso).toBe(true);
+    expect(fasi[2].regola).toMatch(/ramo `else`/);
+    expect(fasi[3].regola).toMatch(/separata dal totale/);
+  });
+
+  it('la scheda ha soglia, obiettivo e mese di prova, e il prodotto finale è la fase 5', () => {
+    expect(scheda.dati).toHaveLength(3);
+    expect(scheda.outputFinale).toEqual(fasi[4].outputAtteso);
+    expect(scheda.outputFinale.length).toBeLessThanOrEqual(12);
+  });
+});

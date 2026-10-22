@@ -18,6 +18,8 @@ Rispondi OK oppure NO.
 - OK se il programma rispetta la regola. Variabili d'appoggio, nomi diversi, righe in più, un modo diverso ma onesto di scrivere la stessa cosa: tutto OK. In dubbio: OK.
 - NO solo se c'è una frode evidente rispetto alla regola: le righe stampate a mano una per una, un ciclo che gira una volta sola con un print per riga, print aggiunti fuori dal ciclo per completare l'output, il risultato scritto a mano o calcolato con una formula dove la regola chiede l'accumulo, i dati scritti nel programma dove la regola chiede input().
 
+I FATTI MISURATI SUL CODICE sono esatti, contati da un interprete: se dicono che un print, un if o un input() sta dentro un ciclo, è così. Non contraddirli.
+
 Formato della risposta, senza altro testo:
 - prima riga: OK oppure NO
 - se NO, seconda riga: una frase sola in italiano, al massimo 40 parole, rivolta all'allievo (dai del tu), che dice che cosa non va e che cosa deve fare invece, senza scrivere codice (niente righe di programma, niente "scrivi così"). Puoi nominare for, print, range, input e i nomi delle sue variabili.`;
@@ -47,7 +49,8 @@ export function messaggioGiudizio(c: ContestoGiudizio): string {
     `print fuori dai cicli: ${s.printFuoriCiclo}`,
     `accumuli dentro i cicli (x += ... o x = x + ...): ${s.accumuliNelCiclo}`,
     `if: ${s.numIf} (di cui dentro un ciclo: ${s.ifNelCiclo})`,
-    `chiamate a input(): ${s.numInput}`,
+    `input() dentro i cicli (la domanda si ripete a ogni giro): ${s.inputNelCiclo}`,
+    `input() fuori dai cicli: ${s.numInput - s.inputNelCiclo}`,
     `righe di output: ${c.outputAtteso.length}`,
   ];
   const parti = [
