@@ -486,3 +486,32 @@ compiti è passato da `lib/giro/progetti.ts` a `lib/officina/compiti.ts` (`ELENC
 **Da qui in avanti.** L'Officina cresce per conto suo: nuovi compiti di realtà che salgono di
 difficoltà un gradino alla volta, uno sbloccato alla volta, prima sui cicli `for` e poi sui
 `while`. Il Giro resta per le gare in classe sulle tappe tematiche.
+
+## 15. Il percorso dell'Officina: un'idea nuova per compito (22 ottobre 2026)
+
+**Il problema.** I tre compiti di partenza saltavano gradini grossi: il salvadanaio, primo
+del percorso, chiedeva già alla fase 1 una f-string, alla 3 l'accumulatore, alla 4 la
+stringa moltiplicata. Chi arrivava nell'Officina senza aver corso le tappe 5, 6 e 9 del
+Giro si fermava subito. E l'Officina deve reggersi da sola.
+
+**La regola del percorso.** Ogni compito introduce **una sola idea nuova** e riusa quelle
+prima; resta un programma in cinque fasi, ognuna aggiunge un pezzo e si vede per intero.
+
+| # | Compito | Idea nuova | Le fasi |
+|---|---|---|---|
+| 1 | Il cartello della festa | il for ripete; range(n); print fuori dal ciclo | 3 volte · n volte · cornice sopra · cornice sotto · decorazione (due print nel corpo) |
+| 2 | La classifica della gara | la variabile del ciclo; range(1, n+1); testo e numero | 1..n · Posto i · i° posto (f-string) · intestazione · la variabile iscritti usata due volte |
+| 3 | Il conto alla rovescia | il passo, anche negativo | da S a 1 · Partenza! · Meno i · di due in due · l'annuncio |
+| 4 | La scala del garage | la variabile in un calcolo; "#" * i | la scala · i cm (i * h) · Gradino i · intestazione · altezza totale da gradini * h |
+| 5 | Il salvadanaio | l'accumulatore | come prima (§11) |
+| 6 | La tabella d'allenamento | due variabili, l'ordine nel corpo | come prima (§11) |
+| 7 | Lo scontrino del bar | input() e int() | come prima (§12) |
+
+I quattro nuovi stanno in `lib/officina/compitiIniziali.ts`. Provati con il giudice vero
+(Haiku) su dodici casi, onesti e furbi: tutti giusti, compresa la variante con la
+variabile d'appoggio e quella con la f-string diretta.
+
+**Idee per dopo**, quando la classe ci arriva: la tabellina del nonno (due input e il
+prodotto), il contatore di lettere (for lettera in parola, accumulare stringhe), la
+griglia del parcheggio (cicli annidati). Poi i while, che chiedono anche if e confronti
+nel micro-interprete.

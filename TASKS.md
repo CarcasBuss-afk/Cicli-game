@@ -75,4 +75,5 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 
 ## Task 12 — Due attività separate (PERCORSO.md §14)
 - [x] 12a. Via la Cronoscalata dal Giro (temi, gregario, `consiglio`, LIM, generale); catalogo dei compiti in `lib/officina/compiti.ts`, consiglio a parole in `lib/officina/consiglio.ts`, filtro anti-codice in `lib/giro/filtroCodice.ts`.
-- [ ] 12b. La didattica progressiva dell'Officina: nuovi compiti sui cicli `for` a gradini piccoli (da decidere con il docente), poi i `while`.
+- [x] 12b. Il percorso a un'idea per compito (PERCORSO.md §15): i quattro compiti iniziali (cartello, classifica, lancio, scala) prima del salvadanaio, in `lib/officina/compitiIniziali.ts`.
+- [ ] 12c. I compiti dopo lo scontrino (tabellina, lettere, griglia), poi i `while` (servono `if` e confronti nel micro-interprete).

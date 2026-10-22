@@ -12,8 +12,9 @@
  * Modulo puro: niente Firestore, niente Next.
  */
 import { generatore, REGOLE, type Esercizio, type Prova } from '../giro/esercizi';
+import { fasiCartello, fasiClassifica, fasiLancio, fasiScala, schedaCartello, schedaClassifica, schedaLancio, schedaScala } from './compitiIniziali';
 
-export type CompitoId = 'salvadanaio' | 'allenamento' | 'scontrino';
+export type CompitoId = 'cartello' | 'classifica' | 'lancio' | 'scala' | 'salvadanaio' | 'allenamento' | 'scontrino';
 
 export interface SchedaCompito {
   id: CompitoId;
@@ -419,13 +420,21 @@ function schedaScontrino(seme: number): SchedaCompito {
 /* ------------------------------------------------------------------- catalogo */
 
 const PROGETTI: Record<CompitoId, { fasi: (seme: number) => Esercizio[]; scheda: (seme: number) => SchedaCompito }> = {
+  cartello: { fasi: fasiCartello, scheda: schedaCartello },
+  classifica: { fasi: fasiClassifica, scheda: schedaClassifica },
+  lancio: { fasi: fasiLancio, scheda: schedaLancio },
+  scala: { fasi: fasiScala, scheda: schedaScala },
   salvadanaio: { fasi: fasiSalvadanaio, scheda: schedaSalvadanaio },
   allenamento: { fasi: fasiAllenamento, scheda: schedaAllenamento },
   scontrino: { fasi: fasiScontrino, scheda: schedaScontrino },
 };
 
-/** I progetti nell'ordine didattico: ognuno è un passo avanti rispetto al precedente. */
-export const ELENCO_COMPITI: CompitoId[] = ['salvadanaio', 'allenamento', 'scontrino'];
+/**
+ * I compiti nell'ordine didattico, un'idea nuova ciascuno (PERCORSO.md §15): ripetere ·
+ * la variabile del ciclo · il passo · la variabile in un calcolo · l'accumulatore · due
+ * variabili e l'ordine nel corpo · input().
+ */
+export const ELENCO_COMPITI: CompitoId[] = ['cartello', 'classifica', 'lancio', 'scala', 'salvadanaio', 'allenamento', 'scontrino'];
 
 /** Le fasi del progetto, come chilometri della tappa. Stesso seme, stesse fasi. */
 export function generaCompito(progetto: CompitoId, seme: number): Esercizio[] {
