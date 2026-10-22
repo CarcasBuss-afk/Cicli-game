@@ -438,3 +438,31 @@ funzionare per chiunque.
 | 3 | una riga per panino | il ciclo guidato dall'input |
 | 4 | `Totale: 12 €` | accumulatore (ripasso) |
 | 5 | chiedi quanto paga → `Hai dato 20 €, resto 8 €. Grazie Luca!` | sottrazione, tre input |
+
+## 13. Il Giudice: l'anti-furbo a parole (22 ottobre 2026)
+
+**Il problema.** L'anti-furbo era fatto di conti sulla forma del codice: esattamente un
+`for`, al massimo una o due righe nel corpo, nessun `print` fuori dal ciclo. Fermava chi
+scriveva le righe a mano, ma bocciava anche chi scriveva bene: un allievo con una variabile
+d'appoggio nel corpo del ciclo (quattro righe, tutte sensate) si è sentito dire «dentro il
+ciclo bastano tre righe», e non era vero.
+
+**La decisione.** Via tutti i vincoli strutturali dal micro-interprete, che da oggi
+controlla solo l'output. Ogni esercizio con il codice porta invece una **regola a parole**
+(`Esercizio.regola`): «le righe le stampa un ciclo che gira una volta per riga; non valgono
+le righe scritte a mano, né un ciclo da un giro solo con un print per riga», «il totale lo
+tiene una variabile che accumula, non una formula come quota * i», «i dati arrivano da
+input()». Prima di promuovere, il server mostra a **Haiku** la consegna, la regola, il
+codice e i **fatti misurati** dall'interprete (quanti for, quanti print dentro e fuori dal
+ciclo, quanti accumuli, quante input, quanti giri ha fatto davvero il ciclo) e chiede OK o
+NO con un motivo. Con i fatti davanti il giudizio è facile e stabile: «un for, un giro,
+otto print dentro» non lascia dubbi.
+
+**Le scelte.** Il prompt dice «in dubbio: OK», perché bocciare un allievo onesto costa più
+che far passare un furbo. Se il modello non risponde o scrive una cosa incomprensibile, la
+consegna **passa** e resta una riga nei log: un'ora di laboratorio non si ferma per l'API.
+Il motivo del NO arriva all'allievo come hint («Il risultato è giusto, ma non è fatto come
+chiede la tappa: …»), filtrato come i consigli del gregario: mai codice. Costo: un decimo
+di centesimo a consegna promossa. I Giri creati prima di oggi hanno esercizi senza regola
+e non passano dal giudice. Nei test il giudice finto boccia solo il codice con il commento
+`# furbo`.

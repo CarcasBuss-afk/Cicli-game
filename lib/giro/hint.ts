@@ -5,10 +5,11 @@
  * nascono dal confronto fra l'output prodotto e quello atteso, più i messaggi di errore
  * del micro-interprete, che sono già scritti per un allievo.
  *
- * Qui vivono anche i controlli anti-furbo: senza di questi, cinque `print` scritti a mano
- * passerebbero una tappa che chiede un ciclo.
+ * Qui si guarda solo l'output: se è giusto, la risposta è promossa. Che sia fatto come
+ * chiede la tappa (il ciclo per davvero, non le righe a mano) lo decide il giudice
+ * (giudice.ts), chiamato dal server dopo, sul codice già promosso.
  */
-import { esegui, type RigaSchermo, type Struttura } from './interprete';
+import { esegui, type RigaSchermo } from './interprete';
 import type { Esercizio } from './esercizi';
 
 export interface Valutazione {
@@ -221,40 +222,6 @@ function hintSpecifico(tappa: Esercizio, prodotto: string[], atteso: string[]): 
   return null;
 }
 
-/* --------------------------------------------------------------- controlli di forma */
-
-/** Controlla i vincoli anti-furbo. Restituisce l'hint, oppure null se la forma va bene. */
-function hintStruttura(tappa: Esercizio, struttura: Struttura): string | null {
-  const { forRichiesti, righeCorpoMax, printFuoriCicloMax } = tappa.vincoli;
-
-  if (forRichiesti !== null && struttura.numFor === 0) {
-    return 'Questa tappa si vince con un ciclo `for`: i `print` scritti a mano uno sotto l\'altro non valgono';
-  }
-  if (forRichiesti !== null && struttura.numFor > forRichiesti) {
-    return `Qui basta un solo ciclo \`for\`, tu ne hai scritti ${struttura.numFor}`;
-  }
-  if (righeCorpoMax !== null && struttura.righeCorpoMax > righeCorpoMax) {
-    return righeCorpoMax === 1
-      ? 'Dentro il ciclo basta una riga sola'
-      : `Dentro il ciclo bastano ${righeCorpoMax} righe`;
-  }
-  if (printFuoriCicloMax !== null && struttura.printFuoriCiclo > printFuoriCicloMax) {
-    return printFuoriCicloMax === 0
-      ? 'Il `print` va dentro il ciclo: niente `print` aggiunti a mano fuori dal ciclo'
-      : 'Fuori dal ciclo ci va un solo `print`, quello del risultato';
-  }
-  const printNelCicloMax = tappa.vincoli.printNelCicloMax ?? null;
-  if (printNelCicloMax !== null && struttura.numPrint - struttura.printFuoriCiclo > printNelCicloMax) {
-    return printNelCicloMax === 1
-      ? 'Dentro il ciclo basta un solo `print`: è il ciclo che lo ripete, non devi scrivere una riga per ogni giro'
-      : `Dentro il ciclo bastano ${printNelCicloMax} \`print\``;
-  }
-  if (tappa.vincoli.accumuloRichiesto && struttura.accumuliNelCiclo === 0) {
-    return 'Il risultato è giusto, ma deve calcolarlo il ciclo: dentro il ciclo ci vuole una variabile che accumula, per esempio `totale += i`';
-  }
-  return null;
-}
-
 /* -------------------------------------------------------------------- valutazione */
 
 /** Sceglie l'hint giusto per un output sbagliato. */
@@ -328,32 +295,10 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
   }
   const schermo = prove ? esito.schermo : undefined;
 
-  // "Nessun ciclo" si dice subito: è il malinteso di fondo, non un dettaglio dell'output.
-  if (tappa.vincoli.forRichiesti !== null && esito.struttura.numFor === 0) {
-    return {
-      promosso: false,
-      hint: 'Questa tappa si vince con un ciclo `for`: i `print` scritti a mano uno sotto l\'altro non valgono',
-      output: esito.output,
-      schermo,
-    };
-  }
-  // Senza `input()` i valori sono scritti a mano: anche se l'output torna, non è il programma chiesto.
-  if (prove && (tappa.vincoli.inputRichiesti ?? 0) > 0 && esito.struttura.numInput === 0) {
-    return {
-      promosso: false,
-      hint: 'Il programma deve chiedere i dati con `input()`, non averli scritti dentro: così funziona per chiunque lo usi',
-      output: esito.output,
-      schermo,
-    };
-  }
-
   const prodotto = normalizza(esito.output);
   if (!uguali(prodotto, atteso)) {
     return { promosso: false, hint: spiega(tappa, prodotto, atteso), output: prodotto, schermo };
   }
-
-  const forma = hintStruttura(tappa, esito.struttura);
-  if (forma) return { promosso: false, hint: forma, output: prodotto, schermo };
 
   // Le prove nascoste: con altre risposte il programma deve funzionare lo stesso.
   if (prove) {

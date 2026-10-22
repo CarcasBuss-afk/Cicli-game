@@ -82,16 +82,19 @@ describe('il salvadanaio', () => {
     expect(esito.hint).toMatch(/spazi/);
   });
 
-  it('dalla fase 3 il totale deve nascere da un accumulo, non da quota * i', () => {
+  it('dalla fase 3 il totale deve nascere da un accumulo, non da quota * i: lo dice la regola per il giudice', () => {
     const fasi = generaCronoscalata('salvadanaio', 11);
     const fase3 = fasi[2];
     const quota = Number(fase3.outputAtteso[0].match(/: (\d+) €/)![1]);
     const n = fase3.outputAtteso.length;
     const furbo = `for i in range(1, ${n + 1}):\n    print(f"Settimana {i}: {${quota} * i} €")`;
     expect(esegui(furbo)).toMatchObject({ ok: true, output: fase3.outputAtteso });
-    const esito = valutaRisposta(fase3, furbo);
-    expect(esito.promosso).toBe(false);
-    expect(esito.hint).toMatch(/accumula/);
+    // L'interprete promuove (l'output è giusto): la formula al posto dell'accumulo la vede il giudice.
+    expect(valutaRisposta(fase3, furbo).promosso).toBe(true);
+    expect(fasi[1].regola).not.toMatch(/accumulo/);
+    expect(fase3.regola).toMatch(/accumulo/);
+    expect(fase3.regola).toContain('`quota * i`');
+    expect(fasi[4].regola).toMatch(/riga finale/);
   });
 
   it('la riga finale si può scrivere con il numero a mano: il micro-interprete non lo distingue, e va bene', () => {
@@ -139,7 +142,9 @@ describe("la tabella d'allenamento", () => {
   it('alla fase 2 i km si possono anche calcolare, ma la consegna vuole la variabile che cresce', () => {
     const calcolo = `for i in range(1, ${n + 1}):\n    print(f"Settimana {i}: {${partenza} + ${incremento} * i - ${incremento}} km")`;
     expect(esegui(calcolo)).toMatchObject({ ok: true, output: fasi[1].outputAtteso });
-    expect(valutaRisposta(fasi[1], calcolo).hint).toMatch(/accumula/);
+    // L'interprete promuove: la formula al posto della variabile che cresce la vede il giudice, con la regola.
+    expect(valutaRisposta(fasi[1], calcolo).promosso).toBe(true);
+    expect(fasi[1].regola).toMatch(/accumulo/);
   });
 
   it("le righe del corpo sono libere: la variabile d'appoggio per la barra va bene (il caso visto in classe)", () => {
@@ -157,11 +162,13 @@ describe("la tabella d'allenamento", () => {
     expect(esito.promosso).toBe(true);
   });
 
-  it('otto print a mano in un ciclo che gira una volta sola non passano', () => {
+  it('otto print a mano in un ciclo che gira una volta sola passano l\'interprete: li ferma il giudice, con i giri contati', () => {
     const furbo = ['totale = 0', 'for i in range(1):', '    totale += 1', ...fasi[0].outputAtteso.map((r) => `    print("${r}")`)].join('\n');
-    const esito = valutaRisposta(fasi[0], furbo);
-    expect(esito.promosso).toBe(false);
-    expect(esito.hint).toContain('un solo `print`');
+    expect(valutaRisposta(fasi[0], furbo).promosso).toBe(true);
+    const esito = esegui(furbo);
+    if (!esito.ok) throw new Error(esito.errore.messaggio);
+    expect(esito.giri).toBe(1);
+    expect(fasi[0].regola).toMatch(/giro solo/);
   });
 
   it("i temi Cronoscalata sono nell'elenco del docente, uno per progetto", () => {

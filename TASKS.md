@@ -68,3 +68,7 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - Aggancio a lab-guardian per riconoscere l'allievo dalla postazione.
 - Esportazione dei risultati del Giro (CSV) per il registro.
 - Tappe sui cicli annidati, quando la classe ci arriva.
+
+## Task 11 — Il Giudice al posto dei vincoli (PERCORSO.md §13)
+- [x] 11a. Via `Vincoli` da esercizi e progetti; `Esercizio.regola` a parole (`REGOLE`); l'interprete espone i `giri`; `hint.ts` guarda solo l'output.
+- [x] 11b. `giudice.ts` (prompt, messaggio con i fatti, lettura del verdetto, hint senza codice, giudice finto) e `giudiceClient.ts` (Haiku, fail-open); `verificaConsegna` chiamata fuori dalle transazioni nel Giro e nell'Officina.

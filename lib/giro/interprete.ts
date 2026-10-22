@@ -37,7 +37,7 @@ export interface ErroreCodice {
   riga: number | null;
 }
 
-/** Forma del codice, per i controlli anti-furbo delle tappe (vedi hint.ts). */
+/** Forma del codice: i fatti che il giudice (giudice.ts) riceve insieme al codice. */
 export interface Struttura {
   /** Quanti `for` in tutto (anche annidati). */
   numFor: number;
@@ -68,7 +68,15 @@ export interface Interazione {
 export type RigaSchermo = { k: 'out'; v: string } | { k: 'in'; domanda: string; risposta: string };
 
 export type Esito =
-  | { ok: true; output: string[]; struttura: Struttura; interazioni: Interazione[]; schermo: RigaSchermo[] }
+  | {
+      ok: true;
+      output: string[];
+      struttura: Struttura;
+      /** Quanti giri hanno fatto i cicli in tutto: un `for i in range(1)` con otto `print` ne fa uno. */
+      giri: number;
+      interazioni: Interazione[];
+      schermo: RigaSchermo[];
+    }
   | { ok: false; errore: ErroreCodice };
 
 export interface Opzioni {
@@ -718,6 +726,10 @@ class Macchina {
   private readonly ambiente = new Map<string, Valore>();
   private iterazioni = 0;
   private prossimaRisposta = 0;
+  /** Giri fatti da tutti i cicli. */
+  get giri(): number {
+    return this.iterazioni;
+  }
   readonly output: string[] = [];
   readonly interazioni: Interazione[] = [];
   readonly schermo: RigaSchermo[] = [];
@@ -1029,6 +1041,7 @@ export function esegui(codice: string, opzioni: Opzioni = {}): Esito {
       ok: true,
       output: macchina.output,
       struttura: struttura(programma),
+      giri: macchina.giri,
       interazioni: macchina.interazioni,
       schermo: macchina.schermo,
     };

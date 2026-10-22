@@ -33,28 +33,28 @@ export type Terreno = 'pianura' | 'collina' | 'montagna';
 /** Cosa consegna l'allievo: il codice da eseguire, oppure l'output che il codice produce. */
 export type Risposta = 'codice' | 'output';
 
-/** Vincoli sulla forma del codice: senza di questi `print` ripetuti a mano vincerebbero. */
-export interface Vincoli {
-  /** Quanti `for` deve avere la soluzione; null = non si controlla. */
-  forRichiesti: number | null;
-  /** Massimo di istruzioni dentro il ciclo; null = non si controlla. */
-  righeCorpoMax: number | null;
-  /** Massimo di `print` fuori da ogni ciclo; null = non si controlla. */
-  printFuoriCicloMax: number | null;
-  /**
-   * Dentro il ciclo ci vuole un accumulo (`x += ...` o `x = x + ...`). Facoltativo:
-   * le gare create prima che esistesse non ce l'hanno, e vale come false.
-   */
-  accumuloRichiesto?: boolean;
-  /**
-   * Massimo di `print` dentro i cicli; null o assente = non si controlla. Nei progetti
-   * sostituisce il limite sulle righe del corpo: le variabili d'appoggio sono benvenute,
-   * otto `print` a mano in un `for i in range(1)` no.
-   */
-  printNelCicloMax?: number | null;
-  /** Quante `input()` almeno deve avere il codice (i compiti con le domande); assente = non si controlla. */
-  inputRichiesti?: number;
-}
+/**
+ * Le regole didattiche, a parole: quello che il giudice (`giudice.ts`) controlla sul codice
+ * promosso, oltre all'output. Niente conti sulle righe: chi scrive bene con una variabile
+ * d'appoggio passa, chi stampa le righe a mano no.
+ */
+export const REGOLE = {
+  ciclo:
+    'Le righe le stampa un ciclo `for` che gira una volta per riga. Non valgono: le righe scritte a mano una per una, ' +
+    "un ciclo da un giro solo con dentro un `print` per riga, `print` aggiunti fuori dal ciclo per completare l'output.",
+  cicloVariabile:
+    "Le righe le stampa un ciclo `for` che gira una volta per riga, e quello che cambia da una riga all'altra cambia " +
+    'grazie alla variabile del ciclo. Non valgono le righe scritte a mano una per una, né un ciclo da un giro solo con un `print` per riga.',
+  accumulatore:
+    'Il risultato lo calcola il ciclo con una variabile che accumula a ogni giro (per esempio `totale += i`) e si stampa dopo il ciclo. ' +
+    'Non valgono: il numero scritto a mano, una formula che lo calcola senza ciclo, un ciclo che gira una volta sola.',
+  accumulatoreVisibile:
+    'A ogni giro il ciclo aggiorna una variabile che accumula e la stampa: le righe sono i totali parziali calcolati dal ciclo. ' +
+    'Non valgono le righe scritte a mano né un ciclo da un giro solo con un `print` per riga.',
+  contaGiri:
+    'Il conteggio lo fa una variabile che parte da 0 e aumenta di 1 a ogni giro del ciclo; si stampa dopo il ciclo. ' +
+    'Non valgono: il numero scritto a mano, un ciclo che gira una volta sola.',
+} as const;
 
 /**
  * Una prova di un esercizio con `input()`: le risposte da dare alle domande e l'output
@@ -87,7 +87,11 @@ export interface Esercizio {
   risposta: Risposta;
   /** Soluzione di riferimento: resta sul server, serve ai test e al docente. */
   soluzione: string;
-  vincoli: Vincoli;
+  /**
+   * La regola didattica che il giudice controlla sul codice promosso (REGOLE o una frase
+   * propria). Assente = basta l'output (le risposte scritte a mano, e i Giri creati prima del giudice).
+   */
+  regola?: string;
   /** Le prove con le risposte alle `input()`; `prove[0].output` coincide con `outputAtteso`. */
   prove?: Prova[];
 }
@@ -194,7 +198,7 @@ function tappaRipetiN(rnd: () => number, difficolta: Difficolta): Esercizio {
     mostraOutput: false,
     risposta: 'codice',
     soluzione: `for i in range(${n}):\n    print("${frase}")`,
-    vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
+    regola: REGOLE.ciclo,
   };
 }
 
@@ -209,7 +213,7 @@ function tappaOutputRange(rnd: () => number, difficolta: Difficolta): Esercizio 
     mostraOutput: true,
     risposta: 'codice',
     soluzione: `for i in ${scriviRange(inizio, fine, passo)}:\n    print(i)`,
-    vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
+    regola: REGOLE.ciclo,
   };
 }
 
@@ -226,7 +230,7 @@ function tappaCompletaRange(rnd: () => number, difficolta: Difficolta): Esercizi
     risposta: 'codice',
     codiceIniziale: `for i in ${buchi}:\n    print(i)`,
     soluzione: `for i in ${scriviRange(inizio, fine, passo)}:\n    print(i)`,
-    vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
+    regola: REGOLE.ciclo,
   };
 }
 
@@ -247,7 +251,6 @@ function tappaCicloOutput(rnd: () => number, difficolta: Difficolta): Esercizio 
     codiceMostrato: codice,
     risposta: 'output',
     soluzione: numeri.map((n) => (conFrase ? `${etichetta} ${n}` : String(n))).join('\n'),
-    vincoli: { forRichiesti: null, righeCorpoMax: null, printFuoriCicloMax: null },
   };
 }
 
@@ -261,7 +264,7 @@ function tappaCicloStringa(rnd: () => number, difficolta: Difficolta): Esercizio
     mostraOutput: true,
     risposta: 'codice',
     soluzione: `for lettera in "${parola}":\n    print(lettera)`,
-    vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
+    regola: REGOLE.ciclo,
   };
 }
 
@@ -279,7 +282,7 @@ function tappaAccumulatore(rnd: () => number, difficolta: Difficolta): Esercizio
       mostraOutput: false,
       risposta: 'codice',
       soluzione: `totale = 0\nfor i in range(2, ${n + 1}, 2):\n    totale += i\nprint(totale)`,
-      vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
+      regola: REGOLE.accumulatore,
     };
   }
   const n = intero(rnd, 5, 12);
@@ -292,7 +295,7 @@ function tappaAccumulatore(rnd: () => number, difficolta: Difficolta): Esercizio
     mostraOutput: false,
     risposta: 'codice',
     soluzione: `totale = 0\nfor i in range(1, ${n + 1}):\n    totale += i\nprint(totale)`,
-    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
+    regola: REGOLE.accumulatore,
   };
 }
 
@@ -312,7 +315,7 @@ function tappaRigaRipetuta(rnd: () => number, difficolta: Difficolta): Esercizio
     mostraOutput: false,
     risposta: 'codice',
     soluzione: `for i in range(${n}):\n    print("${riga}")`,
-    vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
+    regola: REGOLE.ciclo,
   };
 }
 
@@ -322,7 +325,7 @@ function tappaRigaRipetuta(rnd: () => number, difficolta: Difficolta): Esercizio
  * perché nessun `range` produce stringhe che si allungano.
  */
 function tappaScala(rnd: () => number, difficolta: Difficolta): Esercizio {
-  const vincoli: Vincoli = { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 };
+  const regola = REGOLE.cicloVariabile;
   if (difficolta === 1) {
     // Rettangolo: ripasso della notazione "*" * 6, la variabile non serve ancora.
     const righe = intero(rnd, 3, 5);
@@ -336,7 +339,7 @@ function tappaScala(rnd: () => number, difficolta: Difficolta): Esercizio {
       mostraOutput: true,
       risposta: 'codice',
       soluzione: `for i in range(${righe}):\n    print("*" * ${larghezza})`,
-      vincoli,
+      regola,
     };
   }
   const n = intero(rnd, 4, 7);
@@ -354,7 +357,7 @@ function tappaScala(rnd: () => number, difficolta: Difficolta): Esercizio {
     soluzione: crescente
       ? `for i in range(1, ${n + 1}):\n    print("*" * i)`
       : `for i in range(${n}, 0, -1):\n    print("*" * i)`,
-    vincoli,
+    regola,
   };
 }
 
@@ -401,7 +404,7 @@ function tappaCacciaErrore(rnd: () => number, difficolta: Difficolta): Esercizio
     outputSbagliato: sbagliato,
     risposta: 'codice',
     soluzione: `for i in ${scriviRange(inizio, fine, passo)}:\n    print(i)`,
-    vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
+    regola: REGOLE.ciclo,
   };
 }
 
@@ -419,7 +422,6 @@ function tappaQuanteRighe(rnd: () => number, difficolta: Difficolta): Esercizio 
     risposta: 'output',
     segnapostoRisposta: 'scrivi solo il numero',
     soluzione: String(quante),
-    vincoli: { forRichiesti: null, righeCorpoMax: null, printFuoriCicloMax: null },
   };
 }
 
@@ -445,7 +447,7 @@ function tappaAccumulatoreVisibile(rnd: () => number, difficolta: Difficolta): E
     mostraOutput: true,
     risposta: 'codice',
     soluzione: `totale = 0\nfor i in range(${da}, ${a + 1}):\n    totale += i\n    print(totale)`,
-    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 0, accumuloRichiesto: true },
+    regola: REGOLE.accumulatoreVisibile,
   };
 }
 
@@ -464,7 +466,7 @@ function tappaContaGiri(rnd: () => number, difficolta: Difficolta): Esercizio {
     mostraOutput: false,
     risposta: 'codice',
     soluzione: `conta = 0\nfor i in ${intervallo}:\n    conta += 1\nprint(conta)`,
-    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
+    regola: REGOLE.contaGiri,
   };
 }
 
@@ -476,7 +478,7 @@ function tappaContaGiri(rnd: () => number, difficolta: Difficolta): Esercizio {
  * usare `i` in un calcolo.
  */
 function tappaFstring(rnd: () => number, difficolta: Difficolta): Esercizio {
-  const vincoli: Vincoli = { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 };
+  const regola = REGOLE.cicloVariabile;
   if (difficolta === 1) {
     const n = intero(rnd, 3, 6);
     const cosa = scegli(rnd, ['giro', 'posto', 'tentativo'] as const);
@@ -488,7 +490,7 @@ function tappaFstring(rnd: () => number, difficolta: Difficolta): Esercizio {
       mostraOutput: true,
       risposta: 'codice',
       soluzione: `for i in range(1, ${n + 1}):\n    print(f"{i}° ${cosa}")`,
-      vincoli,
+      regola,
     };
   }
   if (difficolta === 2) {
@@ -501,7 +503,7 @@ function tappaFstring(rnd: () => number, difficolta: Difficolta): Esercizio {
       mostraOutput: true,
       risposta: 'codice',
       soluzione: `for i in range(1, ${n + 1}):\n    print(f"Km {i}/${n}")`,
-      vincoli,
+      regola,
     };
   }
   const base = intero(rnd, 3, 9);
@@ -514,7 +516,7 @@ function tappaFstring(rnd: () => number, difficolta: Difficolta): Esercizio {
     mostraOutput: true,
     risposta: 'codice',
     soluzione: `for i in range(1, ${fino + 1}):\n    print(f"${base} x {i} = {${base} * i}")`,
-    vincoli,
+    regola,
   };
 }
 
@@ -531,7 +533,7 @@ function tappaContaLettere(rnd: () => number, difficolta: Difficolta): Esercizio
     mostraOutput: false,
     risposta: 'codice',
     soluzione: `conta = 0\nfor lettera in "${parola}":\n    conta += 1\nprint(conta)`,
-    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
+    regola: REGOLE.contaGiri,
   };
 }
 

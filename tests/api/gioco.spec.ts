@@ -214,12 +214,13 @@ test.describe('errori mostrati bene', () => {
     await expect(page.getByRole('status')).not.toContainText('`');
   });
 
-  test('output giusto ma ottenuto con i print a mano', async ({ page, request }) => {
+  test('output giusto ma bocciato dal giudice: lo dice, e si resta al km 1', async ({ page, request }) => {
     const gara = await creaGara(request, 5);
+    test.skip(gara.esercizi[0].risposta !== 'codice', 'il primo esercizio non si scrive in codice');
     await entra(page, gara.code, 'Petra');
-    const aMano = gara.esercizi[0].outputAtteso.map((riga) => `print("${riga}")`).join('\n');
-    await consegna(page, aMano, 'codice');
-    await expect(page.getByRole('status')).toContainText('ciclo');
+    // Il giudice finto boccia il codice con il marcatore: l'output è giusto, la forma no.
+    await consegna(page, `${gara.esercizi[0].soluzione}\n# furbo`, 'codice');
+    await expect(page.getByRole('status')).toContainText('Il risultato è giusto');
     await expect(page.getByText(/Km 1\b/)).toBeVisible();
   });
 });

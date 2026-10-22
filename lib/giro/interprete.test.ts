@@ -338,7 +338,7 @@ describe('righe vuote, commenti e tabulazioni', () => {
   });
 });
 
-describe('struttura del codice (controlli anti-furbo)', () => {
+describe('struttura del codice (i fatti per il giudice)', () => {
   it('conta i for, le righe del corpo e i print fuori dal ciclo', () => {
     const esito = esegui('for i in range(2):\n    print(i)\n    print("x")\nprint("fine")');
     if (!esito.ok) throw new Error(esito.errore.messaggio);
@@ -348,6 +348,17 @@ describe('struttura del codice (controlli anti-furbo)', () => {
       numPrint: 3,
       printFuoriCiclo: 1,
     });
+    expect(esito.giri).toBe(2);
+  });
+
+  it('conta i giri fatti davvero: un ciclo da un giro con tre print ne fa uno', () => {
+    const esito = esegui('for i in range(1):\n    print(1)\n    print(2)\n    print(3)');
+    if (!esito.ok) throw new Error(esito.errore.messaggio);
+    expect(esito.output).toEqual(['1', '2', '3']);
+    expect(esito.giri).toBe(1);
+    const annidato = esegui('for i in range(3):\n    for j in range(2):\n        print(i, j)');
+    if (!annidato.ok) throw new Error(annidato.errore.messaggio);
+    expect(annidato.giri).toBe(9);
   });
 
   it('riconosce i print ripetuti a mano senza ciclo', () => {

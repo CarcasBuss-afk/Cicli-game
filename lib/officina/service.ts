@@ -9,6 +9,7 @@ import { getDb } from '@/lib/firebaseAdmin';
 import { esercizioPerAllievo, type Esercizio } from '@/lib/giro/esercizi';
 import { ApiError } from '@/lib/giro/http';
 import { valutaRisposta } from '@/lib/giro/hint';
+import { verificaConsegna } from '@/lib/giro/verifica';
 import { esegui } from '@/lib/giro/interprete';
 import { eProgetto, generaCronoscalata, schedaProgetto, type Progetto } from '@/lib/giro/progetti';
 import { richiestaAmmessa } from '@/lib/giro/rateLimit';
@@ -182,21 +183,34 @@ function lavoroInCorso(ctx: Contesto, body: Record<string, unknown>, uid: string
   return { progetto, lavoro, fasi, esercizio: fasi[lavoro.fasi] };
 }
 
+/** La fase che l'allievo sta consegnando: i controlli, uguali nei due tempi della consegna. */
+function faseInConsegna(ctx: Contesto, body: Record<string, unknown>, uid: string) {
+  const aperto = lavoroInCorso(ctx, body, uid);
+  const f = intero(body.fase);
+  if (f !== aperto.lavoro.fasi) {
+    throw new ApiError(409, 'FASE_SBAGLIATA', `Stai consegnando la fase ${f + 1} ma sei alla fase ${aperto.lavoro.fasi + 1}: ricarica la pagina`);
+  }
+  return { ...aperto, f };
+}
+
 /**
  * Consegna di una fase. Il codice si salva sempre come bozza, giusto o sbagliato: alla
  * riapertura l'allievo ritrova quello che aveva scritto.
+ *
+ * Due tempi come nel Giro: la verifica (interprete più giudice, lento) sta fuori dalla
+ * transazione; dentro si rilegge, si ricontrolla la fase e si scrive. Le fasi di un
+ * compito non cambiano, quindi la verifica vale se la fase è ancora quella.
  */
 export async function consegna(body: Record<string, unknown>, utente: Utente) {
   limita(utente);
   const codice = typeof body.codice === 'string' ? body.codice.slice(0, 6000) : '';
+
+  const prima = faseInConsegna(await contesto(body, utente), body, utente.uid);
+  const valutazione = await verificaConsegna(prima.esercizio, codice);
+
   return getDb().runTransaction(async (tx) => {
     const ctx = await contesto(body, utente, tx);
-    const { progetto, lavoro, fasi, esercizio } = lavoroInCorso(ctx, body, utente.uid);
-    const f = intero(body.fase);
-    if (f !== lavoro.fasi) {
-      throw new ApiError(409, 'FASE_SBAGLIATA', `Stai consegnando la fase ${f + 1} ma sei alla fase ${lavoro.fasi + 1}: ricarica la pagina`);
-    }
-    const valutazione = valutaRisposta(esercizio, codice);
+    const { progetto, lavoro, fasi, f } = faseInConsegna(ctx, body, utente.uid);
     const salva = (dati: Partial<LavoroDoc>) =>
       tx.set(ctx.allievoRef, { lavori: { [progetto]: { ...lavoro, ...dati, ultimoAt: Timestamp.now() } } }, { merge: true });
 

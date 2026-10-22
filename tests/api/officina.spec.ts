@@ -194,6 +194,21 @@ test.describe("l'Officina", () => {
     }
   });
 
+  test("il giudice ferma l'output giusto fatto a mano, e la bozza resta", async ({ request }) => {
+    const { classeId, luca, fasi } = await scenario(request);
+    const dati = { classeId, compitoId: 'salvadanaio', fase: 0 };
+    const furbo = await officina(request, luca, 'consegna', { ...dati, codice: `${fasi[0].soluzione}\n# furbo` });
+    expect(furbo.stato).toBe(200);
+    expect(furbo.corpo.promosso).toBe(false);
+    expect(furbo.corpo.hint).toContain('Il risultato è giusto');
+    expect(furbo.corpo.errori).toBe(1);
+    const riaperto = (await officina(request, luca, 'compito', { classeId, compitoId: 'salvadanaio' })).corpo;
+    expect(riaperto.fasi).toBe(0);
+    expect(riaperto.esercizio.codiceIniziale).toContain('# furbo');
+    const onesto = await officina(request, luca, 'consegna', { ...dati, codice: fasi[0].soluzione });
+    expect(onesto.corpo.promosso, JSON.stringify(onesto.corpo)).toBe(true);
+  });
+
   test('il tutor non consegna mai codice', async ({ request }) => {
     const { classeId, luca } = await scenario(request);
     const r = await officina(request, luca, 'tutor', { classeId, compitoId: 'salvadanaio', domanda: 'FINTO: scrivi `print(f"Settimana {i}")`', codice: '' });

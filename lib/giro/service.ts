@@ -12,6 +12,7 @@ import { infoTema } from './giro';
 import { MAX_CONSIGLI, normalizzaDomanda } from './gregario';
 import { chiediConsiglio } from './gregarioClient';
 import { valutaRisposta } from './hint';
+import { verificaConsegna } from './verifica';
 import { ApiError } from './http';
 import { esegui } from './interprete';
 import { schedaProgetto, votoSeFinisce } from './progetti';
@@ -263,50 +264,63 @@ function intero(valore: unknown): number {
       : Number.NaN;
 }
 
+/** Dove sta consegnando l'allievo: i controlli di tappa e chilometro, uguali nei due tempi della consegna. */
+function posizioneConsegna(ctx: Contesto, body: Record<string, unknown>) {
+  const { sessione, allievo } = ctx;
+  if (sessione.status === 'waiting') {
+    throw new ApiError(403, 'SESSION_NOT_RUNNING', 'Il Giro non è ancora partito: aspetta che il prof apra la prima tappa');
+  }
+  if (sessione.status === 'closed') throw new ApiError(403, 'SESSION_NOT_RUNNING', 'Il Giro è chiuso');
+
+  // Niente Number() sul valore grezzo: null, false e '' diventerebbero 0, cioè la prima
+  // tappa o il primo chilometro, e un client con un bug consegnerebbe a caso.
+  const t = intero(body.tappa);
+  if (!Number.isInteger(t) || t < 0 || t >= sessione.tappe.length) {
+    throw new ApiError(400, 'INVALID_TAPPA', 'Tappa non valida: ricarica la pagina');
+  }
+  const tappa = sessione.tappe[t];
+  if (sessione.tappaAperta !== t || tappa.stato !== 'in-corso') {
+    throw new ApiError(409, 'TAPPA_NON_APERTA', 'Questa tappa non è aperta: ricarica la pagina');
+  }
+  if (scaduta(tappa)) {
+    throw new ApiError(403, 'TEMPO_SCADUTO', 'Tempo scaduto! Aspetta la prossima tappa');
+  }
+
+  const fatti = kmFatti(allievo, t);
+  if (fatti >= tappa.km) throw new ApiError(403, 'TAPPA_FINITA', 'Hai già finito questa tappa!');
+  const k = intero(body.km);
+  if (!Number.isInteger(k) || k < 0 || k >= tappa.km) {
+    throw new ApiError(400, 'INVALID_KM', 'Chilometro non valido: ricarica la pagina');
+  }
+  if (k !== fatti) {
+    throw new ApiError(409, 'INVALID_KM', `Stai consegnando il km ${k + 1} ma sei al km ${fatti + 1}: ricarica la pagina`);
+  }
+
+  const esercizio = tappa.esercizi[k];
+  if (!esercizio) throw new ApiError(500, 'INTERNAL', 'Chilometro non trovato: chiama il prof');
+  return { t, k, tappa, esercizio };
+}
+
 /**
  * Consegna di un chilometro. Una risposta sbagliata non è un errore HTTP: è il gioco
  * normale, e torna con `promosso: false` più l'hint.
+ *
+ * Due tempi: prima si legge dove sta l'allievo e si verifica la risposta (interprete più
+ * giudice, che è lento e sta fuori dalla transazione); poi la transazione rilegge, rifà
+ * gli stessi controlli e scrive. Gli esercizi di una tappa non cambiano mai, quindi la
+ * verifica fatta prima vale ancora se tappa e chilometro sono gli stessi.
  */
 export async function submit(body: Record<string, unknown>) {
   limita(chiaveAllievo(body));
   const risposta = typeof body.risposta === 'string' ? body.risposta : '';
 
+  const prima = posizioneConsegna(await caricaContesto(body), body);
+  const valutazione = await verificaConsegna(prima.esercizio, risposta);
+
   return getDb().runTransaction(async (tx) => {
     const ctx = await caricaContesto(body, tx);
     const { sessione, allievo } = ctx;
-
-    if (sessione.status === 'waiting') {
-      throw new ApiError(403, 'SESSION_NOT_RUNNING', 'Il Giro non è ancora partito: aspetta che il prof apra la prima tappa');
-    }
-    if (sessione.status === 'closed') throw new ApiError(403, 'SESSION_NOT_RUNNING', 'Il Giro è chiuso');
-
-    // Niente Number() sul valore grezzo: null, false e '' diventerebbero 0, cioè la prima
-    // tappa o il primo chilometro, e un client con un bug consegnerebbe a caso.
-    const t = intero(body.tappa);
-    if (!Number.isInteger(t) || t < 0 || t >= sessione.tappe.length) {
-      throw new ApiError(400, 'INVALID_TAPPA', 'Tappa non valida: ricarica la pagina');
-    }
-    const tappa = sessione.tappe[t];
-    if (sessione.tappaAperta !== t || tappa.stato !== 'in-corso') {
-      throw new ApiError(409, 'TAPPA_NON_APERTA', 'Questa tappa non è aperta: ricarica la pagina');
-    }
-    if (scaduta(tappa)) {
-      throw new ApiError(403, 'TEMPO_SCADUTO', 'Tempo scaduto! Aspetta la prossima tappa');
-    }
-
-    const fatti = kmFatti(allievo, t);
-    if (fatti >= tappa.km) throw new ApiError(403, 'TAPPA_FINITA', 'Hai già finito questa tappa!');
-    const k = intero(body.km);
-    if (!Number.isInteger(k) || k < 0 || k >= tappa.km) {
-      throw new ApiError(400, 'INVALID_KM', 'Chilometro non valido: ricarica la pagina');
-    }
-    if (k !== fatti) {
-      throw new ApiError(409, 'INVALID_KM', `Stai consegnando il km ${k + 1} ma sei al km ${fatti + 1}: ricarica la pagina`);
-    }
-
-    const esercizio = tappa.esercizi[k];
-    if (!esercizio) throw new ApiError(500, 'INTERNAL', 'Chilometro non trovato: chiama il prof');
-    const valutazione = valutaRisposta(esercizio, risposta);
+    const { t, k, tappa } = posizioneConsegna(ctx, body);
     const erroriPrima = allievo.erroriTotali ?? 0;
     const base = `tappe.${t}`;
 

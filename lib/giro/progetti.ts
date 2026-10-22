@@ -11,7 +11,7 @@
  *
  * Modulo puro: niente Firestore, niente Next.
  */
-import { generatore, type Esercizio, type Prova, type Vincoli } from './esercizi';
+import { generatore, REGOLE, type Esercizio, type Prova } from './esercizi';
 
 export type Progetto = 'salvadanaio' | 'allenamento' | 'scontrino';
 
@@ -77,21 +77,19 @@ function rigaFinale(p: ParametriSalvadanaio): string {
 }
 
 /**
- * Vincoli delle fasi: un ciclo solo con dentro un solo `print`. Le righe del corpo sono
- * libere: chi si fa una variabile d'appoggio (`barra = "=" * i`) scrive meglio, non
- * peggio; il furbo da fermare è chi mette otto `print` in un `for i in range(1)`, e lo
- * ferma il conto dei `print`. Da `accumuloDalla` in poi dentro il ciclo ci vuole
- * l'accumulo: `totale = quota * i` darebbe lo stesso output, ma il progetto esiste per
- * insegnare la variabile che ricorda.
+ * La regola di ogni fase, per il giudice: un ciclo che fa le righe, e da `accumuloDalla` in
+ * poi la variabile che accumula. Le righe del corpo sono libere: chi si fa una variabile
+ * d'appoggio (`barra = "=" * i`) scrive meglio, non peggio; il furbo da fermare è chi mette
+ * otto `print` in un `for i in range(1)`, o calcola il totale con `quota * i` quando il
+ * progetto esiste per insegnare la variabile che ricorda.
  */
-function vincoliFase(fase: number, accumuloDalla = 3): Vincoli {
-  return {
-    forRichiesti: 1,
-    righeCorpoMax: null,
-    printNelCicloMax: 1,
-    printFuoriCicloMax: fase === 5 ? 1 : 0,
-    accumuloRichiesto: fase >= accumuloDalla,
-  };
+function regolaFase(fase: number, accumuloDalla = 3): string {
+  const accumulo =
+    fase >= accumuloDalla
+      ? ' Il totale lo tiene una variabile che parte prima del ciclo e cresce a ogni giro (accumulo): non vale calcolarlo con una formula sul numero del giro, come `quota * i`.'
+      : '';
+  const finale = fase === 5 ? ' La riga finale, dopo il ciclo, usa la variabile del totale: il numero non va scritto a mano.' : '';
+  return REGOLE.cicloVariabile + accumulo + finale;
 }
 
 function fasiSalvadanaio(seme: number): Esercizio[] {
@@ -107,7 +105,7 @@ function fasiSalvadanaio(seme: number): Esercizio[] {
         `\`Settimana 1\`, \`Settimana 2\`… fino a \`Settimana ${settimane}\`.`,
       outputAtteso: righeSettimane(p, 1),
       soluzione: `${ciclo}\n    print(f"Settimana {i}")`,
-      vincoli: vincoliFase(1),
+      regola: regolaFase(1),
     },
     {
       ...base,
@@ -116,7 +114,7 @@ function fasiSalvadanaio(seme: number): Esercizio[] {
         `dopo i due punti, così: \`Settimana 1: ${quota} €\`.`,
       outputAtteso: righeSettimane(p, 2),
       soluzione: `${ciclo}\n    print(f"Settimana {i}: ${quota} €")`,
-      vincoli: vincoliFase(2),
+      regola: regolaFase(2),
     },
     {
       ...base,
@@ -126,7 +124,7 @@ function fasiSalvadanaio(seme: number): Esercizio[] {
         `parte da 0 **prima** del ciclo e a ogni settimana cresce di ${quota}.`,
       outputAtteso: righeSettimane(p, 3),
       soluzione: `totale = 0\n${ciclo}\n    totale += ${quota}\n    print(f"Settimana {i}: {totale} €")`,
-      vincoli: vincoliFase(3),
+      regola: regolaFase(3),
     },
     {
       ...base,
@@ -135,7 +133,7 @@ function fasiSalvadanaio(seme: number): Esercizio[] {
         `che si allunga: un \`*\` alla prima settimana, due alla seconda, e così via. Ricorda che \`"*" * 3\` fa \`***\`.`,
       outputAtteso: righeSettimane(p, 4),
       soluzione: `totale = 0\n${ciclo}\n    totale += ${quota}\n    print(f"Settimana {i}: {totale} € " + "*" * i)`,
-      vincoli: vincoliFase(4),
+      regola: regolaFase(4),
     },
     {
       ...base,
@@ -146,7 +144,7 @@ function fasiSalvadanaio(seme: number): Esercizio[] {
       soluzione:
         `totale = 0\n${ciclo}\n    totale += ${quota}\n    print(f"Settimana {i}: {totale} € " + "*" * i)\n` +
         `print(f"Obiettivo {totale} € raggiunto in ${settimane} settimane")`,
-      vincoli: vincoliFase(5),
+      regola: regolaFase(5),
     },
   ];
 }
@@ -226,7 +224,7 @@ function fasiAllenamento(seme: number): Esercizio[] {
         `\`Settimana 1\`, \`Settimana 2\`… fino a \`Settimana ${settimane}\`.`,
       outputAtteso: righeAllenamento(p, 1).righe,
       soluzione: `${ciclo}\n    print(f"Settimana {i}")`,
-      vincoli: vincoliFase(1),
+      regola: regolaFase(1),
     },
     {
       ...base,
@@ -236,7 +234,7 @@ function fasiAllenamento(seme: number): Esercizio[] {
         `**prima** del ciclo; dentro, prima la stampi (\`Settimana 1: ${partenza} km\`) e **poi** la aumenti di ${incremento}.`,
       outputAtteso: righeAllenamento(p, 2).righe,
       soluzione: `km = ${partenza}\n${ciclo}\n    print(f"Settimana {i}: {km} km")\n    km += ${incremento}`,
-      vincoli: vincoliFase(2, 2),
+      regola: regolaFase(2, 2),
     },
     {
       ...base,
@@ -246,7 +244,7 @@ function fasiAllenamento(seme: number): Esercizio[] {
         `e a ogni settimana cresce dei km di quella settimana.`,
       outputAtteso: righeAllenamento(p, 3).righe,
       soluzione: `km = ${partenza}\ntotale = 0\n${ciclo}\n${corpo3}")\n    km += ${incremento}`,
-      vincoli: vincoliFase(3, 2),
+      regola: regolaFase(3, 2),
     },
     {
       ...base,
@@ -255,7 +253,7 @@ function fasiAllenamento(seme: number): Esercizio[] {
         `uno alla prima settimana, due alla seconda, e così via (\`"=" * 3\` fa \`===\`).`,
       outputAtteso: righeAllenamento(p, 4).righe,
       soluzione: `km = ${partenza}\ntotale = 0\n${ciclo}\n${corpo3} " + "=" * i)\n    km += ${incremento}`,
-      vincoli: vincoliFase(4, 2),
+      regola: regolaFase(4, 2),
     },
     {
       ...base,
@@ -266,7 +264,7 @@ function fasiAllenamento(seme: number): Esercizio[] {
       soluzione:
         `km = ${partenza}\ntotale = 0\n${ciclo}\n${corpo3} " + "=" * i)\n    km += ${incremento}\n` +
         `print(f"In ${settimane} settimane hai pedalato {totale} km")`,
-      vincoli: vincoliFase(5, 2),
+      regola: regolaFase(5, 2),
     },
   ];
 }
@@ -349,16 +347,13 @@ function proveScontrino(p: ParametriScontrino, fase: 1 | 2 | 3 | 4 | 5): Prova[]
   return p.clienti.map((c) => ({ risposte: risposteScontrino(c, fase), output: righeScontrino(p, c, fase) }));
 }
 
-/** I vincoli: niente ciclo fino alla fase 2, poi uno solo con un solo print; le `input()` crescono. */
-function vincoliScontrino(fase: number): Vincoli {
-  return {
-    forRichiesti: fase >= 3 ? 1 : null,
-    righeCorpoMax: null,
-    printNelCicloMax: fase >= 3 ? 1 : null,
-    printFuoriCicloMax: null,
-    accumuloRichiesto: fase >= 4,
-    inputRichiesti: fase >= 5 ? 3 : fase >= 2 ? 2 : 1,
-  };
+/** La regola di ogni fase dello scontrino: i dati da `input()`, dalla fase 3 il ciclo, dalla 4 l'accumulo. */
+function regolaScontrino(fase: number): string {
+  const input = 'I dati del cliente arrivano da `input()` (con `int()` per i numeri): non valgono i valori scritti nel programma.';
+  if (fase < 3) return `${input} Qui non serve nessun ciclo.`;
+  const ciclo = ' Le righe dei panini le stampa un ciclo `for` che gira tante volte quanti sono i panini risposti: non valgono le righe scritte a mano né un ciclo da un giro solo con più `print`.';
+  const accumulo = fase >= 4 ? ' Il totale lo tiene una variabile che parte da 0 prima del ciclo e cresce a ogni panino; si stampa dopo il ciclo. Non vale `panini * prezzo` né il numero scritto a mano.' : '';
+  return input + ciclo + accumulo;
 }
 
 function fasiScontrino(seme: number): Esercizio[] {
@@ -367,7 +362,7 @@ function fasiScontrino(seme: number): Esercizio[] {
   const base = { tipo: 'progetto' as const, terreno: 'montagna' as const, mostraOutput: true, risposta: 'codice' as const };
   const fase = (n: 1 | 2 | 3 | 4 | 5, consegna: string, soluzione: string): Esercizio => {
     const prove = proveScontrino(p, n);
-    return { ...base, consegna, outputAtteso: prove[0].output, prove, soluzione, vincoli: vincoliScontrino(n) };
+    return { ...base, consegna, outputAtteso: prove[0].output, prove, soluzione, regola: regolaScontrino(n) };
   };
   const r1 = 'nome = input("Come ti chiami? ")\nprint(f"Scontrino di {nome}")';
   const r2 = `${r1}\npanini = int(input("Quanti panini? "))\nprint(f"Panini: {panini}")`;

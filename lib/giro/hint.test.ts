@@ -3,7 +3,7 @@
  * atteso: così i casi sono quelli veri di laboratorio. */
 import { describe, expect, it } from 'vitest';
 import { valutaRisposta } from './hint';
-import type { Esercizio } from './esercizi';
+import { REGOLE, type Esercizio } from './esercizi';
 
 /** Esercizio "scrivi il ciclo che stampa 0 1 2 3 4". */
 const contaFinoA5: Esercizio = {
@@ -14,7 +14,7 @@ const contaFinoA5: Esercizio = {
   mostraOutput: true,
   risposta: 'codice',
   soluzione: 'for i in range(5):\n    print(i)',
-  vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
+  regola: REGOLE.ciclo,
 };
 
 /** Esercizio con conto alla rovescia: 5 4 3 2 1. */
@@ -34,7 +34,7 @@ const ripetiEvviva: Esercizio = {
   mostraOutput: false,
   risposta: 'codice',
   soluzione: 'for i in range(3):\n    print("Evviva")',
-  vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
+  regola: REGOLE.ciclo,
 };
 
 /** Esercizio dell'accumulatore: somma da 1 a 5 = 15. */
@@ -46,7 +46,7 @@ const somma: Esercizio = {
   mostraOutput: false,
   risposta: 'codice',
   soluzione: 'totale = 0\nfor i in range(1, 6):\n    totale += i\nprint(totale)',
-  vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
+  regola: REGOLE.accumulatore,
 };
 
 /** Esercizio di inversione: si consegna l'output, non il codice. */
@@ -59,7 +59,6 @@ const inversione: Esercizio = {
   codiceMostrato: 'for i in range(1, 4):\n    print(f"Giro {i}")',
   risposta: 'output',
   soluzione: 'Giro 1\nGiro 2\nGiro 3',
-  vincoli: { forRichiesti: null, righeCorpoMax: null, printFuoriCicloMax: null },
 };
 
 /** Scorciatoia: valuta e pretende la bocciatura, restituendo l'hint. */
@@ -154,33 +153,19 @@ describe('errori sul testo', () => {
   });
 });
 
-describe('controlli anti-furbo', () => {
-  it('print ripetuti a mano senza ciclo', () => {
-    const h = hint(contaFinoA5, 'print(0)\nprint(1)\nprint(2)\nprint(3)\nprint(4)');
-    expect(h).toContain('ciclo `for`');
-    expect(h).toContain('a mano');
+describe("l'output giusto promuove: la forma la giudica il giudice, non l'interprete", () => {
+  it('print ripetuti a mano senza ciclo: output giusto, promosso qui (lo ferma il giudice)', () => {
+    expect(valutaRisposta(contaFinoA5, 'print(0)\nprint(1)\nprint(2)\nprint(3)\nprint(4)').promosso).toBe(true);
   });
 
-  it('ciclo accorciato più print aggiunti a mano', () => {
-    const h = hint(contaFinoA5, 'for i in range(3):\n    print(i)\nprint(3)\nprint(4)');
-    expect(h).toContain('dentro il ciclo');
+  it("una variabile d'appoggio nel corpo del ciclo è benvenuta", () => {
+    expect(valutaRisposta(contaFinoA5, 'for i in range(5):\n    x = i\n    y = x\n    print(y)').promosso).toBe(true);
+    expect(valutaRisposta(ripetiEvviva, 'for i in range(3):\n    testo = "Evviva"\n    print(testo)').promosso).toBe(true);
   });
 
-  it('più cicli del necessario', () => {
-    const h = hint(
-      contaFinoA5,
-      'for i in range(3):\n    print(i)\nfor i in range(3, 5):\n    print(i)',
-    );
-    expect(h).toContain('un solo ciclo');
-  });
-
-  it('il risultato della somma scritto a mano', () => {
-    expect(hint(somma, 'print(15)')).toContain('ciclo `for`');
-  });
-
-  it('dentro il ciclo ci sono troppe righe', () => {
-    const h = hint(contaFinoA5, 'for i in range(5):\n    x = i\n    y = x\n    print(y)');
-    expect(h).toContain('una riga sola');
+  it('il risultato della somma scritto a mano: output giusto, promosso qui', () => {
+    expect(valutaRisposta(somma, 'print(15)').promosso).toBe(true);
+    expect(valutaRisposta(somma, 'for i in range(1):\n    print(15)').promosso).toBe(true);
   });
 });
 
@@ -197,11 +182,6 @@ describe('tappa dell\'accumulatore', () => {
     expect(h).not.toContain('15');
   });
 
-  it('il risultato scritto dentro un ciclo finto non vale', () => {
-    // Il ciclo c'è, ma non calcola niente: il numero è scritto a mano.
-    const h = hint(somma, 'for i in range(1):\n    print(15)');
-    expect(h).toContain('deve calcolarlo il ciclo');
-  });
 });
 
 describe('errori di scrittura: parla il micro-interprete', () => {
@@ -299,7 +279,7 @@ describe('hint delle tappe nuove', () => {
     mostraOutput: true,
     risposta: 'codice',
     soluzione: 'for i in range(1, 5):\n    print("*" * i)',
-    vincoli: { forRichiesti: 1, righeCorpoMax: 1, printFuoriCicloMax: 0 },
+    regola: REGOLE.ciclo,
   };
 
   it('scala con le righe tutte uguali: manca la variabile', () => {
@@ -323,7 +303,7 @@ describe('hint delle tappe nuove', () => {
     mostraOutput: true,
     risposta: 'codice',
     soluzione: 'totale = 0\nfor i in range(1, 6):\n    totale += i\n    print(totale)',
-    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 0, accumuloRichiesto: true },
+    regola: REGOLE.accumulatoreVisibile,
   };
 
   it('somma che cresce: stampa i invece del totale', () => {
@@ -344,7 +324,6 @@ describe('hint delle tappe nuove', () => {
     codiceMostrato: 'for i in range(3, 7):\n    print(i)',
     risposta: 'output',
     soluzione: '4',
-    vincoli: { forRichiesti: null, righeCorpoMax: null, printFuoriCicloMax: null },
   };
 
   it('quante righe: la risposta giusta', () => {
@@ -372,7 +351,7 @@ describe('hint delle tappe nuove', () => {
     mostraOutput: false,
     risposta: 'codice',
     soluzione: 'conta = 0\nfor i in range(6):\n    conta += 1\nprint(conta)',
-    vincoli: { forRichiesti: 1, righeCorpoMax: 2, printFuoriCicloMax: 1, accumuloRichiesto: true },
+    regola: REGOLE.accumulatore,
   };
 
   it('conta i giri: anche con x = x + 1', () => {
@@ -381,8 +360,8 @@ describe('hint delle tappe nuove', () => {
     );
   });
 
-  it('conta i giri: il numero scritto a mano in un ciclo finto non vale', () => {
-    expect(hint(contaGiri, 'for i in range(6):\n    x = 1\nprint(6)')).toContain('deve calcolarlo il ciclo');
+  it('conta i giri: il numero scritto a mano in un ciclo finto passa qui, lo ferma il giudice', () => {
+    expect(valutaRisposta(contaGiri, 'for i in range(6):\n    x = 1\nprint(6)').promosso).toBe(true);
   });
 
   it('conta i giri: conteggio sbagliato senza rivelare quello giusto', () => {
