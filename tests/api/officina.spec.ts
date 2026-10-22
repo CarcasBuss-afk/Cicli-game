@@ -94,8 +94,14 @@ test.describe("l'Officina", () => {
       ['diario', 'bloccato'],
       ['record', 'bloccato'],
       ['conteggio', 'bloccato'],
+      ['patentino', 'bloccato'],
     ]);
-    expect(p.compiti[0]).toMatchObject({ titolo: 'Il cartello della festa', fasi: 0, fasiTotali: 5, consigli: 0, voto: null, votoSeFinisci: 10 });
+    expect(p.compiti[0]).toMatchObject({ titolo: 'Il cartello della festa', fasi: 0, fasiTotali: 5, consigli: 0, voto: null, votoSeFinisci: 10, sezione: 'for', esame: false });
+    expect(p.compiti[11]).toMatchObject({ id: 'patentino', esame: true, sezione: 'for' });
+    expect(p.sezioni.map((s: { id: string; titolo: string; compiti: string[] }) => [s.id, s.titolo, s.compiti.length])).toEqual([
+      ['for', 'Il ciclo for', 12],
+      ['while', 'Il ciclo while', 0],
+    ]);
 
     const bloccato = await officina(request, luca, 'compito', { classeId, compitoId: 'classifica' });
     expect(bloccato.stato).toBe(403);
@@ -177,6 +183,35 @@ test.describe("l'Officina", () => {
     const p2 = (await officina(request, luca, 'compiti', { classeId })).corpo;
     expect(p2.media).toBe(7.5);
     expect(p2.compiti[2].stato).toBe('da-cominciare');
+  });
+
+  test('il patentino in fondo alla sezione: tutor spento, hint sì, e il voto è 10 se finisce', async ({ request }) => {
+    const { classeId, luca } = await scenario(request);
+    const dati = { classeId, compitoId: 'patentino' };
+    const prima = await officina(request, luca, 'compito', dati);
+    expect(prima.stato).toBe(403);
+    expect(prima.corpo.error).toBe('BLOCCATO');
+
+    const tutti = (await officina(request, luca, 'compiti', { classeId })).corpo.compiti.map((c: { id: string }) => c.id).filter((id: string) => id !== 'patentino');
+    await request.post('/api/giro/test-setup', { data: { azione: 'finisciOfficina', classeId, uid: luca.uid, progetti: tutti } });
+    const p = (await officina(request, luca, 'compiti', { classeId })).corpo;
+    expect(p.compiti[11]).toMatchObject({ id: 'patentino', stato: 'da-cominciare', esame: true });
+
+    const c = (await officina(request, luca, 'compito', dati)).corpo;
+    expect(c.esame).toBe(true);
+    expect(c.scheda.esame).toBe(true);
+    expect(c.scheda.titolo).toBe('Il patentino dei cicli for');
+    const t = await officina(request, luca, 'tutor', { ...dati, domanda: 'aiuto', codice: '' });
+    expect(t.stato).toBe(403);
+    expect(t.corpo.error).toBe('TUTOR_SPENTO');
+
+    // Gli hint automatici restano.
+    const sbagliata = await officina(request, luca, 'consegna', { ...dati, fase: 0, codice: 'print("Giro 1")' });
+    expect(sbagliata.corpo.promosso).toBe(false);
+    expect(sbagliata.corpo.hint).toBeTruthy();
+    await finisci(request, luca, classeId, 'patentino');
+    const dopo = (await officina(request, luca, 'compiti', { classeId })).corpo;
+    expect(dopo.compiti[11]).toMatchObject({ stato: 'finito', voto: 10 });
   });
 
   test('trenta domande per compito, poi il tutor si ferma (il voto no: resta 5)', async ({ request }) => {
@@ -311,10 +346,12 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await page.getByLabel('Per cominciare, dimmi in che classe sei:').selectOption(classeId);
     await page.getByRole('button', { name: 'Entra' }).click();
     await expect(page.getByText(`Classe ${nomeClasse}`)).toBeVisible();
-    const percorso = page.getByRole('list', { name: `percorso di ${nomeClasse}` }).locator('li');
-    await expect(percorso).toHaveCount(11);
+    const percorso = page.getByRole('list', { name: `percorso di ${nomeClasse} · Il ciclo for` }).locator('li');
+    await expect(percorso).toHaveCount(12);
     await expect(percorso.nth(0)).toContainText('Comincia');
     await expect(percorso.nth(1)).toContainText('si sblocca');
+    await expect(percorso.nth(11)).toContainText('esame');
+    await expect(page.getByRole('region', { name: 'Il ciclo while' })).toContainText('arrivano');
     await expect(page.getByLabel('media')).toHaveText('–');
 
     // Luca, che era già dentro, apre il compito.
@@ -368,7 +405,7 @@ test.describe("l'Officina nella dashboard del docente", () => {
     await expect(riga).toContainText('2/5');
     await expect(riga).toContainText('🧑‍🏫 1');
     await expect(riga).toContainText('🔒');
-    await expect(riga.locator('td').nth(12)).toHaveText('10'); // la media (dopo gli 11 compiti): un solo compito finito, senza domande
+    await expect(riga.locator('td').nth(13)).toHaveText('10'); // la media (dopo i 12 compiti): un solo compito finito, senza domande
 
     await riga.getByRole('button', { name: `Luca Rossi: classifica` }).click();
     const lavoro = page.getByRole('region', { name: "lavoro dell'allievo" });
@@ -382,6 +419,6 @@ test.describe("l'Officina nella dashboard del docente", () => {
     const file = await download;
     const testo = await (await import('node:fs/promises')).readFile(await file.path(), 'utf-8');
     expect(testo).toContain('Nome;Email;Il cartello della festa · fasi;Il cartello della festa · domande;Il cartello della festa · voto;');
-    expect(testo).toContain(`Luca Rossi;${luca.email};5;0;10;2;1;;${'0;0;;'.repeat(9)}10`);
+    expect(testo).toContain(`Luca Rossi;${luca.email};5;0;10;2;1;;${'0;0;;'.repeat(10)}10`);
   });
 });

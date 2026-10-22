@@ -15,6 +15,7 @@ import { generatore, REGOLE, type Esercizio, type Prova } from '../giro/esercizi
 import { fasiPromozione, schedaPromozione } from './compitiCondizioni';
 import { fasiConteggio, fasiDiario, fasiRecord, schedaConteggio, schedaDiario, schedaRecord } from './compitiDiario';
 import { fasiCartello, fasiClassifica, fasiLancio, fasiScala, schedaCartello, schedaClassifica, schedaLancio, schedaScala } from './compitiIniziali';
+import { fasiPatentino, schedaPatentino } from './compitiPatentino';
 
 export type CompitoId =
   | 'cartello'
@@ -27,11 +28,14 @@ export type CompitoId =
   | 'promozione'
   | 'diario'
   | 'record'
-  | 'conteggio';
+  | 'conteggio'
+  | 'patentino';
 
 export interface SchedaCompito {
   id: CompitoId;
   titolo: string;
+  /** Un esame (il patentino): tutor spento, restano gli hint automatici. */
+  esame?: boolean;
   /** Chi chiede il programma e perché: il contesto di realtà. */
   committente: string;
   /** Che cosa deve produrre il programma, in una riga. */
@@ -444,27 +448,48 @@ const PROGETTI: Record<CompitoId, { fasi: (seme: number) => Esercizio[]; scheda:
   diario: { fasi: fasiDiario, scheda: schedaDiario },
   record: { fasi: fasiRecord, scheda: schedaRecord },
   conteggio: { fasi: fasiConteggio, scheda: schedaConteggio },
+  patentino: { fasi: fasiPatentino, scheda: schedaPatentino },
 };
 
+/* ------------------------------------------------------------------- sezioni */
+
+export type SezioneId = 'for' | 'while';
+
+/** Un capitolo del percorso: i compiti su un ciclo, con l'esame in fondo. */
+export interface Sezione {
+  id: SezioneId;
+  titolo: string;
+  compiti: CompitoId[];
+}
+
 /**
- * I compiti nell'ordine didattico, un'idea nuova ciascuno (PERCORSO.md §15): ripetere ·
- * la variabile del ciclo · il passo · la variabile in un calcolo · l'accumulatore · due
+ * Il percorso a sezioni (PERCORSO.md §19): l'allievo vede i due cicli come due capitoli.
+ * Nella prima i compiti nell'ordine didattico, un'idea nuova ciascuno (§15): ripetere · la
+ * variabile del ciclo · il passo · la variabile in un calcolo · l'accumulatore · due
  * variabili e l'ordine nel corpo · input() · decidere con un if (§17) · input() dentro il
- * ciclo · la variabile che ricorda il migliore · il contatore in un ramo (§18).
+ * ciclo · la variabile che ricorda il migliore · il contatore in un ramo (§18) · il
+ * patentino (§19). La seconda, il `while`, arriva quando la classe ci arriva.
  */
-export const ELENCO_COMPITI: CompitoId[] = [
-  'cartello',
-  'classifica',
-  'lancio',
-  'scala',
-  'salvadanaio',
-  'allenamento',
-  'scontrino',
-  'promozione',
-  'diario',
-  'record',
-  'conteggio',
+export const SEZIONI: Sezione[] = [
+  {
+    id: 'for',
+    titolo: 'Il ciclo for',
+    compiti: ['cartello', 'classifica', 'lancio', 'scala', 'salvadanaio', 'allenamento', 'scontrino', 'promozione', 'diario', 'record', 'conteggio', 'patentino'],
+  },
+  { id: 'while', titolo: 'Il ciclo while', compiti: [] },
 ];
+
+/** Tutti i compiti nell'ordine in cui si sbloccano: sezione dopo sezione. */
+export const ELENCO_COMPITI: CompitoId[] = SEZIONI.flatMap((s) => s.compiti);
+
+export function sezioneDi(id: CompitoId): Sezione {
+  return SEZIONI.find((s) => s.compiti.includes(id)) ?? SEZIONI[0];
+}
+
+/** Un esame (il patentino): il tutor è spento. */
+export function eEsame(id: CompitoId): boolean {
+  return PROGETTI[id].scheda(1).esame === true;
+}
 
 /** Le fasi del progetto, come chilometri della tappa. Stesso seme, stesse fasi. */
 export function generaCompito(progetto: CompitoId, seme: number): Esercizio[] {

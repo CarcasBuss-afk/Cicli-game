@@ -57,9 +57,15 @@ export type CompitoInElenco = {
   /** Solo a compito finito. */
   voto: number | null;
   votoSeFinisci: number;
+  /** La sezione del percorso in cui sta (il ciclo for, il ciclo while). */
+  sezione: string;
+  /** Un esame (il patentino): tutor spento. */
+  esame: boolean;
 };
 
-export type Percorso = { classe: { id: string; nome: string; chiusa: boolean }; compiti: CompitoInElenco[]; media: number | null };
+export type SezionePercorso = { id: string; titolo: string; compiti: string[] };
+
+export type Percorso = { classe: { id: string; nome: string; chiusa: boolean }; compiti: CompitoInElenco[]; sezioni: SezionePercorso[]; media: number | null };
 
 export type Scambio = { fase: number; domanda: string; risposta: string };
 
@@ -67,6 +73,8 @@ export type CompitoAperto = {
   id: string;
   /** Fine lezione: si guarda ma non si consegna né si chiede, finché il prof non riapre. */
   classeChiusa: boolean;
+  /** Un esame (il patentino): il tutor è spento, restano gli hint automatici. */
+  esame: boolean;
   fasi: number;
   fasiTotali: number;
   consigli: number;

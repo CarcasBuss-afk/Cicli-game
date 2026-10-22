@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { valutaRisposta } from '../giro/hint';
 import { esegui } from '../giro/interprete';
-import { ELENCO_COMPITI, generaCompito, schedaCompito, votoSeFinisce } from './compiti';
+import { eEsame, ELENCO_COMPITI, generaCompito, schedaCompito, SEZIONI, sezioneDi, votoSeFinisce } from './compiti';
 import { esercizioPerAllievo } from '../giro/esercizi';
 
 const SEMI = Array.from({ length: 40 }, (_, i) => (i + 1) * 1013);
@@ -480,5 +480,78 @@ describe('le uscite che contano (il contatore in un ramo)', () => {
     expect(scheda.dati).toHaveLength(3);
     expect(scheda.outputFinale).toEqual(fasi[4].outputAtteso);
     expect(scheda.outputFinale.length).toBeLessThanOrEqual(12);
+  });
+});
+
+describe('le sezioni del percorso', () => {
+  it('il percorso è le sezioni una dopo l\'altra; il for finisce col patentino, il while è ancora vuoto', () => {
+    expect(SEZIONI.map((s) => s.id)).toEqual(['for', 'while']);
+    expect(ELENCO_COMPITI).toEqual(SEZIONI.flatMap((s) => s.compiti));
+    const [perFor, perWhile] = SEZIONI;
+    expect(perFor.compiti[perFor.compiti.length - 1]).toBe('patentino');
+    expect(perWhile.compiti).toEqual([]);
+    expect(sezioneDi('cartello').id).toBe('for');
+    expect(sezioneDi('patentino').id).toBe('for');
+  });
+
+  it('il patentino è l\'unico esame', () => {
+    expect(ELENCO_COMPITI.filter(eEsame)).toEqual(['patentino']);
+  });
+});
+
+describe('il patentino dei cicli for (l\'esame)', () => {
+  const fasi = generaCompito('patentino', 23);
+  const scheda = schedaCompito('patentino', 23);
+  const giri = Number(scheda.dati[0].match(/(\d+)/)![1]);
+  const lunghezza = Number(scheda.dati[1].match(/(\d+) km/)![1]);
+  const tempi = fasi[2].prove![0].risposte.map(Number);
+
+  it('le prime due fasi non chiedono niente, dalla terza tre gare di prova con i tempi (stessi giri: il numero è nel codice)', () => {
+    expect(fasi[0].prove).toBeUndefined();
+    expect(fasi[1].prove).toBeUndefined();
+    for (const f of fasi.slice(2)) {
+      expect(f.prove).toHaveLength(3);
+      expect(f.prove!.map((p) => p.risposte.length)).toEqual([giri, giri, giri]);
+    }
+    expect(giri).toBeGreaterThanOrEqual(4);
+    expect(giri).toBeLessThanOrEqual(6);
+  });
+
+  it('ogni fase ripassa un\'idea: ripetere, il calcolo, input nel ciclo, accumulo, il migliore', () => {
+    expect(fasi[0].outputAtteso).toEqual(Array.from({ length: giri }, (_, i) => `Giro ${i + 1}`));
+    expect(fasi[1].outputAtteso[1]).toBe(`Giro 2: ${2 * lunghezza} km`);
+    expect(fasi[2].outputAtteso[0]).toBe(`Giro 1: ${lunghezza} km in ${tempi[0]} min`);
+    expect(fasi[3].outputAtteso[giri]).toBe(`Tempo totale: ${tempi.reduce((a, b) => a + b, 0)} min`);
+    const minimo = Math.min(...tempi);
+    expect(fasi[4].outputAtteso[giri + 1]).toBe(`Giro più veloce: il ${tempi.indexOf(minimo) + 1} (${minimo} min)`);
+    expect(fasi[0].regola).toMatch(/ciclo `for`/);
+    expect(fasi[2].regola).toMatch(/dentro il ciclo/);
+    expect(fasi[4].regola).toMatch(/numero grande/);
+  });
+
+  it('il giro più veloce sta in mezzo nella gara mostrata, per primo e per ultimo in quelle nascoste; i tempi sono tutti diversi', () => {
+    for (let seme = 1; seme <= 30; seme++) {
+      const [mostrata, primo, ultimo] = generaCompito('patentino', seme)[4].prove!.map((p) => p.risposte.map(Number));
+      const dove = mostrata.indexOf(Math.min(...mostrata));
+      expect(dove).toBeGreaterThan(0);
+      expect(dove).toBeLessThan(mostrata.length - 1);
+      expect(primo.indexOf(Math.min(...primo))).toBe(0);
+      expect(ultimo.indexOf(Math.min(...ultimo))).toBe(ultimo.length - 1);
+      for (const g of [mostrata, primo, ultimo]) expect(new Set(g).size).toBe(g.length);
+    }
+  });
+
+  it('i giri scritti a mano passano l\'interprete: li ferma la regola; i tempi a mano cadono sulla prova nascosta', () => {
+    const aMano = fasi[0].outputAtteso.map((r) => `print("${r}")`).join('\n');
+    expect(valutaRisposta(fasi[0], aMano).promosso).toBe(true);
+    const tempiAMano = `for i in range(1, ${giri + 1}):\n    tempo = int(input("Tempo? "))\n` + tempi.map((t, i) => `    if i == ${i + 1}:\n        print(f"Giro {i}: {i * ${lunghezza}} km in ${t} min")`).join('\n');
+    expect(esegui(tempiAMano, { risposte: fasi[2].prove![0].risposte })).toMatchObject({ ok: true, output: fasi[2].outputAtteso });
+    expect(valutaRisposta(fasi[2], tempiAMano).promosso).toBe(false);
+  });
+
+  it('la scheda è un esame e lo dice', () => {
+    expect(scheda.esame).toBe(true);
+    expect(scheda.committente).toContain('tutor è spento');
+    expect(scheda.outputFinale).toEqual(fasi[4].outputAtteso);
   });
 });

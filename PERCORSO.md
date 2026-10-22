@@ -561,4 +561,18 @@ Il record e il conteggio **ripartono dal diario già scritto** (`codiceIniziale`
 
 **Il giudice e le `input()` nel ciclo.** L'interprete conta un fatto in più, `inputNelCiclo`, e il messaggio al giudice separa le `input()` dentro e fuori dai cicli. Alla prima sonda Haiku bocciava a volte (2 su 4) la soluzione giusta della fase 2 del conteggio sostenendo che la domanda stava fuori dal ciclo, contro i fatti: aggiunta al prompt la frase «i fatti misurati sono esatti, non contraddirli» e riformulata la regola, 0 bocciature sbagliate su 36 ripetizioni delle soluzioni con `input()` nel ciclo, e i furbi di prima (km scritti a mano, formula al posto dell'accumulo) ancora bocciati.
 
-**Dopo**: il patentino dei cicli `for` (un compito-esame con il tutor spento) e le sezioni del percorso; poi il `while`.
+**Dopo**: il patentino dei cicli `for` (§19); poi il `while`.
+
+## 19. Il patentino dei cicli `for` e le sezioni del percorso (23 ottobre 2026)
+
+**L'idea di Fabio**: prima del `while` un **test finale per il patentino dei cicli `for`**, e il percorso diviso in **sezioni**, così l'allievo vede i due cicli come due capitoli e non come un elenco unico.
+
+**Le sezioni** (`SEZIONI` in `compiti.ts`): «Il ciclo for», con i dodici compiti, e «Il ciclo while», per ora vuota. `ELENCO_COMPITI` è le sezioni una dopo l'altra, e lo sblocco resta **uno alla volta attraverso le sezioni**: il primo compito del `while` si aprirà col patentino preso. Nella pagina dell'allievo ogni sezione ha il titolo e il suo elenco (la numerazione continua); la sezione vuota dice «I compiti di questa sezione arrivano quando la classe ci arriva», così si vede che dopo il `for` c'è altro. Nella tabella del docente le colonne sono raggruppate per sezione. Niente cambia nei dati salvati: i lavori restano per id di compito.
+
+**Il patentino** (`patentino`, `lib/officina/compitiPatentino.ts`) è un compito nella forma, un esame nel modo:
+- **cinque fasi, cinque idee** del percorso, in uno scenario nuovo (il tabellone della gara sociale: N giri di un circuito da L km): ripetere · la variabile in un calcolo (`i * L`) · `input()` dentro il ciclo (il tempo di ogni giro) · l'accumulatore (il tempo totale) · la variabile che ricorda il migliore (il giro più veloce, da un numero grande con `<`);
+- **tutor spento** (`esame: true` nella scheda; l'API risponde `TUTOR_SPENTO`): restano gli hint automatici e gli errori non costano niente. Il voto resta la regola di sempre, 10 meno le domande: senza domande è 10 a chi finisce. Il patentino è un «ce l'ho fatta», non una scala di voti;
+- tre gare di prova con gli **stessi giri** (il numero è nel codice) e tempi diversi, col giro più veloce in mezzo, per primo e per ultimo: i tempi scritti a mano cadono sulle gare nascoste, le righe a mano le ferma la regola;
+- chi lo passa vede **«🪪 Patentino preso · voto N»** accanto al titolo della sezione, e «Patentino preso» sul compito. Nella tabella del docente è una colonna come le altre.
+
+**Dopo**: il `while`, nella seconda sezione.

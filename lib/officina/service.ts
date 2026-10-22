@@ -11,7 +11,7 @@ import { ApiError } from '@/lib/giro/http';
 import { valutaRisposta } from '@/lib/giro/hint';
 import { verificaConsegna } from '@/lib/giro/verifica';
 import { esegui } from '@/lib/giro/interprete';
-import { eCompito, generaCompito, schedaCompito, type CompitoId } from '@/lib/officina/compiti';
+import { eCompito, eEsame, generaCompito, schedaCompito, SEZIONI, sezioneDi, type CompitoId } from '@/lib/officina/compiti';
 import { richiestaAmmessa } from '@/lib/giro/rateLimit';
 import type { Utente } from './auth';
 import { FASI_PER_COMPITO, mediaVoti, percorsoDi, semeDa, votoSeFinisce } from './regole';
@@ -131,13 +131,21 @@ function compitoAperto(allievo: AllievoOfficinaDoc, compitoId: string) {
 
 /* ------------------------------------------------------------------ compiti */
 
-/** Il percorso dell'allievo: tutti i compiti con lo stato, e la media. */
+/** Il percorso dell'allievo: tutti i compiti con lo stato, le sezioni in cui stanno, e la media. */
 export async function compiti(body: Record<string, unknown>, utente: Utente) {
   const ctx = await contesto(body, utente);
   const voci = percorsoDi(ctx.allievo.lavori ?? {});
   return {
     classe: { id: ctx.classeId, nome: ctx.classe.nome, chiusa: ctx.classe.chiusa },
-    compiti: voci.map((v) => ({ ...v, fasiTotali: FASI_PER_COMPITO, titolo: schedaCompito(v.id, 1).titolo, votoSeFinisci: votoSeFinisce(v.consigli) })),
+    compiti: voci.map((v) => ({
+      ...v,
+      fasiTotali: FASI_PER_COMPITO,
+      titolo: schedaCompito(v.id, 1).titolo,
+      votoSeFinisci: votoSeFinisce(v.consigli),
+      sezione: sezioneDi(v.id).id,
+      esame: eEsame(v.id),
+    })),
+    sezioni: SEZIONI.map((s) => ({ id: s.id, titolo: s.titolo, compiti: s.compiti })),
     media: mediaVoti(voci),
   };
 }
@@ -155,6 +163,7 @@ export async function compito(body: Record<string, unknown>, utente: Utente) {
   return {
     id: progetto,
     classeChiusa: ctx.classe.chiusa,
+    esame: eEsame(progetto),
     fasi: lavoro.fasi,
     fasiTotali: FASI_PER_COMPITO,
     consigli: lavoro.consigli,
@@ -264,6 +273,9 @@ export async function tutor(body: Record<string, unknown>, utente: Utente) {
 
   const ctx = await contesto(body, utente);
   const { progetto, lavoro, esercizio } = lavoroInCorso(ctx, body, utente.uid);
+  if (eEsame(progetto)) {
+    throw new ApiError(403, 'TUTOR_SPENTO', 'Nel patentino il tutor è spento: è un esame, ce la fai da solo. Gli hint automatici restano');
+  }
   if (lavoro.consigli >= MAX_DOMANDE_TUTOR) {
     throw new ApiError(403, 'DOMANDE_FINITE', `Hai fatto ${MAX_DOMANDE_TUTOR} domande su questo compito: da qui in poi vai avanti da solo, o chiedi al prof`);
   }

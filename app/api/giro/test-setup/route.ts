@@ -167,6 +167,21 @@ export const POST = handler(async (body) => {
     return { ok: true };
   }
 
+  if (azione === 'finisciOfficina') {
+    // Fa risultare finiti dei compiti dell'Officina senza consegnarli: per arrivare al patentino nei test.
+    const classeId = typeof body.classeId === 'string' ? body.classeId : '';
+    const uid = typeof body.uid === 'string' ? body.uid : '';
+    const progetti = Array.isArray(body.progetti) ? body.progetti.filter(eCompito) : [];
+    if (!classeId || !uid || progetti.length === 0) throw new ApiError(400, 'INVALID_BODY', 'Servono classeId, uid e progetti');
+    const ref = allieviOfficinaRef(classeId).doc(uid);
+    const snap = await ref.get();
+    const lavori = (snap.data() as AllievoOfficinaDoc | undefined)?.lavori ?? {};
+    const ora = Timestamp.now();
+    const finiti = Object.fromEntries(progetti.map((p) => [p, { ...(lavori[p] ?? lavoroVuoto()), fasi: 5, finitoAt: ora }]));
+    await ref.set({ lavori: finiti }, { merge: true });
+    return { ok: true };
+  }
+
   if (azione === 'svuota') {
     // Pulizia fra i test: cancella i Giri creati, con i loro allievi.
     const sessioni = await sessioniRef().get();

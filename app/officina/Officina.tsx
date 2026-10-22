@@ -3,7 +3,7 @@
  * sbloccati uno alla volta, con la media dei voti. La prima volta si sceglie la classe. */
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { chiamaOfficina, messaggioErrore, type CompitoInElenco, type Percorso } from '@/lib/officina/client';
+import { chiamaOfficina, messaggioErrore, type CompitoInElenco, type Percorso, type SezionePercorso } from '@/lib/officina/client';
 import { AccessoAllievo } from './Accesso';
 import { useAllievo } from './useAllievo';
 
@@ -66,15 +66,11 @@ export function Officina() {
                 Il prof ha chiuso l&apos;Officina per oggi: puoi rileggere i compiti e il tuo codice, ma consegne e tutor riprendono alla prossima lezione.
               </p>
             )}
-            <ol aria-label={`percorso di ${p.classe.nome}`} className="flex flex-col gap-2">
-              {p.compiti.map((k, i) => (
-                <li key={k.id}>
-                  <VoceCompito k={k} numero={i + 1} classeId={p.classe.id} />
-                </li>
-              ))}
-            </ol>
+            {p.sezioni.map((s) => (
+              <SezioneDelPercorso key={s.id} sezione={s} compiti={p.compiti} classe={p.classe} />
+            ))}
             <p className="text-sm text-(--color-testo-tenue)">
-              I compiti si sbloccano uno alla volta. Il voto è 10 meno le domande al tutor, mai sotto 5: puoi chiedere aiuto quanto vuoi.
+              I compiti si sbloccano uno alla volta. Il voto è 10 meno le domande al tutor, mai sotto 5: puoi chiedere aiuto quanto vuoi. Nel patentino il tutor è spento.
             </p>
           </section>
         ))
@@ -89,6 +85,39 @@ export function Officina() {
   );
 }
 
+/**
+ * Un capitolo del percorso: il titolo, i suoi compiti numerati di seguito a quelli prima,
+ * e il patentino quando l'esame in fondo è passato. Una sezione senza compiti dice che
+ * arriveranno: l'allievo vede che dopo il for c'è un altro ciclo.
+ */
+function SezioneDelPercorso({ sezione, compiti, classe }: { sezione: SezionePercorso; compiti: CompitoInElenco[]; classe: { id: string; nome: string } }) {
+  const miei = compiti.filter((k) => k.sezione === sezione.id);
+  const esame = miei.find((k) => k.esame && k.stato === 'finito');
+  return (
+    <section aria-label={sezione.titolo} className="flex flex-col gap-2">
+      <h3 className="mt-2 flex flex-wrap items-baseline justify-between gap-2 text-base font-bold text-(--color-testo-tenue)">
+        <span>{sezione.titolo}</span>
+        {esame && (
+          <span className="rounded-full border border-(--color-verde)/50 bg-(--color-verde)/10 px-3 py-0.5 text-sm text-(--color-verde)" aria-label="patentino">
+            🪪 Patentino preso · voto {esame.voto}
+          </span>
+        )}
+      </h3>
+      {miei.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-(--color-bordo) px-4 py-3 text-sm text-(--color-testo-tenue)">I compiti di questa sezione arrivano quando la classe ci arriva.</p>
+      ) : (
+        <ol aria-label={`percorso di ${classe.nome} · ${sezione.titolo}`} className="flex flex-col gap-2">
+          {miei.map((k) => (
+            <li key={k.id}>
+              <VoceCompito k={k} numero={compiti.indexOf(k) + 1} classeId={classe.id} />
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
 function VoceCompito({ k, numero, classeId }: { k: CompitoInElenco; numero: number; classeId: string }) {
   const bloccato = k.stato === 'bloccato';
   const dentro = (
@@ -96,6 +125,7 @@ function VoceCompito({ k, numero, classeId }: { k: CompitoInElenco; numero: numb
       <span className="flex items-baseline gap-3">
         <span className="w-6 text-right font-mono text-(--color-testo-tenue)">{numero}.</span>
         <span className="font-bold">{k.titolo}</span>
+        {k.esame && <span className="rounded bg-(--color-giallo)/20 px-1.5 py-0.5 text-xs text-(--color-giallo)">esame</span>}
       </span>
       <Stato k={k} />
     </>
@@ -116,7 +146,7 @@ function Stato({ k }: { k: CompitoInElenco }) {
     case 'finito':
       return (
         <span className="text-(--color-verde)">
-          Finito · voto <b className="font-mono text-lg">{k.voto}</b>
+          {k.esame ? 'Patentino preso' : 'Finito'} · voto <b className="font-mono text-lg">{k.voto}</b>
         </span>
       );
     case 'in-corso':

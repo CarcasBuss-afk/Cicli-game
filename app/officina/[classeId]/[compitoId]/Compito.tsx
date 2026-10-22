@@ -149,11 +149,18 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
 
       {c.finito && (
         <section className="rounded-2xl border border-(--color-giallo)/50 bg-(--color-giallo)/10 p-5 text-center">
-          <p className="text-sm text-(--color-testo-tenue)">Programma finito! Il tuo voto</p>
+          <p className="text-sm text-(--color-testo-tenue)">{c.esame ? '🪪 Patentino preso! Il tuo voto' : 'Programma finito! Il tuo voto'}</p>
           <p className="font-mono text-6xl font-black text-(--color-giallo)">{c.voto}</p>
           <p className="text-(--color-testo-tenue)">
-            {c.fasi} {c.fasi === 1 ? 'fase' : 'fasi'} su {c.fasiTotali} · {c.consigli} {c.consigli === 1 ? 'domanda' : 'domande'} al tutor
+            {c.fasi} {c.fasi === 1 ? 'fase' : 'fasi'} su {c.fasiTotali}
+            {!c.esame && ` · ${c.consigli} ${c.consigli === 1 ? 'domanda' : 'domande'} al tutor`}
           </p>
+        </section>
+      )}
+
+      {c.esame && !c.finito && (
+        <section role="note" aria-label="esame" className="rounded-xl border border-(--color-giallo)/40 bg-(--color-giallo)/10 p-3 text-center text-(--color-testo-tenue)">
+          🪪 È l&apos;esame del patentino: il tutor è spento, ce la fai da solo. Gli hint automatici ci sono, e gli errori non costano niente.
         </section>
       )}
 
@@ -216,7 +223,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
         </section>
       )}
 
-      <TutorChat scambi={c.tutor} votoSeFinisci={c.votoSeFinisci} domandeRimaste={c.domandeRimaste} onChiedi={chiedi} attivo={!c.finito && !c.classeChiusa} />
+      {!c.esame && <TutorChat scambi={c.tutor} votoSeFinisci={c.votoSeFinisci} domandeRimaste={c.domandeRimaste} onChiedi={chiedi} attivo={!c.finito && !c.classeChiusa} />}
 
       {errore && (
         <section role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-200">
@@ -225,7 +232,8 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
       )}
 
       <footer className="mt-auto pt-4 text-center text-sm text-(--color-testo-tenue)">
-        Gli errori non costano niente e il lavoro resta salvato: puoi chiudere e riprendere quando vuoi. Solo le domande al tutor costano un punto.
+        Gli errori non costano niente e il lavoro resta salvato: puoi chiudere e riprendere quando vuoi.
+        {!c.esame && ' Solo le domande al tutor costano un punto.'}
       </footer>
     </main>
   );

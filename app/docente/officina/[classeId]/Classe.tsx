@@ -7,7 +7,7 @@ import Link from 'next/link';
 import { collection, doc, onSnapshot, type Timestamp } from 'firebase/firestore';
 import { getClientDb } from '@/lib/firebaseClient';
 import { FASI_PER_COMPITO, type VoceCompito } from '@/lib/officina/regole';
-import { csvClasse, tabellaClasse, TITOLI_PERCORSO, type AllievoVisto, type LavoroVisto } from '@/lib/officina/tabella';
+import { csvClasse, SEZIONI_PERCORSO, tabellaClasse, TITOLI_PERCORSO, type AllievoVisto, type LavoroVisto } from '@/lib/officina/tabella';
 import { Accesso } from '../../Accesso';
 import { chiamaDocente } from '../../api';
 import { useDocente } from '../../useDocente';
@@ -149,6 +149,15 @@ export function Classe({ classeId }: { classeId: string }) {
       <section className="overflow-x-auto rounded-xl border border-(--color-bordo) bg-(--color-fondo-card)">
         <table className="w-full text-left" aria-label="tabella della classe">
           <thead className="text-sm text-(--color-testo-tenue)">
+            <tr className="text-xs uppercase tracking-wide">
+              <th />
+              {SEZIONI_PERCORSO.map((s) => (
+                <th key={s.id} colSpan={s.compiti} className="border-b border-(--color-bordo) px-3 py-1 text-center font-normal">
+                  {s.titolo}
+                </th>
+              ))}
+              <th colSpan={2} />
+            </tr>
             <tr>
               <th className="px-3 py-2">Allievo</th>
               {TITOLI_PERCORSO.map((c, i) => (
