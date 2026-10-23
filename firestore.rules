@@ -55,6 +55,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
+
+    // L'Officina del corso di Tecnologie Web (repository corso_tecnologie_web). Stesse regole.
+    match /webOfficinaClassi/{classeId} {
+      allow read: if isTeacher();
+      allow write: if false;
+
+      match /{document=**} {
+        allow read: if isTeacher();
+        allow write: if false;
+      }
+    }
+    match /webOfficinaAllievi/{uid} {
+      allow read: if isTeacher();
+      allow write: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
