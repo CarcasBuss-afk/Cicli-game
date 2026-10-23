@@ -67,11 +67,40 @@ body {
   animation: entra-da-destra 0.35s ease-out;
 }
 
+/* La festa della fase superata (Officina): il cartello salta fuori al centro, resta un
+ * attimo e sfuma. */
+@keyframes festa-pop {
+  0% {
+    transform: scale(0.4) rotate(-6deg);
+    opacity: 0;
+  }
+  18% {
+    transform: scale(1.12) rotate(2deg);
+    opacity: 1;
+  }
+  28% {
+    transform: scale(1) rotate(0);
+  }
+  80% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
+
+.festa {
+  animation: festa-pop 1.8s ease-out forwards;
+}
+
 /* Chi preferisce niente animazioni (impostazione di sistema) non le vede. */
 @media (prefers-reduced-motion: reduce) {
   .vola-via,
   .scuoti,
-  .entra {
+  .entra,
+  .festa {
     animation: none;
   }
 }

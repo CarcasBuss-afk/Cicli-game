@@ -1,14 +1,17 @@
 'use client';
 /* Il compito di realtà, fase per fase: la scheda, la consegna della fase, l'editor che
- * riparte da dove si era, il tutor. Da soli e senza fretta: non è una gara. */
+ * riparte da dove si era, il tutor. Da soli e senza fretta: non è una gara. La fase
+ * superata però si festeggia: coriandoli, un cartello e la pagina che scorre alla fase dopo. */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import Coriandoli from '@/components/Coriandoli';
 import EditorPython from '@/components/EditorPython';
 import SchedaCompito from '@/components/SchedaCompito';
 import Schermo, { RisposteDiProva } from '@/components/Schermo';
 import Testo from '@/components/Testo';
 import TutorChat from '@/components/TutorChat';
 import type { RigaSchermo } from '@/lib/giro/interprete';
+import { suonoErrore, suonoTappa, suonoTraguardo } from '@/lib/giro/suoni';
 import { chiamaOfficina, ErroreOfficina, messaggioErrore, type CompitoAperto, type RispostaConsegna, type RispostaTutor } from '@/lib/officina/client';
 import { AccessoAllievo } from '../../Accesso';
 import { useAllievo } from '../../useAllievo';
@@ -22,7 +25,12 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
   const [schermo, setSchermo] = useState<RigaSchermo[] | null>(null);
   const [invio, setInvio] = useState(false);
   const [scossa, setScossa] = useState(false);
+  /** La festa della fase appena superata: quale fase, e se con quella il compito è finito. */
+  const [festa, setFesta] = useState<{ fase: number; finito: boolean } | null>(null);
+  const [scoppio, setScoppio] = useState(0);
   const codiceRef = useRef('');
+  const cardRef = useRef<HTMLElement>(null);
+  const finitoRef = useRef<HTMLElement>(null);
 
   const carica = useCallback(async () => {
     try {
@@ -48,6 +56,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
         setHint(r.hint);
         setOutput(r.output);
         setC((p) => (p ? { ...p, errori: r.errori } : p));
+        suonoErrore();
         setScossa(true);
         setTimeout(() => setScossa(false), 520);
         return;
@@ -55,6 +64,17 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
       setHint(null);
       setOutput(null);
       setSchermo(null);
+      // La festa: coriandoli, il cartello, il suono; poi la pagina scorre alla fase dopo (o al voto).
+      const faseFatta = c.fasi + 1;
+      setFesta({ fase: faseFatta, finito: r.finito });
+      setScoppio((n) => n + 1);
+      if (r.finito) suonoTraguardo();
+      else suonoTappa(faseFatta - 1);
+      setTimeout(() => setFesta(null), 1900);
+      setTimeout(() => {
+        const bersaglio = r.finito ? finitoRef.current : cardRef.current;
+        bersaglio?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 700);
       setC((p) =>
         p
           ? {
@@ -123,6 +143,24 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 p-4 sm:p-6">
+      <Coriandoli scoppio={scoppio} />
+      {festa && (
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-6">
+          <p
+            role="status"
+            aria-label="fase superata"
+            className="festa rounded-3xl border-4 border-(--color-giallo) bg-(--color-fondo-card) px-8 py-6 text-center shadow-2xl shadow-black/60"
+          >
+            <span className="block text-5xl" aria-hidden>
+              {festa.finito ? '🏆' : '🎉'}
+            </span>
+            <span className="block text-3xl font-black text-(--color-giallo)">
+              {festa.finito ? (c.esame ? 'Patentino preso!' : 'Programma finito!') : `Fase ${festa.fase} superata!`}
+            </span>
+            <span className="block text-(--color-testo-tenue)">{festa.finito ? 'Ce l’hai fatta.' : 'Avanti con la prossima.'}</span>
+          </p>
+        </div>
+      )}
       <header className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <Link href="/officina" className="text-sm text-(--color-testo-tenue) underline">
@@ -148,7 +186,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
       )}
 
       {c.finito && (
-        <section className="rounded-2xl border border-(--color-giallo)/50 bg-(--color-giallo)/10 p-5 text-center">
+        <section ref={finitoRef} className="scroll-mt-4 rounded-2xl border border-(--color-giallo)/50 bg-(--color-giallo)/10 p-5 text-center">
           <p className="text-sm text-(--color-testo-tenue)">{c.esame ? '🪪 Patentino preso! Il tuo voto' : 'Programma finito! Il tuo voto'}</p>
           <p className="font-mono text-6xl font-black text-(--color-giallo)">{c.voto}</p>
           <p className="text-(--color-testo-tenue)">
@@ -167,7 +205,10 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
       <SchedaCompito key={compitoId} scheda={c.scheda} fase={Math.min(fase, c.fasiTotali)} fasi={c.fasiTotali} />
 
       {es && (
-        <section className={`flex flex-col gap-4 rounded-2xl border border-(--color-bordo) bg-(--color-fondo-card) p-5 ${scossa ? 'scuoti' : ''}`}>
+        <section
+          ref={cardRef}
+          className={`flex scroll-mt-4 flex-col gap-4 rounded-2xl border border-(--color-bordo) bg-(--color-fondo-card) p-5 ${scossa ? 'scuoti' : ''}`}
+        >
           <h2 className="text-xl font-bold">
             <Testo>{es.consegna}</Testo>
           </h2>

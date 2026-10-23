@@ -586,3 +586,8 @@ Il record e il conteggio **ripartono dal diario già scritto** (`codiceIniziale`
 - il prompt chiede un **ordine fisso**, dove · perché · che cosa cambiare, e l'esempio dalla vita solo quando l'allievo chiede un concetto: su un errore si resta sul codice.
 
 Il divieto di codice e il filtro restano. Sonda su cinque situazioni (km fuori dal ciclo, totale a mano, azzeramento dentro il ciclo, due punti mancanti, «cos'è un accumulatore»): tutte le risposte partono dalla riga giusta, nessuna contiene codice, 110-146 parole.
+
+## 21. La festa della fase superata (23 ottobre 2026)
+
+**L'idea di Fabio**: alla fine di ogni fase un momento «wow» con i coriandoli, poi la pagina che scorre da sola alla fase successiva. L'Officina non è una gara, ma il pezzo che funziona si festeggia: coriandoli su tutta la pagina (due fontane dai lati e una pioggia dall'alto, `components/Coriandoli.tsx`), il cartello «Fase N superata!» che salta fuori al centro per un attimo, il suono della tappa del Giro; all'ultima fase «Programma finito!» (o «Patentino preso!») con la fanfara del traguardo. Dopo mezzo secondo la pagina scorre alla consegna della fase dopo, o al voto. L'errore ha il suo suono morbido come nel Giro. Chi ha chiesto al sistema niente animazioni non vede né coriandoli né cartello animato.
+

@@ -375,6 +375,8 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
 
     await digita(page, fasi[0].soluzione);
     await page.getByRole('button', { name: 'Esegui ▶' }).click();
+    // La festa: il cartello della fase superata (con i coriandoli), poi si passa alla fase dopo.
+    await expect(page.getByRole('status', { name: 'fase superata' })).toContainText('Fase 1 superata!');
     await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();
     await page.reload();
     await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();
