@@ -80,4 +80,5 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 12e. Le condizioni (PERCORSO.md §17): confronti e `if`/`elif`/`else` nel micro-interprete; il compito 8, la promozione del bar, che riparte dallo scontrino già scritto.
 - [x] 12f. Gli ultimi tre compiti sul `for` (PERCORSO.md §18): il diario delle uscite (`input()` nel ciclo), il record del mese, le uscite che contano, in `lib/officina/compitiDiario.ts`; il fatto `inputNelCiclo` per il giudice.
 - [x] 12g. Il patentino dei cicli `for` (PERCORSO.md §19): il compito-esame in fondo alla sezione (cinque fasi su cinque idee, tutor spento, il patentino sulla pagina) in `lib/officina/compitiPatentino.ts`, e il percorso diviso in **sezioni** («Il ciclo for», «Il ciclo while»), sblocco uno alla volta attraverso le sezioni.
+- [x] 12h. Il tutor più chiaro (PERCORSO.md §20): thinking adattivo, regola e prova nascosta nel contesto, prompt con l'ordine dove · perché · che cosa.
 - [ ] 12c. I `while`, nella seconda sezione: l'obiettivo del salvadanaio, la cassa del bar (sentinella), indovina il numero; `while` nel micro-interprete con l'hint sul ciclo infinito.

@@ -1,6 +1,6 @@
 /* La chiamata al modello per il tutor dell'Officina: Sonnet 5.5, più capace di Haiku,
- * con la conversazione del compito come storia. Stesso filtro
- * anti-codice del giudice, consiglio finto nei test (GREGARIO_FINTO). */
+ * con il thinking adattivo (ragiona prima di rispondere) e la conversazione del compito
+ * come storia. Stesso filtro anti-codice del giudice, consiglio finto nei test (GREGARIO_FINTO). */
 import 'server-only';
 import Anthropic from '@anthropic-ai/sdk';
 import { consiglioFinto, contieneCodice, messaggioConsiglio, pulisciConsiglio, type ContestoConsiglio } from './consiglio';
@@ -50,9 +50,11 @@ export async function chiediTutor(contesto: ContestoConsiglio, storia: Scambio[]
     try {
       const risposta = await anthropic().messages.create({
         model: MODELLO_TUTOR,
-        max_tokens: 1200,
-        // Niente `thinking`: Sonnet 5.5 rifiuta `{type: 'disabled'}` (che invece serve a Haiku nel giudice,
-        // vedi giudiceClient.ts) e senza il parametro risponde subito, senza ragionare prima.
+        // Il tetto comprende anche il ragionamento: la risposta vera sta in 150 parole.
+        max_tokens: 4000,
+        // Ragiona prima di scrivere: confrontare gli output e trovare la prima riga che non torna
+        // è un lavoro di diagnosi, di getto veniva vago. (`disabled` serve solo a Haiku nel giudice.)
+        thinking: { type: 'adaptive' },
         system: PROMPT_TUTOR,
         messages: messaggi,
       });

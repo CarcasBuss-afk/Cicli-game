@@ -2,7 +2,7 @@
  * consigli non sono mai la scrittura del codice"), e deve reggere anche quando il modello
  * sbaglia. */
 import { describe, expect, it } from 'vitest';
-import { consiglioFinto, contieneCodice, messaggioConsiglio, normalizzaDomanda, pulisciConsiglio, type ContestoConsiglio } from './consiglio';
+import { consiglioFinto, contieneCodice, messaggioConsiglio, normalizzaDomanda, provaCheCade, pulisciConsiglio, type ContestoConsiglio } from './consiglio';
 import { generaCompito, schedaCompito } from './compiti';
 
 describe('contieneCodice', () => {
@@ -82,6 +82,75 @@ describe('il messaggio al modello', () => {
     const m = messaggioConsiglio({ ...base, esito: { errore: 'Manca il `:`' }, domanda: '' });
     expect(m).toContain('NON GIRA');
     expect(m).toContain('non ha scritto una domanda');
+  });
+
+  it('porta la regola del compito, quella che applica il giudice', () => {
+    const m = messaggioConsiglio(base);
+    expect(fasi[2].regola).toBeTruthy();
+    expect(m).toContain('REGOLA DEL COMPITO');
+    expect(m).toContain(fasi[2].regola!);
+    expect(messaggioConsiglio({ ...base, esercizio: { ...fasi[2], regola: undefined } })).not.toContain('REGOLA DEL COMPITO');
+  });
+
+  it('racconta la prova nascosta su cui cade, con risposte, atteso e prodotto', () => {
+    const m = messaggioConsiglio({ ...base, provaNascosta: { risposte: ['2', '7', '9'], atteso: ['Totale: 16 km'], prodotto: ['Totale: 38 km'] } });
+    expect(m).toContain('CADE SU UN\'ALTRA PROVA');
+    expect(m).toContain('«2», «7», «9»');
+    expect(m).toContain('deve stampare:\nTotale: 16 km');
+    expect(m).toContain('invece stampa:\nTotale: 38 km');
+    const errore = messaggioConsiglio({ ...base, provaNascosta: { risposte: ['2'], atteso: ['x'], prodotto: null, errore: 'chiede più cose' } });
+    expect(errore).toContain("si ferma con l'errore: chiede più cose");
+    expect(messaggioConsiglio({ ...base, provaNascosta: null })).not.toContain('ALTRA PROVA');
+  });
+});
+
+describe('provaCheCade', () => {
+  const fasi = generaCompito('diario', 7);
+  const fase3 = fasi[2]; // il totale: input() nel ciclo e tre mesi di prova
+  const prove = fase3.prove!;
+
+  it('trova la prova nascosta che il codice con il totale scritto a mano non passa', () => {
+    const km = prove[0].risposte.slice(1);
+    const aMano = [
+      'uscite = int(input("Quante uscite? "))',
+      'for i in range(1, uscite + 1):',
+      '    km = int(input("Km? "))',
+      '    print(f"Uscita {i}: {km} km")',
+      `print("Totale: ${km.reduce((a, b) => a + Number(b), 0)} km")`,
+    ].join('\n');
+    const caduta = provaCheCade(fase3, aMano);
+    expect(caduta).not.toBeNull();
+    expect(caduta!.risposte).toEqual(prove[1].risposte);
+    expect(caduta!.atteso).toEqual(prove[1].output);
+    expect(caduta!.prodotto).not.toBeNull();
+    expect(caduta!.prodotto!.at(-1)).not.toBe(prove[1].output.at(-1));
+  });
+
+  it('non segnala niente se la soluzione passa, se cade già sulla prova mostrata, o senza prove', () => {
+    expect(provaCheCade(fase3, fase3.soluzione)).toBeNull();
+    expect(provaCheCade(fase3, 'print("Totale: 0 km")')).toBeNull();
+    expect(provaCheCade(fase3, '')).toBeNull();
+    const senza = generaCompito('cartello', 7)[0];
+    expect(provaCheCade(senza, senza.soluzione)).toBeNull();
+  });
+
+  it("riporta l'errore quando con altre risposte il programma si ferma", () => {
+    // Il numero di uscite scritto a mano: con la prova mostrata passa, con il mese corto chiede più km di quelli che ci sono.
+    const [n, ...km] = prove[0].risposte;
+    const fisso = [
+      'uscite = int(input("Quante uscite? "))',
+      'totale = 0',
+      `for i in range(1, ${n} + 1):`,
+      '    km = int(input("Km? "))',
+      '    totale += km',
+      '    print(f"Uscita {i}: {km} km")',
+      'print(f"Totale: {totale} km")',
+    ].join('\n');
+    expect(prove[1].risposte.length).toBeLessThan(km.length + 1);
+    const caduta = provaCheCade(fase3, fisso);
+    expect(caduta).not.toBeNull();
+    expect(caduta!.prodotto).toBeNull();
+    expect(caduta!.errore).toContain('chiede più cose');
   });
 });
 

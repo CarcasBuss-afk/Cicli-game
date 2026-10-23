@@ -25,6 +25,7 @@ import {
   type ClasseDoc,
   type LavoroDoc,
 } from './store';
+import { provaCheCade } from './consiglio';
 import { chiediTutor } from './tutor';
 import { MAX_DOMANDA_TUTOR, MAX_DOMANDE_TUTOR } from './tutorPrompt';
 
@@ -290,6 +291,7 @@ export async function tutor(body: Record<string, unknown>, utente: Utente) {
       codice,
       esito: esito.ok ? { output: esito.output } : { errore: esito.errore.messaggio },
       hint: valutazione?.hint ?? null,
+      provaNascosta: provaCheCade(esercizio, codice),
       domanda,
       precedenti: [],
     },

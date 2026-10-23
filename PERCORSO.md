@@ -576,3 +576,13 @@ Il record e il conteggio **ripartono dal diario già scritto** (`codiceIniziale`
 - chi lo passa vede **«🪪 Patentino preso · voto N»** accanto al titolo della sezione, e «Patentino preso» sul compito. Nella tabella del docente è una colonna come le altre.
 
 **Dopo**: il `while`, nella seconda sezione.
+
+## 20. Il tutor più chiaro (23 ottobre 2026)
+
+**L'osservazione di Fabio**: gli aiuti del tutor non sono sempre chiari. Il modello è Sonnet 5.5 (`TUTOR_MODEL`); le cause stavano in come lo chiamavamo, non nel modello:
+- **rispondeva di getto**: la chiamata non aveva `thinking`, e trovare la prima riga che non torna è una diagnosi, non una frase da buttare giù. Ora il tutor ha il **thinking adattivo** (`thinking: {type: 'adaptive'}`, `max_tokens` a 4000 per farci stare anche il ragionamento): 6-11 secondi a risposta, 600-1200 token in uscita;
+- **non vedeva le prove nascoste**: quando l'allievo cadeva sulla seconda prova, riceveva solo «con altre risposte stampa un'altra cosa». Ora il contesto porta **la prova su cui cade** (`provaCheCade` in `consiglio.ts`: risposte, output atteso, output prodotto o errore) e il tutor può dire «con 2, 7, 7 l'ultima riga dice ancora 63 invece di 14»;
+- **non riceveva la regola** del compito, quella che il giudice applica. Ora la riceve (`REGOLA DEL COMPITO`) e può spiegare perché un output giusto è stato bocciato;
+- il prompt chiede un **ordine fisso**, dove · perché · che cosa cambiare, e l'esempio dalla vita solo quando l'allievo chiede un concetto: su un errore si resta sul codice.
+
+Il divieto di codice e il filtro restano. Sonda su cinque situazioni (km fuori dal ciclo, totale a mano, azzeramento dentro il ciclo, due punti mancanti, «cos'è un accumulatore»): tutte le risposte partono dalla riga giusta, nessuna contiene codice, 110-146 parole.
