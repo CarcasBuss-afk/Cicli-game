@@ -24,3 +24,6 @@ ui-debug.log
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store
+
+# Python (quiz-classroom)
+__pycache__/
