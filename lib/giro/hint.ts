@@ -10,7 +10,7 @@
  * (giudice.ts), chiamato dal server dopo, sul codice già promosso.
  */
 import { esegui, type RigaSchermo } from './interprete';
-import type { Esercizio } from './esercizi';
+import { descriviProva, opzioniDiProva, type Esercizio } from './esercizi';
 
 export interface Valutazione {
   promosso: boolean;
@@ -289,7 +289,7 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
 
   // Con le `input()` si esegue con la prova mostrata; senza, come sempre.
   const prove = tappa.prove && tappa.prove.length > 0 ? tappa.prove : null;
-  const esito = esegui(testo, prove ? { risposte: prove[0].risposte } : {});
+  const esito = esegui(testo, opzioniDiProva(prove?.[0]));
   if (!esito.ok) {
     return { promosso: false, hint: esito.errore.messaggio, output: null };
   }
@@ -303,11 +303,12 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
   // Le prove nascoste: con altre risposte il programma deve funzionare lo stesso.
   if (prove) {
     for (const prova of prove.slice(1)) {
-      const altro = esegui(testo, { risposte: prova.risposte });
+      const altro = esegui(testo, opzioniDiProva(prova));
+      const daDove = prova.casuali && prova.casuali.length > 0 ? 'i valori devono arrivare da `input()` e da `randint()`, non essere scritti a mano nel programma' : 'i valori devono arrivare da `input()`, non essere scritti a mano nel programma';
       if (!altro.ok) {
         return {
           promosso: false,
-          hint: `Con le risposte di prova funziona, ma rispondendo ${prova.risposte.map(virgolette).join(', ')} il programma si ferma: ${altro.errore.messaggio}`,
+          hint: `Con i dati di prova funziona, ma ${descriviProva(prova)} il programma si ferma: ${altro.errore.messaggio}`,
           output: prodotto,
           schermo,
         };
@@ -315,7 +316,7 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
       if (!uguali(normalizza(altro.output), normalizza(prova.output))) {
         return {
           promosso: false,
-          hint: `Con le risposte di prova funziona, ma rispondendo ${prova.risposte.map(virgolette).join(', ')} stampa un'altra cosa: i valori devono arrivare da \`input()\`, non essere scritti a mano nel programma`,
+          hint: `Con i dati di prova funziona, ma ${descriviProva(prova)} stampa un'altra cosa: ${daDove}`,
           output: prodotto,
           schermo,
         };

@@ -18,6 +18,11 @@
  *     di realtà): le domande finiscono sullo "schermo", non nell'output confrontato
  *   - `if confronto:` / `elif confronto:` / `else:`, dentro e fuori dai cicli; la condizione
  *     è un confronto solo (`==`, `!=`, `<`, `>`, `<=`, `>=`), niente `and`/`or`/`not`
+ *   - `while confronto:` con la stessa condizione dell'`if`; `-=` e `*=` per far scendere o
+ *     raddoppiare una variabile; il tetto delle iterazioni diventa l'hint del ciclo infinito
+ *   - `import random` e `random.randint(a, b)`, solo se i numeri arrivano dalle opzioni
+ *     (`Opzioni.casuali`): così l'output è lo stesso per tutti e le prove nascoste cambiano
+ *     il numero "casuale" come cambiano le risposte
  * Tutto il resto è un errore con un messaggio in italiano scritto per un allievo.
  */
 
@@ -64,6 +69,17 @@ export interface Struttura {
   numIf: number;
   /** Quanti di quegli `if` stanno dentro un ciclo. */
   ifNelCiclo: number;
+  /** Quanti `while` in tutto. */
+  numWhile: number;
+  /**
+   * Quanti di quei `while` cambiano nel corpo almeno una variabile della condizione
+   * (`totale += ...`, `risposta = input()`): è il gesto che fa finire il ciclo.
+   */
+  whileAggiornati: number;
+  /** Quante chiamate a `random.randint()` nel codice. */
+  numCasuali: number;
+  /** Quante di quelle `randint()` stanno dentro un ciclo (il dado lanciato a ogni giro). */
+  casualiNelCiclo: number;
 }
 
 /** Una domanda fatta con `input()` e la risposta che ha ricevuto. */
@@ -97,6 +113,12 @@ export interface Opzioni {
    * `input()` non è ammesso: nelle tappe del Giro il programma non chiede niente.
    */
   risposte?: string[];
+  /**
+   * I numeri che `random.randint()` restituisce, nell'ordine in cui il programma li chiede.
+   * Se manca, `randint` non è ammesso. Per l'allievo il numero è casuale; per il server è
+   * scritto nella prova, così l'output da confrontare è uno solo.
+   */
+  casuali?: number[];
 }
 
 export const MAX_ITERAZIONI = 1000;
@@ -255,7 +277,9 @@ type Espr =
   | { k: 'input'; domanda: Espr | null }
   /** `int(x)`: da testo a numero intero. */
   | { k: 'int'; e: Espr }
-  /** Un confronto: vale solo come condizione di `if`/`elif`. */
+  /** `random.randint(a, b)`: il numero arriva dalle opzioni, non dal caso. */
+  | { k: 'casuale'; a: Espr; b: Espr }
+  /** Un confronto: vale solo come condizione di `if`/`elif`/`while`. */
   | { k: 'cmp'; op: Confronto; sx: Espr; dx: Espr };
 
 type Confronto = '==' | '!=' | '<' | '>' | '<=' | '>=';
@@ -270,18 +294,21 @@ interface Ramo {
   riga: number;
 }
 
+type OpAssegna = '=' | '+=' | '-=' | '*=';
+
 type Istruzione =
-  | { k: 'assegna'; nome: string; op: '=' | '+='; espr: Espr; riga: number }
+  | { k: 'assegna'; nome: string; op: OpAssegna; espr: Espr; riga: number }
   | { k: 'print'; args: Espr[]; riga: number }
   | { k: 'for'; variabile: string; iter: Iterabile; corpo: Istruzione[]; riga: number }
-  | { k: 'if'; rami: Ramo[]; altrimenti: Istruzione[] | null; riga: number };
+  | { k: 'while'; cond: Espr; corpo: Istruzione[]; riga: number }
+  | { k: 'if'; rami: Ramo[]; altrimenti: Istruzione[] | null; riga: number }
+  /** `import random`: non fa niente, ma da lì in poi `random.randint` esiste. */
+  | { k: 'import'; riga: number };
 
 /** Parole chiave di Python fuori dal sottoinsieme: messaggio dedicato, non "errore di sintassi". */
 const NON_AMMESSE = [
-  'while',
   'def',
   'return',
-  'import',
   'from',
   'class',
   'try',
@@ -294,7 +321,36 @@ const NON_AMMESSE = [
   'pass',
 ];
 
-const RISERVATE = ['for', 'in', 'if', 'elif', 'else', 'print', 'range', 'input', 'int', 'and', 'or', 'not', 'is', 'True', 'False', 'None', ...NON_AMMESSE];
+const RISERVATE = [
+  'for',
+  'in',
+  'if',
+  'elif',
+  'else',
+  'while',
+  'print',
+  'range',
+  'input',
+  'int',
+  'import',
+  'random',
+  'randint',
+  'and',
+  'or',
+  'not',
+  'is',
+  'True',
+  'False',
+  'None',
+  ...NON_AMMESSE,
+];
+
+/**
+ * Le righe in cui compare `random.randint` nel programma che si sta analizzando: se alla
+ * fine manca `import random`, la prima di quelle righe è l'errore (come farebbe Python).
+ * È stato del parser, azzerato da `esegui` a ogni programma.
+ */
+let righeConRandint: number[] = [];
 
 interface Riga {
   testo: string;
@@ -427,6 +483,10 @@ function parseFattore(l: Lettore): Espr {
     if (t.v === 'and' || t.v === 'or' || t.v === 'not') {
       err('nonAmmesso', `Una condizione alla volta: \`${t.v}\` non si usa in questo gioco. Serve un confronto solo, per esempio \`i == 3\``, l.riga);
     }
+    if (t.v === 'random') return parseRandint(l);
+    if (t.v === 'randint') {
+      err('sintassi', 'Si scrive `random.randint(...)`, con `random.` davanti (e `import random` in cima al programma)', l.riga);
+    }
     if (l.prossimoEOp('(')) {
       if (t.v === 'print') {
         err('nonAmmesso', '`print` va su una riga sua, non dentro un calcolo', l.riga);
@@ -460,6 +520,35 @@ function parseFattore(l: Lettore): Espr {
   }
   if (t.t === 'fine') err('sintassi', 'La riga finisce prima del previsto: manca qualcosa', l.riga);
   err('sintassi', `\`${'v' in t ? t.v : ''}\` non ci va qui`, l.riga);
+}
+
+/** `random.randint(a, b)`, dopo aver letto il nome `random`. L'unica cosa di `random` ammessa. */
+function parseRandint(l: Lettore): Espr {
+  if (!l.prossimoEOp('.')) {
+    err('sintassi', '`random` da solo non è un numero: il numero casuale lo dà `random.randint(a, b)`', l.riga);
+  }
+  l.avanti();
+  const cosa = l.avanti();
+  if (cosa.t !== 'nome' || cosa.v !== 'randint') {
+    err(
+      'nonAmmesso',
+      `Di \`random\` in questo gioco si usa solo \`random.randint(a, b)\`: un numero intero fra a e b, estremi compresi`,
+      l.riga,
+    );
+  }
+  l.attesoOp('(', 'Dopo `random.randint` ci vuole la parentesi tonda aperta `(`');
+  if (l.prossimoEOp(')')) {
+    err('sintassi', '`random.randint()` vuole due numeri: il più piccolo e il più grande che può uscire, per esempio `random.randint(1, 10)`', l.riga);
+  }
+  const a = parseEspressione(l);
+  if (!l.prossimoEOp(',')) {
+    err('sintassi', '`random.randint` vuole due numeri separati da una virgola: il più piccolo e il più grande che può uscire', l.riga);
+  }
+  l.avanti();
+  const b = parseEspressione(l);
+  l.attesoOp(')', 'Manca la parentesi tonda chiusa `)` di `random.randint`');
+  righeConRandint.push(l.riga);
+  return { k: 'casuale', a, b };
 }
 
 /** Analizza il contenuto di una f-string: testo e parti fra graffe. */
@@ -523,16 +612,22 @@ function parseFString(grezzo: string, riga: number): Espr {
 }
 
 function messaggioNonAmmessa(parola: string): string {
-  if (parola === 'while') {
-    return 'Qui serve un ciclo `for`: `while` non è ammesso in questo gioco';
+  if (parola === 'break' || parola === 'continue') {
+    return `\`${parola}\` non si usa in questo gioco: il ciclo \`while\` si ferma da solo quando la sua condizione diventa falsa`;
   }
-  return `\`${parola}\` non è ammesso in questo gioco: si usano solo \`for\`, \`if\`, \`print\` e le variabili`;
+  if (parola === 'from') {
+    return 'In questo gioco si scrive `import random` in cima al programma, e poi `random.randint(a, b)`';
+  }
+  return `\`${parola}\` non è ammesso in questo gioco: si usano solo \`for\`, \`while\`, \`if\`, \`print\` e le variabili`;
 }
 
-/** Il confronto che segue un'espressione nella condizione di `if`/`elif`. */
-function parseCondizione(l: Lettore, parola: 'if' | 'elif'): Espr {
+/** Il confronto che segue un'espressione nella condizione di `if`/`elif`/`while`. */
+function parseCondizione(l: Lettore, parola: 'if' | 'elif' | 'while'): Espr {
   if (l.prossimoEOp(':') || l.finito()) {
-    err('sintassi', `Dopo \`${parola}\` ci vuole una condizione, per esempio \`${parola} i == 3:\``, l.riga);
+    err('sintassi', `Dopo \`${parola}\` ci vuole una condizione, per esempio \`${parola} ${parola === 'while' ? 'totale < 100' : 'i == 3'}:\``, l.riga);
+  }
+  if (parola === 'while' && (l.prossimoENome('True') || l.prossimoENome('False'))) {
+    err('nonAmmesso', 'Niente `while True`: la condizione deve dire quando il ciclo si ferma, per esempio `while totale < 100:` oppure `while risposta != "0":`', l.riga);
   }
   const sx = parseEspressione(l);
   const t = l.guarda();
@@ -540,10 +635,11 @@ function parseCondizione(l: Lettore, parola: 'if' | 'elif'): Espr {
     err('sintassi', 'Per confrontare si usa `==` (due uguali): con uno solo si dà un valore', l.riga);
   }
   if (t.t !== 'op' || !CONFRONTI.includes(t.v as Confronto)) {
+    const esempio = parola === 'while' ? 'totale < 100' : 'i == 3';
     if (t.t === 'op' && t.v === ':') {
-      err('sintassi', `La condizione di \`${parola}\` deve essere un confronto, per esempio \`${parola} i == 3:\` oppure \`${parola} totale >= 20:\``, l.riga);
+      err('sintassi', `La condizione di \`${parola}\` deve essere un confronto, per esempio \`${parola} ${esempio}:\` oppure \`${parola} risposta != "fine":\``, l.riga);
     }
-    err('sintassi', `Dopo \`${parola}\` ci vuole un confronto e poi i due punti, per esempio \`${parola} i == 3:\``, l.riga);
+    err('sintassi', `Dopo \`${parola}\` ci vuole un confronto e poi i due punti, per esempio \`${parola} ${esempio}:\``, l.riga);
   }
   l.avanti();
   const dx = parseEspressione(l);
@@ -558,8 +654,17 @@ function parseCondizione(l: Lettore, parola: 'if' | 'elif'): Espr {
 
 class Parser {
   private pos = 0;
+  /** true se il programma ha scritto `import random`. */
+  importRandom = false;
 
   constructor(private readonly righe: Riga[]) {}
+
+  /** `while cond:` e il suo corpo. La condizione è un confronto solo, come nell'`if`. */
+  private cicloWhile(l: Lettore, riga: Riga): Istruzione {
+    const cond = parseCondizione(l, 'while');
+    l.attesoOp(':', 'Alla fine della riga del `while` ci vogliono i due punti `:`');
+    return { k: 'while', cond, corpo: this.corpoDi(l, riga, 'while'), riga: riga.numero };
+  }
 
   /** Analizza un blocco: tutte le righe con indentazione >= `indent`. */
   blocco(indent: number): Istruzione[] {
@@ -593,18 +698,32 @@ class Parser {
   }
 
   /** Riconosce l'istruzione dai token (usata anche per il corpo scritto in linea). */
-  private istruzioneDaLettore(l: Lettore, riga: Riga, inLinea: 'for' | 'if' | null = null): Istruzione {
+  private istruzioneDaLettore(l: Lettore, riga: Riga, inLinea: 'for' | 'while' | 'if' | null = null): Istruzione {
     const t = l.guarda();
-    if (t.t === 'nome' && (t.v === 'for' || t.v === 'if') && inLinea) {
+    if (t.t === 'nome' && (t.v === 'for' || t.v === 'if' || t.v === 'while') && inLinea) {
       err('sintassi', `Metti \`${t.v}\` su una riga sua, spostata a destra sotto il \`${inLinea}\``, riga.numero);
     }
     if (t.t === 'nome' && t.v === 'for') {
       l.avanti();
       return this.ciclo(l, riga);
     }
+    if (t.t === 'nome' && t.v === 'while') {
+      l.avanti();
+      return this.cicloWhile(l, riga);
+    }
     if (t.t === 'nome' && t.v === 'if') {
       l.avanti();
       return this.condizionale(l, riga);
+    }
+    if (t.t === 'nome' && t.v === 'import') {
+      l.avanti();
+      const modulo = l.avanti();
+      if (modulo.t !== 'nome' || modulo.v !== 'random') {
+        err('nonAmmesso', `In questo gioco si può importare solo \`random\` (per \`random.randint\`): \`import ${modulo.t === 'nome' ? modulo.v : '...'}\` non è ammesso`, riga.numero);
+      }
+      this.fineRiga(l, riga);
+      this.importRandom = true;
+      return { k: 'import', riga: riga.numero };
     }
     if (t.t === 'nome' && (t.v === 'elif' || t.v === 'else')) {
       err('sintassi', `\`${t.v}\` va subito dopo il blocco di un \`if\`, allineato con l'\`if\``, riga.numero);
@@ -624,27 +743,27 @@ class Parser {
     if (t.t === 'nome' && NON_AMMESSE.includes(t.v)) {
       err('nonAmmesso', messaggioNonAmmessa(t.v), riga.numero);
     }
-    if (t.t === 'nome' && t.v.toLowerCase() === 'for') {
-      err('sintassi', '`for` va scritto tutto minuscolo', riga.numero);
+    if (t.t === 'nome' && (t.v.toLowerCase() === 'for' || t.v.toLowerCase() === 'while')) {
+      err('sintassi', `\`${t.v.toLowerCase()}\` va scritto tutto minuscolo`, riga.numero);
     }
     if (t.t === 'nome') {
       const nome = t.v;
       l.avanti();
       const segno = l.guarda();
-      if (segno.t === 'op' && (segno.v === '=' || segno.v === '+=')) {
+      if (segno.t === 'op' && ['=', '+=', '-=', '*='].includes(segno.v)) {
         if (RISERVATE.includes(nome)) {
           err('nonAmmesso', `\`${nome}\` è una parola di Python: non puoi usarla come nome di variabile`, riga.numero);
         }
         l.avanti();
         const espr = parseEspressione(l);
         this.fineRiga(l, riga);
-        return { k: 'assegna', nome, op: segno.v as '=' | '+=', espr, riga: riga.numero };
+        return { k: 'assegna', nome, op: segno.v as OpAssegna, espr, riga: riga.numero };
       }
       if (segno.t === 'op' && segno.v === '==') {
-        err('sintassi', '`==` confronta due valori e si usa dopo `if`: per dare un valore a una variabile serve un solo `=`', riga.numero);
+        err('sintassi', '`==` confronta due valori e si usa dopo `if` o `while`: per dare un valore a una variabile serve un solo `=`', riga.numero);
       }
-      if (segno.t === 'op' && ['-=', '*='].includes(segno.v)) {
-        err('nonAmmesso', `L'operatore \`${segno.v}\` non è ammesso: usa \`=\` o \`+=\``, riga.numero);
+      if (segno.t === 'op' && segno.v === '/') {
+        err('nonAmmesso', 'La divisione non è ammessa in questo gioco: ci sono solo numeri interi', riga.numero);
       }
       err(
         'sintassi',
@@ -652,17 +771,17 @@ class Parser {
         riga.numero,
       );
     }
-    err('sintassi', 'Questa riga non è un\'istruzione: ci vuole `for`, `if`, `print` o un\'assegnazione', riga.numero);
+    err('sintassi', 'Questa riga non è un\'istruzione: ci vuole `for`, `while`, `if`, `print` o un\'assegnazione', riga.numero);
   }
 
   /**
-   * Il corpo dopo i due punti di `for`/`if`/`elif`/`else`: sulla riga stessa (una o più
-   * istruzioni con `;`) oppure il blocco indentato sotto.
+   * Il corpo dopo i due punti di `for`/`while`/`if`/`elif`/`else`: sulla riga stessa (una o
+   * più istruzioni con `;`) oppure il blocco indentato sotto.
    */
-  private corpoDi(l: Lettore, riga: Riga, cosa: 'for' | 'if' | 'elif' | 'else'): Istruzione[] {
-    const blocco = cosa === 'for' ? 'il ciclo' : `il blocco di \`${cosa}\``;
+  private corpoDi(l: Lettore, riga: Riga, cosa: 'for' | 'while' | 'if' | 'elif' | 'else'): Istruzione[] {
+    const blocco = cosa === 'for' || cosa === 'while' ? 'il ciclo' : `il blocco di \`${cosa}\``;
     if (!l.finito()) {
-      const inLinea = cosa === 'for' ? 'for' : 'if';
+      const inLinea = cosa === 'for' || cosa === 'while' ? cosa : 'if';
       const corpo: Istruzione[] = [this.istruzioneDaLettore(l, riga, inLinea)];
       while (l.prossimoEOp(';')) {
         l.avanti();
@@ -785,7 +904,7 @@ class Parser {
         args.push(parseEspressione(l));
         const dopo = l.guarda();
         if (dopo.t === 'op' && CONFRONTI.includes(dopo.v as Confronto)) {
-          err('sintassi', `Un confronto come \`${dopo.v}\` si usa solo nella condizione di un \`if\`, non dentro \`print\``, riga.numero);
+          err('sintassi', `Un confronto come \`${dopo.v}\` si usa solo nella condizione di un \`if\` o di un \`while\`, non dentro \`print\``, riga.numero);
         }
         if (l.prossimoEOp(',')) {
           l.avanti();
@@ -805,10 +924,10 @@ class Parser {
     if (l.finito() || l.prossimoEOp(';')) return;
     const t = l.guarda();
     if (t.t === 'op' && t.v === ':') {
-      err('sintassi', 'I due punti `:` vanno solo alla fine della riga del `for`, dell\'`if` o dell\'`else`', riga.numero);
+      err('sintassi', 'I due punti `:` vanno solo alla fine della riga del `for`, del `while`, dell\'`if` o dell\'`else`', riga.numero);
     }
     if (t.t === 'op' && CONFRONTI.includes(t.v as Confronto)) {
-      err('sintassi', `Un confronto come \`${t.v}\` si usa solo nella condizione di un \`if\``, riga.numero);
+      err('sintassi', `Un confronto come \`${t.v}\` si usa solo nella condizione di un \`if\` o di un \`while\``, riga.numero);
     }
     err('sintassi', `Sulla riga c'è qualcosa di troppo dopo l'istruzione: \`${'v' in t ? t.v : ''}\``, riga.numero);
   }
@@ -816,10 +935,16 @@ class Parser {
 
 /* ---------------------------------------------------------------------- esecuzione */
 
+/** L'hint del ciclo infinito: lo stesso sia che lo fermi il tetto dei giri sia quello delle righe. */
+const PERCHE_WHILE_INFINITO = 'la sua condizione resta sempre vera. Dentro il ciclo deve cambiare qualcosa che prima o poi la renda falsa';
+
 class Macchina {
   private readonly ambiente = new Map<string, Valore>();
   private iterazioni = 0;
   private prossimaRisposta = 0;
+  private prossimoCasuale = 0;
+  /** Le righe dei `while` in esecuzione adesso: se scatta un tetto, l'errore indica il ciclo, non il `print`. */
+  private readonly whileAperti: number[] = [];
   /** Giri fatti da tutti i cicli. */
   get giri(): number {
     return this.iterazioni;
@@ -832,6 +957,7 @@ class Macchina {
     private readonly maxIterazioni: number,
     private readonly maxRigheOutput: number,
     private readonly risposte: string[] | null,
+    private readonly casuali: number[] | null,
   ) {}
 
   /** `input()`: la risposta è la prossima della lista; la domanda finisce sullo schermo, non nell'output. */
@@ -840,9 +966,11 @@ class Macchina {
       err('nonAmmesso', '`input()` non è ammesso in questa tappa: il programma non chiede niente, stampa soltanto', riga);
     }
     if (this.prossimaRisposta >= this.risposte.length) {
+      const ultima = this.risposte[this.risposte.length - 1];
+      const dopo = ultima === undefined ? '' : ` Dopo l'ultima risposta («${ultima}») il programma doveva fermarsi, invece chiede ancora.`;
       err(
         'limite',
-        `Il programma chiede più cose di quelle previste: le risposte di prova sono ${this.risposte.length} e questo è l'\`input()\` numero ${this.prossimaRisposta + 1}`,
+        `Il programma chiede più cose di quelle previste: le risposte di prova sono ${this.risposte.length} e questo è l'\`input()\` numero ${this.prossimaRisposta + 1}.${dopo}`,
         riga,
       );
     }
@@ -850,6 +978,32 @@ class Macchina {
     this.interazioni.push({ domanda, risposta });
     this.schermo.push({ k: 'in', domanda, risposta });
     return risposta;
+  }
+
+  /** `random.randint(a, b)`: il numero è il prossimo della prova, e deve stare fra a e b. */
+  private casuale(a: number, b: number, riga: number): number {
+    if (this.casuali === null) {
+      err('nonAmmesso', '`random.randint()` non è ammesso in questa tappa: qui i numeri non sono casuali', riga);
+    }
+    if (a > b) {
+      err('limite', `\`random.randint(${a}, ${b})\` non può dare niente: il primo numero deve essere il più piccolo`, riga);
+    }
+    if (this.prossimoCasuale >= this.casuali.length) {
+      err(
+        'limite',
+        `Il programma chiede più numeri casuali di quelli previsti: la prova ne ha ${this.casuali.length} e questo è il \`randint\` numero ${this.prossimoCasuale + 1}`,
+        riga,
+      );
+    }
+    const n = this.casuali[this.prossimoCasuale++];
+    if (n < a || n > b) {
+      err(
+        'limite',
+        `Il numero di prova è ${n}, ma \`random.randint(${a}, ${b})\` non può darlo: controlla i limiti che chiede la consegna`,
+        riga,
+      );
+    }
+    return n;
   }
 
   esegui(corpo: Istruzione[]): void {
@@ -872,11 +1026,20 @@ class Macchina {
       if (precedente === undefined) {
         err(
           'nome',
-          `\`${istr.nome} += ...\` non funziona se \`${istr.nome}\` non esiste ancora: prima scrivi \`${istr.nome} = 0\``,
+          `\`${istr.nome} ${istr.op} ...\` non funziona se \`${istr.nome}\` non esiste ancora: prima scrivi \`${istr.nome} = 0\``,
           istr.riga,
         );
       }
-      this.ambiente.set(istr.nome, somma(precedente, valore, istr.riga));
+      if (istr.op === '+=') {
+        this.ambiente.set(istr.nome, somma(precedente, valore, istr.riga));
+      } else if (istr.op === '-=') {
+        if (typeof precedente !== 'number' || typeof valore !== 'number') {
+          err('tipo', `\`${istr.nome} -= ...\` funziona solo fra numeri: la sottrazione non si fa con il testo`, istr.riga);
+        }
+        this.ambiente.set(istr.nome, precedente - valore);
+      } else {
+        this.ambiente.set(istr.nome, prodotto(precedente, valore, istr.riga));
+      }
       return;
     }
     if (istr.k === 'if') {
@@ -889,12 +1052,36 @@ class Macchina {
       if (istr.altrimenti) this.esegui(istr.altrimenti);
       return;
     }
+    if (istr.k === 'while') {
+      this.cicloWhile(istr);
+      return;
+    }
+    if (istr.k === 'import') return;
     this.ciclo(istr);
+  }
+
+  /**
+   * `while`: gira finché la condizione è vera. Il tetto delle iterazioni qui non è un
+   * incidente ma l'errore tipico: il ciclo che non si ferma mai.
+   */
+  private cicloWhile(istr: Istruzione & { k: 'while' }): void {
+    this.whileAperti.push(istr.riga);
+    try {
+      while (this.condizione(istr.cond, istr.riga)) {
+        this.iterazioni++;
+        if (this.iterazioni > this.maxIterazioni) {
+          err('limite', `Il ciclo \`while\` non si ferma mai (ha già fatto ${this.maxIterazioni} giri): ${PERCHE_WHILE_INFINITO}`, istr.riga);
+        }
+        this.esegui(istr.corpo);
+      }
+    } finally {
+      this.whileAperti.pop();
+    }
   }
 
   /** Vero o falso di un confronto. Numeri con numeri, testo con testo: mischiarli è quasi sempre un `int()` dimenticato. */
   private condizione(e: Espr, riga: number): boolean {
-    if (e.k !== 'cmp') err('sintassi', 'La condizione deve essere un confronto, per esempio `i == 3`', riga);
+    if (e.k !== 'cmp') err('sintassi', 'La condizione deve essere un confronto, per esempio `i == 3` oppure `totale < 100`', riga);
     const sx = this.valuta(e.sx, riga);
     const dx = this.valuta(e.dx, riga);
     if (typeof sx !== typeof dx) {
@@ -977,11 +1164,11 @@ class Macchina {
     // Un print con \n dentro produce più righe di output, come in Python.
     for (const pezzo of riga.split('\n')) {
       if (this.output.length >= this.maxRigheOutput) {
-        err(
-          'limite',
-          `Il programma stampa troppe righe (più di ${this.maxRigheOutput}): controlla i numeri dentro \`range\``,
-          numeroRiga,
-        );
+        const rigaWhile = this.whileAperti[this.whileAperti.length - 1];
+        if (rigaWhile !== undefined) {
+          err('limite', `Il programma stampa troppe righe (più di ${this.maxRigheOutput}): il ciclo \`while\` non si ferma mai, ${PERCHE_WHILE_INFINITO}`, rigaWhile);
+        }
+        err('limite', `Il programma stampa troppe righe (più di ${this.maxRigheOutput}): controlla i numeri dentro \`range\``, numeroRiga);
       }
       this.output.push(pezzo);
       this.schermo.push({ k: 'out', v: pezzo });
@@ -1025,6 +1212,14 @@ class Macchina {
         }
         return Number(v.trim());
       }
+      case 'casuale': {
+        const a = this.valuta(e.a, riga);
+        const b = this.valuta(e.b, riga);
+        if (typeof a !== 'number' || typeof b !== 'number') {
+          err('tipo', '`random.randint` vuole due numeri interi, non del testo fra virgolette', riga);
+        }
+        return this.casuale(a, b, riga);
+      }
       case 'bin': {
         const sx = this.valuta(e.sx, riga);
         const dx = this.valuta(e.dx, riga);
@@ -1035,15 +1230,19 @@ class Macchina {
           }
           return sx - dx;
         }
-        if (typeof sx === 'number' && typeof dx === 'number') return sx * dx;
-        if (typeof sx === 'string' && typeof dx === 'number') return ripeti(sx, dx, riga);
-        if (typeof sx === 'number' && typeof dx === 'string') return ripeti(dx, sx, riga);
-        err('tipo', 'Non si moltiplica un testo per un altro testo', riga);
+        return prodotto(sx, dx, riga);
       }
       case 'cmp':
-        err('sintassi', `Un confronto come \`${e.op}\` si usa solo nella condizione di un \`if\``, riga);
+        err('sintassi', `Un confronto come \`${e.op}\` si usa solo nella condizione di un \`if\` o di un \`while\``, riga);
     }
   }
+}
+
+function prodotto(sx: Valore, dx: Valore, riga: number): Valore {
+  if (typeof sx === 'number' && typeof dx === 'number') return sx * dx;
+  if (typeof sx === 'string' && typeof dx === 'number') return ripeti(sx, dx, riga);
+  if (typeof sx === 'number' && typeof dx === 'string') return ripeti(dx, sx, riga);
+  err('tipo', 'Non si moltiplica un testo per un altro testo', riga);
 }
 
 function testo(v: Valore): string {
@@ -1084,28 +1283,81 @@ function usaNome(e: Espr, nome: string): boolean {
       return e.parti.some((p) => p.k === 'espr' && usaNome(p.e, nome));
     case 'int':
       return usaNome(e.e, nome);
+    case 'casuale':
+      return usaNome(e.a, nome) || usaNome(e.b, nome);
     default:
       return false;
   }
 }
 
-/** Quante `input()` dentro un'espressione. */
-function contaInput(e: Espr): number {
+/** Quante volte `cosa` (`input()` o `randint()`) compare dentro un'espressione. */
+function conta(e: Espr, cosa: 'input' | 'casuale'): number {
   switch (e.k) {
     case 'input':
-      return 1 + (e.domanda ? contaInput(e.domanda) : 0);
+      return (cosa === 'input' ? 1 : 0) + (e.domanda ? conta(e.domanda, cosa) : 0);
+    case 'casuale':
+      return (cosa === 'casuale' ? 1 : 0) + conta(e.a, cosa) + conta(e.b, cosa);
     case 'int':
-      return contaInput(e.e);
+      return conta(e.e, cosa);
     case 'bin':
     case 'cmp':
-      return contaInput(e.sx) + contaInput(e.dx);
+      return conta(e.sx, cosa) + conta(e.dx, cosa);
     case 'neg':
-      return contaInput(e.e);
+      return conta(e.e, cosa);
     case 'fstr':
-      return e.parti.reduce((n, p) => n + (p.k === 'espr' ? contaInput(p.e) : 0), 0);
+      return e.parti.reduce((n, p) => n + (p.k === 'espr' ? conta(p.e, cosa) : 0), 0);
     default:
       return 0;
   }
+}
+
+/** I nomi delle variabili lette da un'espressione (per sapere di che cosa parla la condizione di un `while`). */
+function nomiIn(e: Espr, out: Set<string> = new Set()): Set<string> {
+  switch (e.k) {
+    case 'nome':
+      out.add(e.v);
+      break;
+    case 'bin':
+    case 'cmp':
+      nomiIn(e.sx, out);
+      nomiIn(e.dx, out);
+      break;
+    case 'neg':
+    case 'int':
+      nomiIn(e.e, out);
+      break;
+    case 'casuale':
+      nomiIn(e.a, out);
+      nomiIn(e.b, out);
+      break;
+    case 'fstr':
+      for (const p of e.parti) if (p.k === 'espr') nomiIn(p.e, out);
+      break;
+    case 'input':
+      if (e.domanda) nomiIn(e.domanda, out);
+      break;
+    default:
+      break;
+  }
+  return out;
+}
+
+/** true se nel blocco (anche dentro `if` e cicli annidati) qualche istruzione assegna uno dei `nomi`. */
+function assegnaUnoDi(istruzioni: Istruzione[], nomi: Set<string>): boolean {
+  return istruzioni.some((istr) => {
+    switch (istr.k) {
+      case 'assegna':
+        return nomi.has(istr.nome);
+      case 'for':
+        return nomi.has(istr.variabile) || assegnaUnoDi(istr.corpo, nomi);
+      case 'while':
+        return assegnaUnoDi(istr.corpo, nomi);
+      case 'if':
+        return istr.rami.some((r) => assegnaUnoDi(r.corpo, nomi)) || (istr.altrimenti ? assegnaUnoDi(istr.altrimenti, nomi) : false);
+      default:
+        return false;
+    }
+  });
 }
 
 function struttura(corpo: Istruzione[]): Struttura {
@@ -1120,34 +1372,57 @@ function struttura(corpo: Istruzione[]): Struttura {
     inputNelCiclo: 0,
     numIf: 0,
     ifNelCiclo: 0,
+    numWhile: 0,
+    whileAggiornati: 0,
+    numCasuali: 0,
+    casualiNelCiclo: 0,
   };
 
   const visita = (istruzioni: Istruzione[], dentroCiclo: boolean) => {
-    const input = (n: number) => {
-      s.numInput += n;
-      if (dentroCiclo) s.inputNelCiclo += n;
+    const espressione = (e: Espr) => {
+      const input = conta(e, 'input');
+      const casuali = conta(e, 'casuale');
+      s.numInput += input;
+      s.numCasuali += casuali;
+      if (dentroCiclo) {
+        s.inputNelCiclo += input;
+        s.casualiNelCiclo += casuali;
+      }
     };
     for (const istr of istruzioni) {
+      if (istr.k === 'import') continue;
       s.numRighe++;
       if (istr.k === 'if') {
         s.numIf++;
         if (dentroCiclo) s.ifNelCiclo++;
         for (const ramo of istr.rami) {
-          input(contaInput(ramo.cond));
+          espressione(ramo.cond);
           visita(ramo.corpo, dentroCiclo);
         }
         if (istr.altrimenti) visita(istr.altrimenti, dentroCiclo);
         continue;
       }
       if (istr.k === 'assegna') {
-        input(contaInput(istr.espr));
-        if (dentroCiclo && (istr.op === '+=' || usaNome(istr.espr, istr.nome))) s.accumuliNelCiclo++;
+        espressione(istr.espr);
+        if (dentroCiclo && (istr.op !== '=' || usaNome(istr.espr, istr.nome))) s.accumuliNelCiclo++;
         continue;
       }
       if (istr.k === 'print') {
         s.numPrint++;
-        input(istr.args.reduce((n, a) => n + contaInput(a), 0));
+        for (const a of istr.args) espressione(a);
         if (!dentroCiclo) s.printFuoriCiclo++;
+        continue;
+      }
+      if (istr.k === 'while') {
+        s.numWhile++;
+        if (assegnaUnoDi(istr.corpo, nomiIn(istr.cond))) s.whileAggiornati++;
+        // La condizione si valuta a ogni giro: le sue input()/randint() stanno nel ciclo.
+        const prima = { input: s.numInput, casuali: s.numCasuali };
+        espressione(istr.cond);
+        s.inputNelCiclo += dentroCiclo ? 0 : s.numInput - prima.input;
+        s.casualiNelCiclo += dentroCiclo ? 0 : s.numCasuali - prima.casuali;
+        s.righeCorpoMax = Math.max(s.righeCorpoMax, istr.corpo.length);
+        visita(istr.corpo, true);
         continue;
       }
       if (istr.k === 'for') {
@@ -1186,9 +1461,13 @@ export function esegui(codice: string, opzioni: Opzioni = {}): Esito {
         },
       };
     }
+    righeConRandint = [];
     const parser = new Parser(righe);
     const programma = parser.blocco(0);
-    const macchina = new Macchina(maxIterazioni, maxRigheOutput, opzioni.risposte ?? null);
+    if (righeConRandint.length > 0 && !parser.importRandom) {
+      err('nome', '`random` non esiste: per usare `random.randint` serve la riga `import random` in cima al programma', righeConRandint[0]);
+    }
+    const macchina = new Macchina(maxIterazioni, maxRigheOutput, opzioni.risposte ?? null, opzioni.casuali ?? null);
     macchina.esegui(programma);
     return {
       ok: true,

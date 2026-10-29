@@ -370,3 +370,53 @@ describe('hint delle tappe nuove', () => {
     expect(h).not.toMatch(/\b6\b/);
   });
 });
+
+describe('prove con il numero casuale (randint dalla prova)', () => {
+  const indovina: Esercizio = {
+    tipo: 'conta-giri',
+    terreno: 'pianura',
+    consegna: 'Il numero segreto fra 1 e 10: stampa quanti tentativi servono per indovinarlo',
+    outputAtteso: ['Più alto', 'Più basso', 'Indovinato in 3 tentativi'],
+    mostraOutput: true,
+    risposta: 'codice',
+    soluzione: [
+      'import random',
+      'segreto = random.randint(1, 10)',
+      'tentativi = 1',
+      'numero = int(input("Numero? "))',
+      'while numero != segreto:',
+      '    if numero < segreto:',
+      '        print("Più alto")',
+      '    else:',
+      '        print("Più basso")',
+      '    numero = int(input("Numero? "))',
+      '    tentativi += 1',
+      'print(f"Indovinato in {tentativi} tentativi")',
+    ].join('\n'),
+    regola: 'Il numero segreto lo dà randint, i tentativi li legge input().',
+    prove: [
+      { risposte: ['5', '9', '7'], casuali: [7], output: ['Più alto', 'Più basso', 'Indovinato in 3 tentativi'] },
+      // la seconda risposta non viene usata dalla soluzione: serve a far parlare il furbo
+      { risposte: ['3', '7'], casuali: [3], output: ['Indovinato in 1 tentativi'] },
+    ],
+  };
+
+  it('la soluzione passa tutte le prove', () => {
+    expect(valutaRisposta(indovina, indovina.soluzione).promosso).toBe(true);
+  });
+
+  it('il segreto scritto a mano cade sulla prova nascosta, e l\'hint nomina il numero casuale', () => {
+    const furbo = indovina.soluzione.replace('random.randint(1, 10)', '7');
+    const esito = valutaRisposta(indovina, furbo);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('rispondendo «3», «7» e con il numero casuale 3 stampa un\'altra cosa');
+    expect(esito.hint).toContain('`randint()`');
+  });
+
+  it('randint con limiti troppo stretti cade dove il numero di prova non ci sta', () => {
+    const stretto = indovina.soluzione.replace('random.randint(1, 10)', 'random.randint(5, 10)');
+    const esito = valutaRisposta(indovina, stretto);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('si ferma');
+  });
+});

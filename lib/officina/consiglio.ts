@@ -5,7 +5,7 @@
  *
  * Modulo puro: la chiamata al modello sta in tutor.ts (server-only).
  */
-import type { Esercizio } from '../giro/esercizi';
+import { descriviProva, opzioniDiProva, type Esercizio } from '../giro/esercizi';
 import { contieneCodice, pulisciConsiglio } from '../giro/filtroCodice';
 import { esegui } from '../giro/interprete';
 import type { SchedaCompito } from './compiti';
@@ -20,6 +20,8 @@ export const MAX_DOMANDA = 300;
  */
 export interface ProvaNascosta {
   risposte: string[];
+  /** I numeri di `randint()` della prova, se il compito usa il caso. */
+  casuali?: number[];
   atteso: string[];
   prodotto: string[] | null;
   errore?: string;
@@ -57,12 +59,13 @@ const normalizza = (righe: string[]) => righe.map((r) => r.trimEnd()).join('\n')
 export function provaCheCade(esercizio: Pick<Esercizio, 'outputAtteso' | 'prove'>, codice: string): ProvaNascosta | null {
   const prove = esercizio.prove;
   if (!prove || prove.length < 2 || !codice.trim()) return null;
-  const mostrata = esegui(codice, { risposte: prove[0].risposte });
+  const mostrata = esegui(codice, opzioniDiProva(prove[0]));
   if (!mostrata.ok || normalizza(mostrata.output) !== normalizza(prove[0].output)) return null;
   for (const prova of prove.slice(1)) {
-    const esito = esegui(codice, { risposte: prova.risposte });
-    if (!esito.ok) return { risposte: prova.risposte, atteso: prova.output, prodotto: null, errore: esito.errore.messaggio };
-    if (normalizza(esito.output) !== normalizza(prova.output)) return { risposte: prova.risposte, atteso: prova.output, prodotto: esito.output };
+    const esito = esegui(codice, opzioniDiProva(prova));
+    const base = { risposte: prova.risposte, atteso: prova.output, ...(prova.casuali ? { casuali: prova.casuali } : {}) };
+    if (!esito.ok) return { ...base, prodotto: null, errore: esito.errore.messaggio };
+    if (normalizza(esito.output) !== normalizza(prova.output)) return { ...base, prodotto: esito.output };
   }
   return null;
 }
@@ -78,10 +81,15 @@ export function messaggioConsiglio(c: ContestoConsiglio): string {
   if (c.esercizio.regola) {
     parti.push(`REGOLA DEL COMPITO (la controlla un giudice sul codice che dà l'output giusto; se non è rispettata la consegna è bocciata anche con l'output giusto): ${c.esercizio.regola}`);
   }
-  const risposte = c.esercizio.prove?.[0]?.risposte;
-  if (risposte) {
+  const prova = c.esercizio.prove?.[0];
+  if (prova && prova.risposte.length > 0) {
     parti.push(
-      `Il programma usa input(): viene provato rispondendo, nell'ordine, ${risposte.map(virgolette).join(', ')} (e poi con altre risposte: deve funzionare per chiunque). Il testo delle domande è libero; si confrontano solo le righe stampate con print.`,
+      `Il programma usa input(): viene provato rispondendo, nell'ordine, ${prova.risposte.map(virgolette).join(', ')} (e poi con altre risposte: deve funzionare per chiunque). Il testo delle domande è libero; si confrontano solo le righe stampate con print.`,
+    );
+  }
+  if (prova?.casuali && prova.casuali.length > 0) {
+    parti.push(
+      `Il programma usa random.randint(): nella prova il numero "casuale" è ${prova.casuali.join(', poi ')} (l'allievo non lo vede nel codice e non deve scriverlo a mano; con altre prove cambia).`,
     );
   }
   parti.push(blocco('OUTPUT CHE DEVE PRODURRE:', c.esercizio.outputAtteso));
@@ -91,11 +99,11 @@ export function messaggioConsiglio(c: ContestoConsiglio): string {
   if (c.provaNascosta) {
     const p = c.provaNascosta;
     parti.push(
-      `CON LE RISPOSTE DI PROVA FUNZIONA, MA CADE SU UN'ALTRA PROVA. Rispondendo ${p.risposte.map(virgolette).join(', ')}:\n` +
+      `CON I DATI DI PROVA FUNZIONA, MA CADE SU UN'ALTRA PROVA. ${descriviProva({ risposte: p.risposte, casuali: p.casuali, output: p.atteso }).replace(/^./, (m) => m.toUpperCase())}:\n` +
         blocco('deve stampare:', p.atteso) +
         '\n' +
         (p.prodotto ? blocco('invece stampa:', p.prodotto) : `invece si ferma con l'errore: ${p.errore}`) +
-        '\nPuoi dirgli queste risposte e che cosa succede: il punto da far capire è che i numeri devono arrivare dalle risposte, non essere scritti nel programma.',
+        '\nPuoi dirgli questi dati e che cosa succede: il punto da far capire è che i numeri devono arrivare dalle risposte (o da randint), non essere scritti nel programma.',
     );
   }
   if (c.hint) parti.push(`Hint automatico che ha già visto: ${c.hint}`);

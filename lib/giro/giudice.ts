@@ -12,17 +12,17 @@
 import { contieneCodice } from './filtroCodice';
 import type { Struttura } from './interprete';
 
-export const PROMPT_GIUDICE = `Sei il giudice di una gara di programmazione per allievi di 14-16 anni che imparano i cicli for in Python. Il programma dell'allievo produce già l'output giusto: tu devi dire solo se è fatto nel modo che la tappa vuole insegnare, secondo la REGOLA che ti viene data.
+export const PROMPT_GIUDICE = `Sei il giudice di una gara di programmazione per allievi di 14-16 anni che imparano i cicli for e while in Python. Il programma dell'allievo produce già l'output giusto: tu devi dire solo se è fatto nel modo che la tappa vuole insegnare, secondo la REGOLA che ti viene data.
 
 Rispondi OK oppure NO.
 - OK se il programma rispetta la regola. Variabili d'appoggio, nomi diversi, righe in più, un modo diverso ma onesto di scrivere la stessa cosa: tutto OK. In dubbio: OK.
-- NO solo se c'è una frode evidente rispetto alla regola: le righe stampate a mano una per una, un ciclo che gira una volta sola con un print per riga, print aggiunti fuori dal ciclo per completare l'output, il risultato scritto a mano o calcolato con una formula dove la regola chiede l'accumulo, i dati scritti nel programma dove la regola chiede input().
+- NO solo se c'è una frode evidente rispetto alla regola: le righe stampate a mano una per una, un ciclo che gira una volta sola con un print per riga, print aggiunti fuori dal ciclo per completare l'output, il risultato scritto a mano o calcolato con una formula dove la regola chiede l'accumulo, i dati scritti nel programma dove la regola chiede input() o randint(), un for con il numero di giri scritto a mano dove la regola chiede un while che si ferma da solo.
 
 I FATTI MISURATI SUL CODICE sono esatti, contati da un interprete: se dicono che un print, un if o un input() sta dentro un ciclo, è così. Non contraddirli.
 
 Formato della risposta, senza altro testo:
 - prima riga: OK oppure NO
-- se NO, seconda riga: una frase sola in italiano, al massimo 40 parole, rivolta all'allievo (dai del tu), che dice che cosa non va e che cosa deve fare invece, senza scrivere codice (niente righe di programma, niente "scrivi così"). Puoi nominare for, print, range, input e i nomi delle sue variabili.`;
+- se NO, seconda riga: una frase sola in italiano, al massimo 40 parole, rivolta all'allievo (dai del tu), che dice che cosa non va e che cosa deve fare invece, senza scrivere codice (niente righe di programma, niente "scrivi così"). Puoi nominare for, while, print, range, input, randint e i nomi delle sue variabili.`;
 
 export interface ContestoGiudizio {
   consegna: string;
@@ -35,6 +35,8 @@ export interface ContestoGiudizio {
   giri: number;
   /** Le risposte di prova con cui il programma è stato eseguito, se usa `input()`. */
   risposte?: string[];
+  /** I numeri che `randint()` ha dato nella prova, se il programma usa il caso. */
+  casuali?: number[];
 }
 
 export type Verdetto = { genuino: true } | { genuino: false; motivo: string };
@@ -44,19 +46,22 @@ export function messaggioGiudizio(c: ContestoGiudizio): string {
   const s = c.struttura;
   const fatti = [
     `cicli for: ${s.numFor}`,
+    `cicli while: ${s.numWhile} (di cui con una variabile della condizione che cambia nel corpo: ${s.whileAggiornati})`,
     `giri fatti in tutto: ${c.giri}`,
     `print dentro i cicli: ${s.numPrint - s.printFuoriCiclo}`,
     `print fuori dai cicli: ${s.printFuoriCiclo}`,
-    `accumuli dentro i cicli (x += ... o x = x + ...): ${s.accumuliNelCiclo}`,
+    `aggiornamenti dentro i cicli (x += ..., x -= ..., x *= ... o x = x + ...): ${s.accumuliNelCiclo}`,
     `if: ${s.numIf} (di cui dentro un ciclo: ${s.ifNelCiclo})`,
     `input() dentro i cicli (la domanda si ripete a ogni giro): ${s.inputNelCiclo}`,
     `input() fuori dai cicli: ${s.numInput - s.inputNelCiclo}`,
+    `random.randint(): ${s.numCasuali} (di cui dentro un ciclo: ${s.casualiNelCiclo})`,
     `righe di output: ${c.outputAtteso.length}`,
   ];
   const parti = [
     `CONSEGNA: ${c.consegna.replace(/\*\*/g, '')}`,
     `REGOLA: ${c.regola}`,
-    ...(c.risposte ? [`Il programma è stato eseguito rispondendo alle input(), nell'ordine: ${c.risposte.map((r) => `«${r}»`).join(', ')}.`] : []),
+    ...(c.risposte && c.risposte.length > 0 ? [`Il programma è stato eseguito rispondendo alle input(), nell'ordine: ${c.risposte.map((r) => `«${r}»`).join(', ')}.`] : []),
+    ...(c.casuali && c.casuali.length > 0 ? [`I numeri che randint() ha dato in questa prova, nell'ordine: ${c.casuali.join(', ')}.`] : []),
     `OUTPUT (giusto):\n${c.outputAtteso.join('\n')}`,
     `CODICE DELL'ALLIEVO:\n${c.codice.replace(/\r\n?/g, '\n').trim()}`,
     `FATTI MISURATI SUL CODICE:\n${fatti.map((f) => `- ${f}`).join('\n')}`,

@@ -6,7 +6,7 @@
 import 'server-only';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getDb } from '@/lib/firebaseAdmin';
-import { esercizioPerAllievo, type Esercizio } from '@/lib/giro/esercizi';
+import { esercizioPerAllievo, opzioniDiProva, type Esercizio } from '@/lib/giro/esercizi';
 import { ApiError } from '@/lib/giro/http';
 import { valutaRisposta } from '@/lib/giro/hint';
 import { verificaConsegna } from '@/lib/giro/verifica';
@@ -280,7 +280,7 @@ export async function tutor(body: Record<string, unknown>, utente: Utente) {
   if (lavoro.consigli >= MAX_DOMANDE_TUTOR) {
     throw new ApiError(403, 'DOMANDE_FINITE', `Hai fatto ${MAX_DOMANDE_TUTOR} domande su questo compito: da qui in poi vai avanti da solo, o chiedi al prof`);
   }
-  const esito = esegui(codice, esercizio.prove?.[0] ? { risposte: esercizio.prove[0].risposte } : {});
+  const esito = esegui(codice, opzioniDiProva(esercizio.prove?.[0]));
   const valutazione = codice.trim() ? valutaRisposta(esercizio, codice) : null;
   const risposta = await chiediTutor(
     {

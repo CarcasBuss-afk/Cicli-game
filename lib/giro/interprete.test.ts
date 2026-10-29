@@ -336,10 +336,18 @@ describe('if, elif, else (le condizioni, PERCORSO.md §17)', () => {
 });
 
 describe('costrutti fuori dal gioco', () => {
-  it('while', () => {
+  it('while True e break', () => {
     const e = errore('while True:\n    print("ciao")');
     expect(e.tipo).toBe('nonAmmesso');
-    expect(e.messaggio).toContain('`for`');
+    expect(e.messaggio).toContain('`while True`');
+    const b = errore('n = 0\nwhile n < 5:\n    n += 1\n    break');
+    expect(b.tipo).toBe('nonAmmesso');
+    expect(b.messaggio).toContain('`break`');
+  });
+
+  it('import di moduli che non siano random, e from import', () => {
+    expect(errore('import math\nprint(1)').messaggio).toContain('`random`');
+    expect(errore('from random import randint').messaggio).toContain('`import random`');
   });
 
   it('input', () => {
@@ -375,8 +383,195 @@ describe('costrutti fuori dal gioco', () => {
     expect(errore('for print in range(3): print(1)').tipo).toBe('nonAmmesso');
   });
 
-  it('operatori non ammessi', () => {
-    expect(errore('x = 1\nx -= 1').messaggio).toContain('`+=`');
+  it('la divisione non è ammessa', () => {
+    expect(errore('x = 1\nx /= 2').tipo).toBe('nonAmmesso');
+  });
+});
+
+describe('while (la seconda sezione dell\'Officina)', () => {
+  it('il conto alla rovescia: i tre gesti', () => {
+    expect(out('n = 3\nwhile n > 0:\n    print(n)\n    n -= 1\nprint("Via!")')).toEqual(['3', '2', '1', 'Via!']);
+  });
+
+  it('il salvadanaio: gira finché il totale non arriva all\'obiettivo, i giri sono il risultato', () => {
+    const codice = 'totale = 0\nsettimane = 0\nwhile totale < 50:\n    totale += 15\n    settimane += 1\nprint(f"{settimane} settimane")';
+    expect(out(codice)).toEqual(['4 settimane']);
+    const esito = esegui(codice);
+    if (esito.ok) expect(esito.giri).toBe(4);
+  });
+
+  it('il pettegolezzo: *= raddoppia', () => {
+    expect(out('sanno = 1\nore = 0\nwhile sanno < 20:\n    sanno *= 2\n    ore += 1\nprint(ore)')).toEqual(['5']);
+  });
+
+  it('la condizione falsa da subito: il corpo non gira mai', () => {
+    expect(out('n = 0\nwhile n > 0:\n    print(n)\nprint("fine")')).toEqual(['fine']);
+  });
+
+  it('corpo in linea, while dentro un for e if dentro il while', () => {
+    expect(out('n = 0\nwhile n < 3: n += 1\nprint(n)')).toEqual(['3']);
+    expect(out('for i in range(2):\n    n = 0\n    while n < 2:\n        n += 1\n        if n == 2:\n            print(i)')).toEqual(['0', '1']);
+  });
+
+  it('la sentinella: chiede finché non arriva 0, con la domanda ripetuta in fondo', () => {
+    const codice = 'totale = 0\nprezzo = int(input("Prezzo? "))\nwhile prezzo != 0:\n    totale += prezzo\n    prezzo = int(input("Prezzo? "))\nprint(f"Totale: {totale}")';
+    const esito = esegui(codice, { risposte: ['3', '5', '0'] });
+    expect(esito.ok).toBe(true);
+    if (esito.ok) {
+      expect(esito.output).toEqual(['Totale: 8']);
+      expect(esito.struttura).toMatchObject({ numWhile: 1, whileAggiornati: 1, inputNelCiclo: 1, numInput: 2 });
+    }
+  });
+
+  it('la parola d\'ordine: richiedi finché non è giusta', () => {
+    const codice = 'parola = input("Parola? ")\ntentativi = 1\nwhile parola != "ciclo":\n    print("Sbagliata")\n    parola = input("Parola? ")\n    tentativi += 1\nprint(f"Entrato al tentativo {tentativi}")';
+    const esito = esegui(codice, { risposte: ['for', 'range', 'ciclo'] });
+    expect(esito.ok).toBe(true);
+    if (esito.ok) expect(esito.output).toEqual(['Sbagliata', 'Sbagliata', 'Entrato al tentativo 3']);
+  });
+
+  it('il ciclo infinito: il tetto diventa l\'hint', () => {
+    const e = errore('n = 0\nwhile n < 5:\n    print("ciao")');
+    expect(e.tipo).toBe('limite');
+    expect(e.messaggio).toContain('non si ferma mai');
+    expect(e.riga).toBe(2);
+  });
+
+  it('il ciclo infinito che non stampa: lo ferma il tetto delle iterazioni, non quello delle righe', () => {
+    const e = errore('n = 0\nwhile n >= 0:\n    n += 1');
+    expect(e.tipo).toBe('limite');
+    expect(e.messaggio).toContain('non si ferma mai');
+  });
+
+  it('chi dimentica di ripetere la domanda finisce le risposte: il messaggio dice dove doveva fermarsi', () => {
+    const esito = esegui('p = int(input())\nwhile p != 0:\n    print(p)', { risposte: ['3', '0'] });
+    // la prima risposta è 3 e p non cambia mai: gira all'infinito stampando 3
+    expect(esito.ok).toBe(false);
+    if (!esito.ok) expect(esito.errore.tipo).toBe('limite');
+    const altro = esegui('t = 0\nfor i in range(3):\n    t += int(input())\nprint(t)', { risposte: ['1', '2'] });
+    expect(altro.ok).toBe(false);
+    if (!altro.ok) expect(altro.errore.messaggio).toContain('Dopo l\'ultima risposta («2»)');
+  });
+
+  it('errori di scrittura del while', () => {
+    expect(errore('while:\n    print(1)').messaggio).toContain('condizione');
+    expect(errore('n = 1\nwhile n\n    print(1)').messaggio).toContain('confronto');
+    expect(errore('n = 1\nwhile n > 0\n    n -= 1').messaggio).toContain('due punti');
+    expect(errore('n = 1\nwhile n = 0:\n    n -= 1').messaggio).toContain('`==`');
+    expect(errore('n = 1\nWhile n > 0:\n    n -= 1').messaggio).toContain('minuscolo');
+    expect(errore('n = 1\nwhile n > 0 and n < 5:\n    n -= 1').tipo).toBe('nonAmmesso');
+    expect(errore('n = 1\nwhile n > 0:\nprint(n)').messaggio).toContain('spostata a destra');
+  });
+
+  it('-= e *= vogliono numeri e una variabile che esiste', () => {
+    expect(errore('s = "a"\ns -= 1').tipo).toBe('tipo');
+    expect(errore('n -= 1').messaggio).toContain('`n -= ...`');
+    expect(out('s = "ab"\ns *= 2\nprint(s)')).toEqual(['abab']);
+  });
+
+  it('i fatti per il giudice: while, aggiornamenti e condizione che cambia', () => {
+    const fermo = esegui('n = 0\nk = 0\nwhile n < 2:\n    k += 1\n    if k == 2: n = 5\nprint(k)');
+    if (!fermo.ok) throw new Error(fermo.errore.messaggio);
+    // `n = 5` nel ramo dell'if è un'assegnazione, non un accumulo; ma cambia la variabile della condizione
+    expect(fermo.struttura).toMatchObject({ numWhile: 1, whileAggiornati: 1, accumuliNelCiclo: 1, numFor: 0 });
+    const scende = esegui('n = 3\nwhile n > 0:\n    n -= 1\n    print(n)');
+    if (!scende.ok) throw new Error(scende.errore.messaggio);
+    expect(scende.struttura).toMatchObject({ numWhile: 1, whileAggiornati: 1, accumuliNelCiclo: 1, printFuoriCiclo: 0 });
+    expect(scende.giri).toBe(3);
+  });
+});
+
+describe('random.randint, con i numeri forniti dalle opzioni', () => {
+  const con = (codice: string, casuali: number[], risposte?: string[]) => {
+    const esito = esegui(codice, risposte ? { casuali, risposte } : { casuali });
+    if (!esito.ok) throw new Error(esito.errore.messaggio);
+    return esito;
+  };
+
+  it('il numero segreto arriva dalla prova', () => {
+    expect(con('import random\nsegreto = random.randint(1, 10)\nprint(segreto)', [7]).output).toEqual(['7']);
+  });
+
+  it('indovina il numero: randint, while, if dentro e tentativi', () => {
+    const codice = [
+      'import random',
+      'segreto = random.randint(1, 10)',
+      'tentativi = 0',
+      'numero = int(input("Numero? "))',
+      'tentativi += 1',
+      'while numero != segreto:',
+      '    if numero < segreto:',
+      '        print("Più alto")',
+      '    else:',
+      '        print("Più basso")',
+      '    numero = int(input("Numero? "))',
+      '    tentativi += 1',
+      'print(f"Indovinato in {tentativi} tentativi")',
+    ].join('\n');
+    const esito = con(codice, [7], ['5', '9', '7']);
+    expect(esito.output).toEqual(['Più alto', 'Più basso', 'Indovinato in 3 tentativi']);
+    expect(esito.struttura).toMatchObject({ numCasuali: 1, casualiNelCiclo: 0, numWhile: 1, whileAggiornati: 1, ifNelCiclo: 1 });
+  });
+
+  it('il dado: randint dentro il ciclo, un numero per lancio', () => {
+    const codice = 'import random\nlanci = 1\ndado = random.randint(1, 6)\nwhile dado != 6:\n    dado = random.randint(1, 6)\n    lanci += 1\nprint(lanci)';
+    const esito = con(codice, [2, 5, 6]);
+    expect(esito.output).toEqual(['3']);
+    expect(esito.struttura).toMatchObject({ numCasuali: 2, casualiNelCiclo: 1 });
+    expect(esito.giri).toBe(2);
+  });
+
+  it('randint nella condizione del while conta come dentro il ciclo', () => {
+    const esito = con('import random\nn = 0\nwhile random.randint(1, 6) != 6:\n    n += 1\nprint(n)', [3, 6]);
+    expect(esito.output).toEqual(['1']);
+    expect(esito.struttura).toMatchObject({ numCasuali: 1, casualiNelCiclo: 1 });
+  });
+
+  it('senza import random non esiste', () => {
+    const esito = esegui('x = random.randint(1, 6)\nprint(x)', { casuali: [3] });
+    expect(esito.ok).toBe(false);
+    if (!esito.ok) {
+      expect(esito.errore.tipo).toBe('nome');
+      expect(esito.errore.messaggio).toContain('`import random`');
+      expect(esito.errore.riga).toBe(1);
+    }
+  });
+
+  it('senza numeri nelle opzioni randint resta vietato (le tappe del Giro)', () => {
+    expect(errore('import random\nprint(random.randint(1, 6))').tipo).toBe('nonAmmesso');
+  });
+
+  it('il numero di prova fuori dai limiti scritti dall\'allievo: controlla la consegna', () => {
+    const esito = esegui('import random\nprint(random.randint(1, 5))', { casuali: [8] });
+    expect(esito.ok).toBe(false);
+    if (!esito.ok) {
+      expect(esito.errore.tipo).toBe('limite');
+      expect(esito.errore.messaggio).toContain('8');
+    }
+  });
+
+  it('più randint di quelli previsti, e limiti al contrario', () => {
+    const pochi = esegui('import random\na = random.randint(1, 6)\nb = random.randint(1, 6)', { casuali: [3] });
+    expect(pochi.ok).toBe(false);
+    if (!pochi.ok) expect(pochi.errore.messaggio).toContain('più numeri casuali');
+    const rovescio = esegui('import random\nprint(random.randint(6, 1))', { casuali: [3] });
+    expect(rovescio.ok).toBe(false);
+    if (!rovescio.ok) expect(rovescio.errore.messaggio).toContain('più piccolo');
+  });
+
+  it('errori di scrittura di randint', () => {
+    expect(errore('import random\nx = randint(1, 6)').messaggio).toContain('`random.randint(...)`');
+    expect(errore('import random\nx = random.randint(6)').messaggio).toContain('due numeri');
+    expect(errore('import random\nx = random.randint()').messaggio).toContain('due numeri');
+    expect(errore('import random\nx = random.choice(1)').tipo).toBe('nonAmmesso');
+    expect(errore('import random\nx = random').messaggio).toContain('`random.randint(a, b)`');
+    expect(errore('import random\nx = random.randint("a", 6)').tipo).toBe('tipo');
+    expect(errore('random = 5').tipo).toBe('nonAmmesso');
+  });
+
+  it('import random non conta come riga per il giudice e si può ripetere', () => {
+    const esito = con('import random\nimport random\nprint(random.randint(1, 1))', [1]);
+    expect(esito.struttura.numRighe).toBe(1);
   });
 });
 

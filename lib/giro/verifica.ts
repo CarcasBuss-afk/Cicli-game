@@ -3,7 +3,7 @@
  * regola, il giudice (fatto come chiede la tappa?). È qui perché il giudice è lento e
  * può fallire: si chiama **fuori** dalle transazioni Firestore. */
 import 'server-only';
-import type { Esercizio } from './esercizi';
+import { opzioniDiProva, type Esercizio } from './esercizi';
 import { hintGiudice } from './giudice';
 import { giudica } from './giudiceClient';
 import { valutaRisposta, type Valutazione } from './hint';
@@ -13,8 +13,8 @@ export async function verificaConsegna(esercizio: Esercizio, codice: string): Pr
   const valutazione = valutaRisposta(esercizio, codice);
   if (!valutazione.promosso || !esercizio.regola) return valutazione;
 
-  const risposte = esercizio.prove?.[0]?.risposte;
-  const esito = esegui(codice, risposte ? { risposte } : {});
+  const prova = esercizio.prove?.[0];
+  const esito = esegui(codice, opzioniDiProva(prova));
   if (!esito.ok) return valutazione; // già promosso: non succede, ma non si blocca nessuno
 
   const verdetto = await giudica({
@@ -24,7 +24,8 @@ export async function verificaConsegna(esercizio: Esercizio, codice: string): Pr
     codice,
     struttura: esito.struttura,
     giri: esito.giri,
-    risposte,
+    risposte: prova?.risposte,
+    casuali: prova?.casuali,
   });
   if (verdetto.genuino) return valutazione;
   return { ...valutazione, promosso: false, hint: hintGiudice(verdetto.motivo, codice) };

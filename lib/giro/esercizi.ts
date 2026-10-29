@@ -8,7 +8,7 @@
  * Il modulo è puro: niente Firestore, niente Next. La soluzione di riferimento di ogni
  * tappa resta sul server (vedi `esercizioPerAllievo`).
  */
-import { esegui } from './interprete';
+import { esegui, type Opzioni } from './interprete';
 
 export type TipoEsercizio =
   | 'ripeti-n' // stampa N volte la stessa frase
@@ -64,6 +64,27 @@ export const REGOLE = {
 export interface Prova {
   risposte: string[];
   output: string[];
+  /** I numeri che `random.randint()` dà in questa prova, nell'ordine (i compiti con il caso). */
+  casuali?: number[];
+}
+
+/** Le opzioni con cui il micro-interprete esegue il codice su una prova: le risposte e i numeri "casuali". */
+export function opzioniDiProva(prova: Prova | undefined): Opzioni {
+  if (!prova) return {};
+  const opzioni: Opzioni = { risposte: prova.risposte };
+  if (prova.casuali) opzioni.casuali = prova.casuali;
+  return opzioni;
+}
+
+/** Come si racconta una prova all'allievo: «rispondendo «a», «b»» e, se c'è, «con il numero casuale 7». */
+export function descriviProva(prova: Prova): string {
+  const virgolette = (s: string) => `«${s}»`;
+  const pezzi: string[] = [];
+  if (prova.risposte.length > 0) pezzi.push(`rispondendo ${prova.risposte.map(virgolette).join(', ')}`);
+  if (prova.casuali && prova.casuali.length > 0) {
+    pezzi.push(prova.casuali.length === 1 ? `con il numero casuale ${prova.casuali[0]}` : `con i numeri casuali ${prova.casuali.join(', ')}`);
+  }
+  return pezzi.join(' e ');
 }
 
 export interface Esercizio {
@@ -101,13 +122,18 @@ export type EsercizioPubblico = Omit<Esercizio, 'soluzione' | 'outputAtteso' | '
   outputAtteso?: string[];
   /** Le risposte di prova con cui il programma viene eseguito (la prova mostrata). */
   risposte?: string[];
+  /** I numeri che `randint()` dà nella prova mostrata, se il compito usa il caso. */
+  casuali?: number[];
 };
 
 export function esercizioPerAllievo(tappa: Esercizio): EsercizioPubblico {
   const { soluzione: _soluzione, outputAtteso, prove, ...resto } = tappa;
   void _soluzione;
   const pubblico: EsercizioPubblico = tappa.mostraOutput ? { ...resto, outputAtteso } : resto;
-  if (prove && prove.length > 0) pubblico.risposte = prove[0].risposte;
+  if (prove && prove.length > 0) {
+    pubblico.risposte = prove[0].risposte;
+    if (prove[0].casuali) pubblico.casuali = prove[0].casuali;
+  }
   return pubblico;
 }
 

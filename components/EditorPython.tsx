@@ -48,8 +48,19 @@ function suggerimentiGiro(context: CompletionContext) {
         type: 'keyword',
         boost: 99,
       }),
+      snippetCompletion('while ${totale} < ${100}:\n\t${}', {
+        label: 'while',
+        detail: 'ciclo finché la condizione è vera',
+        type: 'keyword',
+        boost: 98,
+      }),
       snippetCompletion('range(${5})', { label: 'range', detail: 'da 0 a 4', type: 'function', boost: 90 }),
       snippetCompletion('print(${})', { label: 'print', detail: 'stampa una riga', type: 'function', boost: 95 }),
+      snippetCompletion('if ${x} == ${3}:\n\t${}', { label: 'if', detail: 'se la condizione è vera', type: 'keyword', boost: 85 }),
+      snippetCompletion('input(${"Domanda? "})', { label: 'input', detail: 'chiede una risposta (testo)', type: 'function', boost: 80 }),
+      snippetCompletion('int(${})', { label: 'int', detail: 'da testo a numero', type: 'function', boost: 80 }),
+      snippetCompletion('random.randint(${1}, ${10})', { label: 'random.randint', detail: 'numero casuale fra 1 e 10', type: 'function', boost: 70 }),
+      snippetCompletion('import random', { label: 'import random', detail: 'in cima: serve per randint', type: 'keyword', boost: 70 }),
     ],
   };
 }

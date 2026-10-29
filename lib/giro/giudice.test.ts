@@ -91,3 +91,16 @@ describe('il giudice finto', () => {
     expect(furbo.genuino).toBe(false);
   });
 });
+
+describe('i fatti sui while e sul caso', () => {
+  it('conta i while, se la condizione cambia nel corpo, e i randint della prova', () => {
+    const codice = 'import random\nn = random.randint(1, 6)\nlanci = 1\nwhile n != 6:\n    n = random.randint(1, 6)\n    lanci += 1\nprint(lanci)';
+    const esito = esegui(codice, { casuali: [2, 6] });
+    if (!esito.ok) throw new Error(esito.errore.messaggio);
+    const m = messaggioGiudizio({ ...contesto('print("Evviva")'), codice, struttura: esito.struttura, giri: esito.giri, casuali: [2, 6] });
+    expect(m).toContain('cicli while: 1 (di cui con una variabile della condizione che cambia nel corpo: 1)');
+    expect(m).toContain('random.randint(): 2 (di cui dentro un ciclo: 1)');
+    expect(m).toContain('randint() ha dato in questa prova, nell\'ordine: 2, 6');
+    expect(PROMPT_GIUDICE).toContain('while');
+  });
+});
