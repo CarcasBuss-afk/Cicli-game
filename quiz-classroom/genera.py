@@ -4,7 +4,8 @@
 
 Le domande stanno in `domande.py`. Questo file esegue con Python vero il codice di ogni
 domanda, controlla che la risposta segnata come corretta sia davvero l'unica giusta, e scrive
-`QuizGiroDeiCicli.gs`, lo script Apps Script che crea i tre Moduli Google in modalità quiz.
+`QuizGiroDeiCicli.gs`, lo script Apps Script che crea i Moduli Google in modalità quiz,
+`QuizVerificaRecupero.gs` (solo il recupero, solo testo) e la versione con le immagini.
 """
 
 import contextlib
@@ -74,6 +75,15 @@ def genera_gs():
     scrivi_gs("modello.gs", dati, "QuizGiroDeiCicli.gs")
 
 
+def genera_gs_recupero():
+    """Solo la Verifica di recupero, solo testo: domanda, codice sotto e quattro risposte."""
+    qz = QUIZ[-1]
+    dati = {"titolo": qz["titolo"], "descrizione": qz["descrizione"],
+            "domande": [{k: d[k] for k in ("testo", "codice", "opzioni", "corretta", "spiegazione")}
+                        for d in qz["domande"]]}
+    scrivi_gs("modello_recupero.gs", dati, "QuizVerificaRecupero.gs")
+
+
 def genera_gs_immagini():
     """Il codice delle domande e le opzioni fatte di codice diventano PNG stile VS Code."""
     CARTELLA_IMMAGINI.mkdir(exist_ok=True)
@@ -108,5 +118,7 @@ if __name__ == "__main__":
         print("\n".join(errori))
         raise SystemExit(1)
     genera_gs()
+    genera_gs_recupero()
     n = genera_gs_immagini()
-    print(f"tutto giusto: scritti QuizGiroDeiCicli.gs, QuizGiroDeiCicliImmagini.gs e {n} immagini")
+    print(f"tutto giusto: scritti QuizGiroDeiCicli.gs, QuizVerificaRecupero.gs, "
+          f"QuizGiroDeiCicliImmagini.gs e {n} immagini")
