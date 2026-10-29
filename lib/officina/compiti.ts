@@ -16,6 +16,7 @@ import { fasiPromozione, schedaPromozione } from './compitiCondizioni';
 import { fasiConteggio, fasiDiario, fasiRecord, schedaConteggio, schedaDiario, schedaRecord } from './compitiDiario';
 import { fasiCartello, fasiClassifica, fasiLancio, fasiScala, schedaCartello, schedaClassifica, schedaLancio, schedaScala } from './compitiIniziali';
 import { fasiPatentino, schedaPatentino } from './compitiPatentino';
+import { fasiTimer, schedaTimer } from './compitiWhile';
 
 export type CompitoId =
   | 'cartello'
@@ -29,7 +30,8 @@ export type CompitoId =
   | 'diario'
   | 'record'
   | 'conteggio'
-  | 'patentino';
+  | 'patentino'
+  | 'timer';
 
 export interface SchedaCompito {
   id: CompitoId;
@@ -449,6 +451,7 @@ const PROGETTI: Record<CompitoId, { fasi: (seme: number) => Esercizio[]; scheda:
   record: { fasi: fasiRecord, scheda: schedaRecord },
   conteggio: { fasi: fasiConteggio, scheda: schedaConteggio },
   patentino: { fasi: fasiPatentino, scheda: schedaPatentino },
+  timer: { fasi: fasiTimer, scheda: schedaTimer },
 };
 
 /* ------------------------------------------------------------------- sezioni */
@@ -468,7 +471,8 @@ export interface Sezione {
  * variabile del ciclo · il passo · la variabile in un calcolo · l'accumulatore · due
  * variabili e l'ordine nel corpo · input() · decidere con un if (§17) · input() dentro il
  * ciclo · la variabile che ricorda il migliore · il contatore in un ramo (§18) · il
- * patentino (§19). La seconda, il `while`, arriva quando la classe ci arriva.
+ * patentino (§19). La seconda, il `while` (§22), dodici compiti con le famiglie d'uso
+ * mescolate, a partire dal timer del forno (i tre gesti del `while`).
  */
 export const SEZIONI: Sezione[] = [
   {
@@ -476,7 +480,7 @@ export const SEZIONI: Sezione[] = [
     titolo: 'Il ciclo for',
     compiti: ['cartello', 'classifica', 'lancio', 'scala', 'salvadanaio', 'allenamento', 'scontrino', 'promozione', 'diario', 'record', 'conteggio', 'patentino'],
   },
-  { id: 'while', titolo: 'Il ciclo while', compiti: [] },
+  { id: 'while', titolo: 'Il ciclo while', compiti: ['timer'] },
 ];
 
 /** Tutti i compiti nell'ordine in cui si sbloccano: sezione dopo sezione. */

@@ -484,14 +484,15 @@ describe('le uscite che contano (il contatore in un ramo)', () => {
 });
 
 describe('le sezioni del percorso', () => {
-  it('il percorso è le sezioni una dopo l\'altra; il for finisce col patentino, il while è ancora vuoto', () => {
+  it('il percorso è le sezioni una dopo l\'altra; il for finisce col patentino, il while comincia dal timer', () => {
     expect(SEZIONI.map((s) => s.id)).toEqual(['for', 'while']);
     expect(ELENCO_COMPITI).toEqual(SEZIONI.flatMap((s) => s.compiti));
     const [perFor, perWhile] = SEZIONI;
     expect(perFor.compiti[perFor.compiti.length - 1]).toBe('patentino');
-    expect(perWhile.compiti).toEqual([]);
+    expect(perWhile.compiti[0]).toBe('timer');
     expect(sezioneDi('cartello').id).toBe('for');
     expect(sezioneDi('patentino').id).toBe('for');
+    expect(sezioneDi('timer').id).toBe('while');
   });
 
   it('il patentino è l\'unico esame', () => {
@@ -553,5 +554,81 @@ describe('il patentino dei cicli for (l\'esame)', () => {
     expect(scheda.esame).toBe(true);
     expect(scheda.committente).toContain('tutor è spento');
     expect(scheda.outputFinale).toEqual(fasi[4].outputAtteso);
+  });
+});
+
+describe('il timer del forno (i tre gesti del while)', () => {
+  const fasi = generaCompito('timer', 21);
+  const minuti = Number(fasi[0].outputAtteso[0]);
+
+  it('la fase 1 è guidata: il while è già scritto, manca la riga che fa scendere i minuti, e consegnarlo tale e quale non vale', () => {
+    expect(fasi[0].codiceIniziale).toContain('while minuti > 0:');
+    expect(fasi[0].codiceIniziale).toContain('# qui manca');
+    expect(fasi.slice(1).every((f) => f.codiceIniziale === undefined)).toBe(true);
+    const uguale = valutaRisposta(fasi[0], fasi[0].codiceIniziale!);
+    expect(uguale.promosso).toBe(false);
+    expect(uguale.hint).toContain('Non hai cambiato niente');
+  });
+
+  it("senza la riga che fa scendere i minuti il ciclo non si ferma mai: lo dice l'hint", () => {
+    const senza = fasi[0].codiceIniziale!.split('\n').slice(0, 3).join('\n');
+    const esito = valutaRisposta(fasi[0], senza);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('non si ferma mai');
+  });
+
+  it('la forma lunga `minuti = minuti - 1` vale quanto `-=`; i minuti sono fra 5 e 9', () => {
+    const lunga = fasi[0].soluzione.replace('minuti -= 1', 'minuti = minuti - 1');
+    expect(valutaRisposta(fasi[0], lunga).promosso).toBe(true);
+    for (const seme of SEMI) {
+      const m = Number(generaCompito('timer', seme)[0].outputAtteso[0]);
+      expect(m).toBeGreaterThanOrEqual(5);
+      expect(m).toBeLessThanOrEqual(9);
+    }
+  });
+
+  it('dalla fase 4 i minuti arrivano da input(): tre prove, quella mostrata e due nascoste (3 e 10 minuti)', () => {
+    for (const fase of fasi.slice(3)) {
+      expect(fase.prove).toHaveLength(3);
+      expect(fase.prove![0].risposte).toEqual([String(minuti)]);
+      expect(fase.prove!.slice(1).map((p) => p.risposte)).toEqual([['3'], ['10']]);
+      expect(fase.prove![0].output).toEqual(fase.outputAtteso);
+    }
+    expect(fasi[0].prove).toBeUndefined();
+    expect(esercizioPerAllievo(fasi[3]).risposte).toEqual([String(minuti)]);
+  });
+
+  it('i minuti scritti nel programma passano la prova mostrata ma cadono su quella nascosta', () => {
+    const aMano = fasi[3].soluzione.replace('int(input("Quanti minuti? "))', String(minuti));
+    const esito = valutaRisposta(fasi[3], aMano);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/rispondendo «3»/);
+  });
+
+  it("alla fase 5 l'ultimo minuto è al singolare, su tutte le prove; senza if cade già sulla prova mostrata", () => {
+    for (const prova of fasi[4].prove!) {
+      expect(prova.output[prova.output.length - 2]).toBe('Manca 1 minuto');
+      expect(prova.output[0]).toMatch(/^Mancano \d+ minuti$/);
+    }
+    expect(valutaRisposta(fasi[4], fasi[3].soluzione).promosso).toBe(false);
+    const dueIf = fasi[4].soluzione.replace('    else:\n        print(f"Mancano {minuti} minuti")', '    if minuti > 1:\n        print(f"Mancano {minuti} minuti")');
+    expect(valutaRisposta(fasi[4], dueIf).promosso).toBe(true);
+  });
+
+  it("il for al posto del while passa l'interprete: lo ferma la regola per il giudice, che la nomina", () => {
+    const conFor = `for minuti in range(${minuti}, 0, -1):\n    print(minuti)`;
+    expect(valutaRisposta(fasi[0], conFor).promosso).toBe(true);
+    expect(fasi[0].regola).toContain('`while`');
+    expect(fasi[0].regola).toContain('`for`');
+    const esito = esegui(conFor);
+    if (esito.ok) expect(esito.struttura).toMatchObject({ numWhile: 0, numFor: 1 });
+  });
+
+  it("la scheda racconta il forno e mostra il prodotto finale con l'avviso", () => {
+    const scheda = schedaCompito('timer', 21);
+    expect(scheda.titolo).toBe('Il timer del forno');
+    expect(scheda.committente).toContain('`while`');
+    expect(scheda.outputFinale[scheda.outputFinale.length - 1]).toMatch(/pront/);
+    expect(scheda.dati).toContain(`Minuti di prova: ${minuti}`);
   });
 });

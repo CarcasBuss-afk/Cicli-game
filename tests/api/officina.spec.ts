@@ -4,6 +4,7 @@
  * dominio sbagliato, compito bloccato, fase sbagliata. */
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test';
 import { AUTH_EMULATOR_HOST, TEACHER_EMAIL } from './ambiente';
+import { ELENCO_COMPITI } from '../../lib/officina/compiti';
 
 type Esercizio = { tipo: string; soluzione: string; outputAtteso: string[] };
 
@@ -95,12 +96,13 @@ test.describe("l'Officina", () => {
       ['record', 'bloccato'],
       ['conteggio', 'bloccato'],
       ['patentino', 'bloccato'],
+      ['timer', 'bloccato'],
     ]);
     expect(p.compiti[0]).toMatchObject({ titolo: 'Il cartello della festa', fasi: 0, fasiTotali: 5, consigli: 0, voto: null, votoSeFinisci: 10, sezione: 'for', esame: false });
     expect(p.compiti[11]).toMatchObject({ id: 'patentino', esame: true, sezione: 'for' });
     expect(p.sezioni.map((s: { id: string; titolo: string; compiti: string[] }) => [s.id, s.titolo, s.compiti.length])).toEqual([
       ['for', 'Il ciclo for', 12],
-      ['while', 'Il ciclo while', 0],
+      ['while', 'Il ciclo while', 1],
     ]);
 
     const bloccato = await officina(request, luca, 'compito', { classeId, compitoId: 'classifica' });
@@ -351,7 +353,8 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await expect(percorso.nth(0)).toContainText('Comincia');
     await expect(percorso.nth(1)).toContainText('si sblocca');
     await expect(percorso.nth(11)).toContainText('esame');
-    await expect(page.getByRole('region', { name: 'Il ciclo while' })).toContainText('arrivano');
+    await expect(page.getByRole('region', { name: 'Il ciclo while' })).toContainText('Il timer del forno');
+    await expect(page.getByRole('region', { name: 'Il ciclo while' })).toContainText('si sblocca');
     await expect(page.getByLabel('media')).toHaveText('–');
 
     // Luca, che era già dentro, apre il compito.
@@ -407,7 +410,7 @@ test.describe("l'Officina nella dashboard del docente", () => {
     await expect(riga).toContainText('2/5');
     await expect(riga).toContainText('🧑‍🏫 1');
     await expect(riga).toContainText('🔒');
-    await expect(riga.locator('td').nth(13)).toHaveText('10'); // la media (dopo i 12 compiti): un solo compito finito, senza domande
+    await expect(riga.locator('td').nth(1 + ELENCO_COMPITI.length)).toHaveText('10'); // la media (dopo i compiti): un solo compito finito, senza domande
 
     await riga.getByRole('button', { name: `Luca Rossi: classifica` }).click();
     const lavoro = page.getByRole('region', { name: "lavoro dell'allievo" });
@@ -421,6 +424,6 @@ test.describe("l'Officina nella dashboard del docente", () => {
     const file = await download;
     const testo = await (await import('node:fs/promises')).readFile(await file.path(), 'utf-8');
     expect(testo).toContain('Nome;Email;Il cartello della festa · fasi;Il cartello della festa · domande;Il cartello della festa · voto;');
-    expect(testo).toContain(`Luca Rossi;${luca.email};5;0;10;2;1;;${'0;0;;'.repeat(10)}10`);
+    expect(testo).toContain(`Luca Rossi;${luca.email};5;0;10;2;1;;${'0;0;;'.repeat(ELENCO_COMPITI.length - 2)}10`);
   });
 });
