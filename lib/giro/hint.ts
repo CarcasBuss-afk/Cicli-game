@@ -230,6 +230,32 @@ function spiega(tappa: Esercizio, prodotto: string[], atteso: string[]): string 
   return hintSpecifico(tappa, prodotto, atteso) ?? hintConfronto(prodotto, atteso);
 }
 
+/**
+ * Se l'output differisce dall'atteso solo per come sono scritte le righe (maiuscole, spazi,
+ * punteggiatura), la prima riga sbagliata e che cosa controllare; altrimenti null. Serve
+ * sulle prove nascoste: lì la riga sbagliata spesso sta in un ramo che la prova mostrata
+ * non percorre, e si cita solo quello che l'allievo stampa, mai l'atteso.
+ */
+function scivoloneDiTesto(prodotto: string[], atteso: string[]): { riga: string; cosa: string } | null {
+  if (prodotto.length !== atteso.length) return null;
+  const senzaSpazi = (r: string) => r.replace(/\s+/g, '');
+  const nudo = (r: string) => senzaSpazi(r).toLowerCase().replace(/[.,;:!?…]/g, '');
+  let primo: { riga: string; cosa: string } | null = null;
+  for (let i = 0; i < prodotto.length; i++) {
+    const mio = prodotto[i];
+    const suo = atteso[i];
+    if (mio === suo) continue;
+    if (nudo(mio) !== nudo(suo)) return null;
+    if (primo) continue;
+    let cosa = 'maiuscole, spazi e punteggiatura';
+    if (mio.toLowerCase() === suo.toLowerCase()) cosa = 'le maiuscole e le minuscole';
+    else if (senzaSpazi(mio) === senzaSpazi(suo)) cosa = 'gli spazi';
+    else if (mio.replace(/[.,;:!?…]/g, '') === suo.replace(/[.,;:!?…]/g, '')) cosa = 'la punteggiatura';
+    primo = { riga: mio, cosa };
+  }
+  return primo;
+}
+
 /** Il codice senza le differenze che non contano (spazi a fine riga, righe vuote). */
 function normalizzaCodice(codice: string): string {
   return codice
@@ -313,10 +339,17 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
           schermo,
         };
       }
-      if (!uguali(normalizza(altro.output), normalizza(prova.output))) {
+      const prodottoAltro = normalizza(altro.output);
+      if (!uguali(prodottoAltro, normalizza(prova.output))) {
+        // Una riga scritta male (maiuscole, spazi, punteggiatura) non è un valore a mano:
+        // succede nel ramo che la prova mostrata non percorre, e l'hint dell'`input()` confonderebbe.
+        const scivolone = scivoloneDiTesto(prodottoAltro, normalizza(prova.output));
+        const motivo = scivolone
+          ? `una riga non è scritta come dice la consegna. Stampi ${virgolette(scivolone.riga)}: controlla ${scivolone.cosa}`
+          : `stampa un'altra cosa: ${daDove}`;
         return {
           promosso: false,
-          hint: `Con i dati di prova funziona, ma ${descriviProva(prova)} stampa un'altra cosa: ${daDove}`,
+          hint: `Con i dati di prova funziona, ma ${descriviProva(prova)} ${motivo}`,
           output: prodotto,
           schermo,
         };

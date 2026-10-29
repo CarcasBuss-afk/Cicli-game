@@ -413,6 +413,50 @@ describe('prove con il numero casuale (randint dalla prova)', () => {
     expect(esito.hint).toContain('`randint()`');
   });
 
+  it("una riga scritta male solo nel ramo della prova nascosta: l'hint cita la riga, non l'`input()`", () => {
+    const promozione: Esercizio = {
+      tipo: 'progetto',
+      terreno: 'montagna',
+      consegna: 'Sotto la soglia `Ti mancano X € per lo sconto`',
+      outputAtteso: ['Totale: 25 €', 'Sconto fedeltà: -1 €'],
+      mostraOutput: true,
+      risposta: 'codice',
+      soluzione: [
+        'panini = int(input("Quanti panini? "))',
+        'totale = panini * 5',
+        'print(f"Totale: {totale} €")',
+        'if totale >= 20:',
+        '    print("Sconto fedeltà: -1 €")',
+        'else:',
+        '    print(f"Ti mancano {20 - totale} € per lo sconto")',
+      ].join('\n'),
+      prove: [
+        { risposte: ['5'], output: ['Totale: 25 €', 'Sconto fedeltà: -1 €'] },
+        { risposte: ['2'], output: ['Totale: 10 €', 'Ti mancano 10 € per lo sconto'] },
+      ],
+    };
+    expect(valutaRisposta(promozione, promozione.soluzione).promosso).toBe(true);
+
+    const maiuscola = promozione.soluzione.replace('per lo sconto")', 'Per lo sconto.")');
+    const esito = valutaRisposta(promozione, maiuscola);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('rispondendo «2» una riga non è scritta come dice la consegna');
+    expect(esito.hint).toContain('Stampi «Ti mancano 10 € Per lo sconto.»');
+    expect(esito.hint).toContain('maiuscole, spazi e punteggiatura');
+    expect(esito.hint).not.toContain('`input()`');
+    expect(esito.hint).not.toContain('per lo sconto»');
+
+    const spazio = promozione.soluzione.replace('€ per lo sconto', '€  per lo sconto');
+    expect(valutaRisposta(promozione, spazio).hint).toContain('controlla gli spazi');
+
+    // Un valore scritto a mano al posto della variabile resta il caso dell'`input()`.
+    const aMano = promozione.soluzione.replace('{20 - totale}', '10');
+    const furbo = valutaRisposta(promozione, aMano.replace('panini * 5', '25'));
+    expect(furbo.promosso).toBe(false);
+    expect(furbo.hint).toContain("stampa un'altra cosa");
+    expect(furbo.hint).toContain('`input()`');
+  });
+
   it('randint con limiti troppo stretti cade dove il numero di prova non ci sta', () => {
     const stretto = indovina.soluzione.replace('random.randint(1, 10)', 'random.randint(5, 10)');
     const esito = valutaRisposta(indovina, stretto);
