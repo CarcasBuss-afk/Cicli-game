@@ -25,17 +25,28 @@ export default function Schermo({ righe, titolo, classe = '' }: { righe: RigaSch
   );
 }
 
-/** Le risposte di prova con cui il programma viene eseguito. */
-export function RisposteDiProva({ risposte }: { risposte: string[] }) {
+/** I dati di prova con cui il programma viene eseguito: le risposte alle `input()` e, se il compito usa il caso, i numeri che `randint` dà. */
+export function RisposteDiProva({ risposte, casuali = [] }: { risposte: string[]; casuali?: number[] }) {
+  const chip = (v: string | number, i: number) => (
+    <span key={i} className="rounded bg-(--color-giallo)/20 px-2 py-0.5 font-mono text-(--color-giallo)">
+      {v}
+    </span>
+  );
   return (
     <p className="flex flex-wrap items-center gap-2 text-sm text-(--color-testo-tenue)">
-      <span>Il programma viene provato rispondendo, nell&apos;ordine:</span>
-      {risposte.map((r, i) => (
-        <span key={i} className="rounded bg-(--color-giallo)/20 px-2 py-0.5 font-mono text-(--color-giallo)">
-          {r}
-        </span>
-      ))}
-      <span>(e poi con altre risposte: deve funzionare per chiunque)</span>
+      {risposte.length > 0 && (
+        <>
+          <span>Il programma viene provato rispondendo, nell&apos;ordine:</span>
+          {risposte.map(chip)}
+        </>
+      )}
+      {casuali.length > 0 && (
+        <>
+          <span>{risposte.length > 0 ? 'e' : 'Il programma viene provato'} con {casuali.length === 1 ? 'il numero casuale' : 'i numeri casuali'}:</span>
+          {casuali.map(chip)}
+        </>
+      )}
+      <span>(e poi con altri dati: deve funzionare sempre)</span>
     </p>
   );
 }

@@ -212,7 +212,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
           <h2 className="text-xl font-bold">
             <Testo>{es.consegna}</Testo>
           </h2>
-          {es.risposte && <RisposteDiProva risposte={es.risposte} />}
+          {(es.risposte || es.casuali) && <RisposteDiProva risposte={es.risposte ?? []} casuali={es.casuali} />}
           {es.outputAtteso && (
             <div>
               <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Deve stampare:</p>

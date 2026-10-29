@@ -97,12 +97,24 @@ test.describe("l'Officina", () => {
       ['conteggio', 'bloccato'],
       ['patentino', 'bloccato'],
       ['timer', 'bloccato'],
+      ['obiettivo', 'bloccato'],
+      ['parola', 'bloccato'],
+      ['batteria', 'bloccato'],
+      ['cassa', 'bloccato'],
+      ['pettegolezzo', 'bloccato'],
+      ['distributore', 'bloccato'],
+      ['menu', 'bloccato'],
+      ['indovina', 'bloccato'],
+      ['dado', 'bloccato'],
+      ['duello', 'bloccato'],
+      ['patentinoWhile', 'bloccato'],
     ]);
+    expect(p.compiti[23]).toMatchObject({ id: 'patentinoWhile', esame: true, sezione: 'while' });
     expect(p.compiti[0]).toMatchObject({ titolo: 'Il cartello della festa', fasi: 0, fasiTotali: 5, consigli: 0, voto: null, votoSeFinisci: 10, sezione: 'for', esame: false });
     expect(p.compiti[11]).toMatchObject({ id: 'patentino', esame: true, sezione: 'for' });
     expect(p.sezioni.map((s: { id: string; titolo: string; compiti: string[] }) => [s.id, s.titolo, s.compiti.length])).toEqual([
       ['for', 'Il ciclo for', 12],
-      ['while', 'Il ciclo while', 1],
+      ['while', 'Il ciclo while', 12],
     ]);
 
     const bloccato = await officina(request, luca, 'compito', { classeId, compitoId: 'classifica' });

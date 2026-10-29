@@ -495,8 +495,10 @@ describe('le sezioni del percorso', () => {
     expect(sezioneDi('timer').id).toBe('while');
   });
 
-  it('il patentino è l\'unico esame', () => {
-    expect(ELENCO_COMPITI.filter(eEsame)).toEqual(['patentino']);
+  it('i due patentini sono gli unici esami, uno in fondo a ogni sezione', () => {
+    expect(ELENCO_COMPITI.filter(eEsame)).toEqual(['patentino', 'patentinoWhile']);
+    expect(SEZIONI[1].compiti).toHaveLength(12);
+    expect(SEZIONI[1].compiti[11]).toBe('patentinoWhile');
   });
 });
 
@@ -772,5 +774,192 @@ describe('il pettegolezzo (crescere moltiplicando)', () => {
     const [mostrata, ...nascoste] = fasi[3].prove!;
     for (const n of nascoste) expect(n.output.length).toBeLessThan(mostrata.output.length);
     for (const prova of fasi[4].prove!) expect(prova.output.filter((r) => r === 'Metà scuola lo sa!').length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('il distributore (monete finché basta)', () => {
+  const fasi = generaCompito('distributore', 27);
+
+  it('tre prove: le monete mostrate, una da 2 €, le monete giuste senza resto; il ciclo si ferma appena basta', () => {
+    for (const fase of fasi) {
+      expect(fase.prove).toHaveLength(3);
+      expect(fase.prove![1].risposte).toEqual(['200']);
+    }
+    const giuste = fasi[4].prove![2];
+    expect(giuste.output[giuste.output.length - 1]).toBe('Nessun resto');
+    const due = fasi[4].prove![1];
+    expect(due.output[due.output.length - 1]).toMatch(/^Resto: \d+ centesimi$/);
+  });
+
+  it('le monete scritte nel programma passano la prova mostrata ma cadono su quella nascosta', () => {
+    const [mostrata] = fasi[0].prove!;
+    const aMano = mostrata.risposte.map((m) => `versato += ${m}\nprint(f"Versati {versato} centesimi")`).join('\n');
+    const esito = valutaRisposta(fasi[0], `versato = 0\n${aMano}`);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/rispondendo «200»/);
+  });
+});
+
+describe('la cassa con il menu (la sentinella con l\'if dentro)', () => {
+  const fasi = generaCompito('menu', 12);
+
+  it('riparte dalla cassa del bar già scritta, e consegnarla tale e quale non vale', () => {
+    expect(fasi[0].codiceIniziale).toContain('while prezzo != 0:');
+    expect(fasi[0].codiceIniziale).toContain('totale += prezzo');
+    expect(valutaRisposta(fasi[0], fasi[0].codiceIniziale!).promosso).toBe(false);
+  });
+
+  it('dalla fase 2 c\'è il panino, dalla 3 un codice sconosciuto in ogni prova; la mostrata ha due caffè', () => {
+    expect(fasi[0].prove![0].output.some((r) => r.startsWith('Panino'))).toBe(false);
+    expect(fasi[1].prove![0].output.some((r) => r.startsWith('Panino'))).toBe(true);
+    for (const prova of fasi[2].prove!) expect(prova.output).toContain('Codice sconosciuto');
+    expect(fasi[3].prove![0].output).toContain('Caffè venduti: 2');
+    expect(fasi[4].prove![0].output[fasi[4].prove![0].output.length - 1]).toBe('Hai preso 2 caffè: il prossimo è gratis!');
+    expect(fasi[4].prove![1].output.some((r) => r.includes('gratis'))).toBe(false);
+  });
+
+  it('senza l\'else il codice sconosciuto non stampa niente: cade già sulla prova mostrata', () => {
+    expect(valutaRisposta(fasi[2], fasi[1].soluzione).promosso).toBe(false);
+  });
+});
+
+describe('indovina il numero (randint, fase 1 guidata)', () => {
+  const fasi = generaCompito('indovina', 31);
+  const segreto = fasi[0].prove![0].casuali![0];
+
+  it('la fase 1 è guidata: import random e randint già scritti; il segreto di prova va stampato con la variabile, non a mano', () => {
+    expect(fasi[0].codiceIniziale).toContain('import random');
+    expect(fasi[0].codiceIniziale).toContain('random.randint(1, 20)');
+    expect(fasi[0].outputAtteso).toEqual([`Il numero segreto è ${segreto}`]);
+    const aMano = `import random\nsegreto = random.randint(1, 20)\nprint("Il numero segreto è ${segreto}")`;
+    const esito = valutaRisposta(fasi[0], aMano);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('con il numero casuale 1');
+    expect(esercizioPerAllievo(fasi[0]).casuali).toEqual([segreto]);
+    expect(esercizioPerAllievo(fasi[0]).risposte).toEqual([]);
+  });
+
+  it('i segreti nascosti stanno agli estremi (1 e 20): limiti troppo stretti cadono lì', () => {
+    expect(fasi[1].prove!.map((p) => p.casuali![0])).toEqual([segreto, 1, 20]);
+    const stretto = fasi[1].soluzione.replace('random.randint(1, 20)', 'random.randint(2, 19)');
+    const esito = valutaRisposta(fasi[1], stretto);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/si ferma/);
+  });
+
+  it('più alto e più basso seguono il segreto; i tentativi dell\'ultima prova sono uno solo', () => {
+    const [mostrata] = fasi[2].prove!;
+    mostrata.risposte.slice(0, -1).forEach((t, i) => {
+      expect(mostrata.output[i]).toBe(Number(t) < segreto ? 'Più alto' : 'Più basso');
+    });
+    expect(fasi[3].prove![2].output).toEqual(['Indovinato: era 20, in 1 tentativi']);
+    expect(fasi[4].prove![1].output[fasi[4].prove![1].output.length - 1]).toBe("Ce l'hai fatta, alla fine");
+  });
+
+  it('senza import random il programma non gira, con il messaggio giusto', () => {
+    const senza = fasi[1].soluzione.replace('import random\n', '');
+    const esito = valutaRisposta(fasi[1], senza);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('`import random`');
+  });
+});
+
+describe('il dado per partire (randint dentro il ciclo)', () => {
+  const fasi = generaCompito('dado', 44);
+
+  it('la sequenza mostrata finisce con il 6 e ha da 4 a 6 lanci; le nascoste: il 6 subito, due lanci', () => {
+    for (const seme of SEMI) {
+      const [mostrata, subito, breve] = generaCompito('dado', seme)[1].prove!;
+      expect(mostrata.casuali![mostrata.casuali!.length - 1]).toBe(6);
+      expect(mostrata.casuali!.slice(0, -1).every((d) => d >= 1 && d <= 5)).toBe(true);
+      expect(mostrata.casuali!.length).toBeGreaterThanOrEqual(4);
+      expect(mostrata.casuali!.length).toBeLessThanOrEqual(6);
+      expect(subito.casuali).toEqual([6]);
+      expect(breve.casuali).toHaveLength(2);
+    }
+  });
+
+  it('alla fase 1 la prova dà un numero solo; dalla 2 tutti i lanci, e chi non ritira in fondo al corpo non si ferma mai', () => {
+    expect(fasi[0].prove![0].casuali).toHaveLength(1);
+    const senza = fasi[1].soluzione.replace('\n    dado = random.randint(1, 6)\nprint', '\nprint');
+    expect(senza).not.toBe(fasi[1].soluzione);
+    const esito = valutaRisposta(fasi[1], senza);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/non si ferma mai/);
+  });
+
+  it('il giudizio: sfortuna sopra i tre lanci, bravo altrimenti', () => {
+    const [mostrata, subito] = fasi[4].prove!;
+    expect(mostrata.output[mostrata.output.length - 1]).toBe('Che sfortuna, quanto ci hai messo!');
+    expect(subito.output).toEqual(['Sei! Si parte!', 'Partito al lancio 1', 'Pochi lanci, bravo!']);
+  });
+});
+
+describe('il duello con il drago (il gioco intero)', () => {
+  const fasi = generaCompito('duello', 50);
+
+  it('la sequenza mostrata ha un critico e va sotto zero; alla fase 4 la vita si ferma a 0', () => {
+    for (const seme of SEMI) {
+      const f = generaCompito('duello', seme);
+      const [mostrata] = f[1].prove!;
+      expect(mostrata.casuali!.some((c) => c >= 12)).toBe(true);
+      expect(mostrata.casuali!.every((c) => c >= 5 && c <= 15)).toBe(true);
+      expect(f[1].outputAtteso.some((r) => /restano -\d+ punti/.test(r))).toBe(true);
+      expect(f[3].outputAtteso.some((r) => /restano -\d+ punti/.test(r))).toBe(false);
+      expect(f[3].outputAtteso.some((r) => /restano 0 punti/.test(r))).toBe(true);
+    }
+  });
+
+  it('alla fase 5 «Colpo critico!» segue ogni colpo da 12 in su, su tutte le prove', () => {
+    for (const prova of fasi[4].prove!) {
+      prova.output.forEach((r, i) => {
+        const m = r.match(/^Colpo da (\d+):/);
+        if (m) expect(prova.output[i + 1] === 'Colpo critico!').toBe(Number(m[1]) >= 12);
+      });
+    }
+  });
+
+  it('i colpi scritti a mano al posto di randint cadono sulle prove nascoste', () => {
+    const [mostrata] = fasi[1].prove!;
+    const vita = Number(fasi[0].soluzione.match(/vita = (\d+)/)![1]);
+    const drago = fasi[0].soluzione.match(/: a (\w+) restano/)![1];
+    const aMano = mostrata.casuali!.map((c) => `vita -= ${c}\nprint(f"Colpo da ${c}: a ${drago} restano {vita} punti")`).join('\n');
+    const esito = valutaRisposta(fasi[1], `vita = ${vita}\n${aMano}\nprint("${drago} è sconfitto!")`);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/con i numeri casuali/);
+  });
+});
+
+describe('il patentino dei cicli while (l\'esame della seconda sezione)', () => {
+  const fasi = generaCompito('patentinoWhile', 61);
+
+  it('è un esame, cinque fasi su cinque gesti: la carica fino a 100, la sentinella, contatore e totale, if dentro, if fuori', () => {
+    expect(eEsame('patentinoWhile')).toBe(true);
+    expect(fasi[0].outputAtteso.every((r) => /^Carica: \d+%$/.test(r))).toBe(true);
+    expect(fasi[0].outputAtteso[fasi[0].outputAtteso.length - 1]).toBe('Carica: 100%');
+    expect(fasi[0].prove).toBeUndefined();
+    for (const fase of fasi.slice(1)) {
+      expect(fase.prove).toHaveLength(3);
+      for (const prova of fase.prove!) expect(prova.risposte[prova.risposte.length - 1]).toBe('0');
+    }
+    expect(fasi[2].outputAtteso.some((r) => /^Clienti: \d+, km totali: \d+$/.test(r))).toBe(true);
+    expect(fasi[3].outputAtteso).toContain('Giro lungo!');
+    const [, uno, cinque] = fasi[4].prove!;
+    expect(uno.output[uno.output.length - 1]).toBe('Giornata tranquilla');
+    expect(cinque.output[cinque.output.length - 1]).toBe('Giornata piena!');
+  });
+
+  it('la regola cresce fase per fase e nomina i gesti', () => {
+    expect(fasi[0].regola).toContain('`while`');
+    expect(fasi[1].regola).toContain('sentinella');
+    expect(fasi[3].regola).toContain('`if` dentro il ciclo');
+    expect(fasi[4].regola).toContain('fuori dal ciclo');
+  });
+
+  it('la scheda dice che è un esame e che il tutor è spento', () => {
+    const scheda = schedaCompito('patentinoWhile', 61);
+    expect(scheda.esame).toBe(true);
+    expect(scheda.committente).toContain('tutor è spento');
+    expect(scheda.outputFinale).toEqual(fasi[4].outputAtteso);
   });
 });

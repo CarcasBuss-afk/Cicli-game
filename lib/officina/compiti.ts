@@ -19,6 +19,9 @@ import { fasiPatentino, schedaPatentino } from './compitiPatentino';
 import { fasiTimer, schedaTimer } from './compitiWhile';
 import { fasiBatteria, fasiObiettivo, fasiPettegolezzo, schedaBatteria, schedaObiettivo, schedaPettegolezzo } from './compitiWhileQuantita';
 import { fasiCassa, fasiParola, schedaCassa, schedaParola } from './compitiWhileRisposte';
+import { fasiDistributore, fasiMenu, schedaDistributore, schedaMenu } from './compitiWhileMisti';
+import { fasiDado, fasiDuello, fasiIndovina, schedaDado, schedaDuello, schedaIndovina } from './compitiWhileCaso';
+import { fasiPatentinoWhile, schedaPatentinoWhile } from './compitiPatentinoWhile';
 
 export type CompitoId =
   | 'cartello'
@@ -38,7 +41,13 @@ export type CompitoId =
   | 'parola'
   | 'batteria'
   | 'cassa'
-  | 'pettegolezzo';
+  | 'pettegolezzo'
+  | 'distributore'
+  | 'menu'
+  | 'indovina'
+  | 'dado'
+  | 'duello'
+  | 'patentinoWhile';
 
 export interface SchedaCompito {
   id: CompitoId;
@@ -464,6 +473,12 @@ const PROGETTI: Record<CompitoId, { fasi: (seme: number) => Esercizio[]; scheda:
   batteria: { fasi: fasiBatteria, scheda: schedaBatteria },
   cassa: { fasi: fasiCassa, scheda: schedaCassa },
   pettegolezzo: { fasi: fasiPettegolezzo, scheda: schedaPettegolezzo },
+  distributore: { fasi: fasiDistributore, scheda: schedaDistributore },
+  menu: { fasi: fasiMenu, scheda: schedaMenu },
+  indovina: { fasi: fasiIndovina, scheda: schedaIndovina },
+  dado: { fasi: fasiDado, scheda: schedaDado },
+  duello: { fasi: fasiDuello, scheda: schedaDuello },
+  patentinoWhile: { fasi: fasiPatentinoWhile, scheda: schedaPatentinoWhile },
 };
 
 /* ------------------------------------------------------------------- sezioni */
@@ -484,7 +499,11 @@ export interface Sezione {
  * variabili e l'ordine nel corpo · input() · decidere con un if (§17) · input() dentro il
  * ciclo · la variabile che ricorda il migliore · il contatore in un ramo (§18) · il
  * patentino (§19). La seconda, il `while` (§22), dodici compiti con le famiglie d'uso
- * mescolate, a partire dal timer del forno (i tre gesti del `while`).
+ * mescolate: timer (i tre gesti) · salvadanaio della bici (fino all'obiettivo) · parola
+ * d'ordine (richiedi finché non è giusta) · batteria (`-=`) · cassa (la sentinella) ·
+ * pettegolezzo (`*=`) · distributore (monete finché basta) · menu (la sentinella con l'if) ·
+ * indovina il numero (`randint`) · dado (`randint` nel ciclo) · duello (il gioco intero) ·
+ * il patentino dei cicli while.
  */
 export const SEZIONI: Sezione[] = [
   {
@@ -492,7 +511,11 @@ export const SEZIONI: Sezione[] = [
     titolo: 'Il ciclo for',
     compiti: ['cartello', 'classifica', 'lancio', 'scala', 'salvadanaio', 'allenamento', 'scontrino', 'promozione', 'diario', 'record', 'conteggio', 'patentino'],
   },
-  { id: 'while', titolo: 'Il ciclo while', compiti: ['timer', 'obiettivo', 'parola', 'batteria', 'cassa', 'pettegolezzo'] },
+  {
+    id: 'while',
+    titolo: 'Il ciclo while',
+    compiti: ['timer', 'obiettivo', 'parola', 'batteria', 'cassa', 'pettegolezzo', 'distributore', 'menu', 'indovina', 'dado', 'duello', 'patentinoWhile'],
+  },
 ];
 
 /** Tutti i compiti nell'ordine in cui si sbloccano: sezione dopo sezione. */
