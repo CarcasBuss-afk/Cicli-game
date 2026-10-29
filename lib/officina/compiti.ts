@@ -17,6 +17,8 @@ import { fasiConteggio, fasiDiario, fasiRecord, schedaConteggio, schedaDiario, s
 import { fasiCartello, fasiClassifica, fasiLancio, fasiScala, schedaCartello, schedaClassifica, schedaLancio, schedaScala } from './compitiIniziali';
 import { fasiPatentino, schedaPatentino } from './compitiPatentino';
 import { fasiTimer, schedaTimer } from './compitiWhile';
+import { fasiBatteria, fasiObiettivo, fasiPettegolezzo, schedaBatteria, schedaObiettivo, schedaPettegolezzo } from './compitiWhileQuantita';
+import { fasiCassa, fasiParola, schedaCassa, schedaParola } from './compitiWhileRisposte';
 
 export type CompitoId =
   | 'cartello'
@@ -31,7 +33,12 @@ export type CompitoId =
   | 'record'
   | 'conteggio'
   | 'patentino'
-  | 'timer';
+  | 'timer'
+  | 'obiettivo'
+  | 'parola'
+  | 'batteria'
+  | 'cassa'
+  | 'pettegolezzo';
 
 export interface SchedaCompito {
   id: CompitoId;
@@ -452,6 +459,11 @@ const PROGETTI: Record<CompitoId, { fasi: (seme: number) => Esercizio[]; scheda:
   conteggio: { fasi: fasiConteggio, scheda: schedaConteggio },
   patentino: { fasi: fasiPatentino, scheda: schedaPatentino },
   timer: { fasi: fasiTimer, scheda: schedaTimer },
+  obiettivo: { fasi: fasiObiettivo, scheda: schedaObiettivo },
+  parola: { fasi: fasiParola, scheda: schedaParola },
+  batteria: { fasi: fasiBatteria, scheda: schedaBatteria },
+  cassa: { fasi: fasiCassa, scheda: schedaCassa },
+  pettegolezzo: { fasi: fasiPettegolezzo, scheda: schedaPettegolezzo },
 };
 
 /* ------------------------------------------------------------------- sezioni */
@@ -480,7 +492,7 @@ export const SEZIONI: Sezione[] = [
     titolo: 'Il ciclo for',
     compiti: ['cartello', 'classifica', 'lancio', 'scala', 'salvadanaio', 'allenamento', 'scontrino', 'promozione', 'diario', 'record', 'conteggio', 'patentino'],
   },
-  { id: 'while', titolo: 'Il ciclo while', compiti: ['timer'] },
+  { id: 'while', titolo: 'Il ciclo while', compiti: ['timer', 'obiettivo', 'parola', 'batteria', 'cassa', 'pettegolezzo'] },
 ];
 
 /** Tutti i compiti nell'ordine in cui si sbloccano: sezione dopo sezione. */

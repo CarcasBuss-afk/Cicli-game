@@ -632,3 +632,145 @@ describe('il timer del forno (i tre gesti del while)', () => {
     expect(scheda.dati).toContain(`Minuti di prova: ${minuti}`);
   });
 });
+
+describe('il salvadanaio della bici (il ciclo che non sa quante volte gira)', () => {
+  const fasi = generaCompito('obiettivo', 33);
+  const settimane = fasi[0].outputAtteso.length;
+
+  it("l'obiettivo è un multiplo esatto della quota: con la quota di prova si arriva giusti, le settimane sono 5..9", () => {
+    for (const seme of SEMI) {
+      const f = generaCompito('obiettivo', seme);
+      expect(f[0].outputAtteso.length).toBeGreaterThanOrEqual(5);
+      expect(f[0].outputAtteso.length).toBeLessThanOrEqual(9);
+      expect(f[4].outputAtteso[f[4].outputAtteso.length - 1]).toBe('Giusto giusto, niente resto');
+    }
+    expect(fasi[2].outputAtteso[settimane]).toBe(`Ce la fai in ${settimane} settimane`);
+  });
+
+  it("il for con le settimane scritte passa l'interprete, ma la regola dice che il while non sa quante volte gira", () => {
+    const quota = Number(fasi[0].outputAtteso[0].split(' ')[0]);
+    const conFor = `totale = 0\nfor i in range(${settimane}):\n    totale += ${quota}\n    print(f"{totale} €")`;
+    expect(valutaRisposta(fasi[0], conFor).promosso).toBe(true);
+    expect(fasi[0].regola).toMatch(/non si sa prima/);
+  });
+
+  it('dalla fase 4 la quota arriva da input(): le quote nascoste danno meno settimane e, alla 5, il resto', () => {
+    for (const fase of fasi.slice(3)) {
+      expect(fase.prove).toHaveLength(3);
+      for (const prova of fase.prove!.slice(1)) {
+        expect(prova.output.length).toBeLessThan(fase.outputAtteso.length + 1);
+      }
+    }
+    const nascoste = fasi[4].prove!.slice(1);
+    expect(nascoste.some((p) => p.output[p.output.length - 1].startsWith('Ti avanzano'))).toBe(true);
+    const aMano = fasi[3].soluzione.replace('int(input("Quanto metti via a settimana? "))', fasi[3].prove![0].risposte[0]);
+    expect(valutaRisposta(fasi[3], aMano).promosso).toBe(false);
+  });
+});
+
+describe("la parola d'ordine (richiedi finché non è giusta)", () => {
+  const fasi = generaCompito('parola', 8);
+
+  it('tre prove: tre errori (mostrata), nessuno, uno; la parola giusta chiude sempre', () => {
+    for (const fase of fasi) {
+      expect(fase.prove!.map((p) => p.risposte.length)).toEqual([4, 1, 2]);
+      const parola = fase.prove![0].risposte[3];
+      expect(fase.prove!.every((p) => p.risposte[p.risposte.length - 1] === parola)).toBe(true);
+    }
+    expect(fasi[0].outputAtteso).toEqual(['Sbagliata, riprova', 'Sbagliata, riprova', 'Sbagliata, riprova', 'Porta aperta!']);
+    expect(fasi[0].prove![1].output).toEqual(['Porta aperta!']);
+  });
+
+  it("chi non richiede la parola in fondo al corpo finisce le risposte o non si ferma: l'hint lo dice", () => {
+    const senza = fasi[0].soluzione.replace(`\n    parola = input("Parola d'ordine? ")\nprint`, '\nprint');
+    expect(senza).not.toBe(fasi[0].soluzione);
+    const esito = valutaRisposta(fasi[0], senza);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/non si ferma mai|Dopo l'ultima risposta/);
+  });
+
+  it('alla fase 4 «Chiama il prof!» compare solo con tre errori; alla 5 il giudizio solo sopra i due tentativi', () => {
+    expect(fasi[3].prove![0].output).toContain('Chiama il prof!');
+    expect(fasi[3].prove![1].output).not.toContain('Chiama il prof!');
+    expect(fasi[4].prove![0].output[fasi[4].prove![0].output.length - 1]).toBe('Troppi tentativi: impara la parola!');
+    expect(fasi[4].prove![2].output).not.toContain('Troppi tentativi: impara la parola!');
+  });
+});
+
+describe('la batteria del telefono (la quantità che finisce)', () => {
+  const fasi = generaCompito('batteria', 14);
+
+  it('la carica non va mai sotto zero nelle righe: si stampa prima di scendere', () => {
+    for (const seme of SEMI) {
+      for (const fase of generaCompito('batteria', seme)) {
+        for (const riga of fase.outputAtteso) expect(riga).not.toMatch(/-\d/);
+      }
+    }
+  });
+
+  it('scendere prima di stampare sbaglia la prima riga', () => {
+    const righe = fasi[0].soluzione.split('\n');
+    const rovescio = [righe[0], righe[1], righe[3], righe[2]].join('\n');
+    expect(valutaRisposta(fasi[0], rovescio).promosso).toBe(false);
+  });
+
+  it("alla fase 5 l'avviso compare nelle ore in cui la carica è 20 o meno, su tutte le prove", () => {
+    for (const prova of fasi[4].prove!) {
+      const righe = prova.output;
+      righe.forEach((r, i) => {
+        const m = r.match(/^Ora \d+: (\d+)%$/);
+        if (m) expect(righe[i + 1] === 'Carica il telefono!').toBe(Number(m[1]) <= 20);
+      });
+    }
+  });
+});
+
+describe('la cassa del bar (la sentinella, fase 1 guidata)', () => {
+  const fasi = generaCompito('cassa', 5);
+
+  it('la fase 1 riparte dal while già scritto senza la domanda in fondo; tale e quale non vale; senza la domanda il ciclo non si ferma', () => {
+    expect(fasi[0].codiceIniziale).toContain('while prezzo != 0:');
+    expect(valutaRisposta(fasi[0], fasi[0].codiceIniziale!).hint).toContain('Non hai cambiato niente');
+    const senza = fasi[0].codiceIniziale!.split('\n').slice(0, 3).join('\n');
+    const esito = valutaRisposta(fasi[0], senza);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/non si ferma mai/);
+  });
+
+  it('tre prove: tre articoli (mostrata), uno, cinque; le risposte finiscono con lo 0, alla fase 5 segue quanto paga', () => {
+    for (const prova of fasi[0].prove!) expect(prova.risposte[prova.risposte.length - 1]).toBe('0');
+    expect(fasi[0].prove!.map((p) => p.output.length)).toEqual([3, 1, 5]);
+    for (const prova of fasi[4].prove!) {
+      expect(prova.risposte[prova.risposte.length - 2]).toBe('0');
+      expect(prova.output[prova.output.length - 1]).toMatch(/^Resto: \d+ €$/);
+    }
+  });
+
+  it('alla fase 4 il contatore deve crescere prima del print: dopo, il primo articolo è lo 0', () => {
+    const dopo = fasi[3].soluzione.replace('    articoli += 1\n    print(f"Articolo {articoli}: {prezzo} €")', '    print(f"Articolo {articoli}: {prezzo} €")\n    articoli += 1');
+    expect(dopo).not.toBe(fasi[3].soluzione);
+    const esito = valutaRisposta(fasi[3], dopo);
+    expect(esito.promosso).toBe(false);
+    expect(esito.output?.[0]).toMatch(/^Articolo 0:/);
+  });
+});
+
+describe('il pettegolezzo (crescere moltiplicando)', () => {
+  const fasi = generaCompito('pettegolezzo', 19);
+
+  it('le persone raddoppiano a ogni riga', () => {
+    const numeri = fasi[0].outputAtteso.map((r) => Number(r.split(' ')[0]));
+    for (let i = 1; i < numeri.length; i++) expect(numeri[i]).toBe(numeri[i - 1] * 2);
+  });
+
+  it('`sanno = sanno * 2` vale quanto `*=`; sommare invece di moltiplicare sbaglia', () => {
+    expect(valutaRisposta(fasi[0], fasi[0].soluzione.replace('sanno *= 2', 'sanno = sanno * 2')).promosso).toBe(true);
+    expect(valutaRisposta(fasi[0], fasi[0].soluzione.replace('sanno *= 2', 'sanno += 2')).promosso).toBe(false);
+  });
+
+  it("con più gente all'inizio (prove nascoste) le ore sono di meno; «Metà scuola lo sa!» compare almeno una volta", () => {
+    const [mostrata, ...nascoste] = fasi[3].prove!;
+    for (const n of nascoste) expect(n.output.length).toBeLessThan(mostrata.output.length);
+    for (const prova of fasi[4].prove!) expect(prova.output.filter((r) => r === 'Metà scuola lo sa!').length).toBeGreaterThanOrEqual(1);
+  });
+});
