@@ -115,10 +115,15 @@ export interface Esercizio {
   regola?: string;
   /** Le prove con le risposte alle `input()`; `prove[0].output` coincide con `outputAtteso`. */
   prove?: Prova[];
+  /**
+   * La nota dell'autore del compito per il tutor (PERCORSO.md §23): gli errori tipici della
+   * fase e che cosa far capire. **Solo al tutor**: l'allievo non la vede mai.
+   */
+  nota?: string;
 }
 
 /** La tappa come la vede l'allievo: senza soluzione, senza l'output se è segreto, con le sole risposte della prova mostrata. */
-export type EsercizioPubblico = Omit<Esercizio, 'soluzione' | 'outputAtteso' | 'prove'> & {
+export type EsercizioPubblico = Omit<Esercizio, 'soluzione' | 'outputAtteso' | 'prove' | 'nota'> & {
   outputAtteso?: string[];
   /** Le risposte di prova con cui il programma viene eseguito (la prova mostrata). */
   risposte?: string[];
@@ -127,14 +132,23 @@ export type EsercizioPubblico = Omit<Esercizio, 'soluzione' | 'outputAtteso' | '
 };
 
 export function esercizioPerAllievo(tappa: Esercizio): EsercizioPubblico {
-  const { soluzione: _soluzione, outputAtteso, prove, ...resto } = tappa;
+  const { soluzione: _soluzione, nota: _nota, outputAtteso, prove, ...resto } = tappa;
   void _soluzione;
+  void _nota;
   const pubblico: EsercizioPubblico = tappa.mostraOutput ? { ...resto, outputAtteso } : resto;
   if (prove && prove.length > 0) {
     pubblico.risposte = prove[0].risposte;
     if (prove[0].casuali) pubblico.casuali = prove[0].casuali;
   }
   return pubblico;
+}
+
+/**
+ * Le note per il tutor, una per fase (PERCORSO.md §23): gli errori tipici e che cosa far
+ * capire. Restano sul server (`esercizioPerAllievo` le toglie).
+ */
+export function conNote(fasi: Esercizio[], note: string[]): Esercizio[] {
+  return fasi.map((f, i) => (note[i] ? { ...f, nota: note[i] } : f));
 }
 
 /* ---------------------------------------------------------------- numeri casuali */

@@ -11,7 +11,7 @@
  *
  * Modulo puro: niente Firestore, niente Next.
  */
-import { generatore, REGOLE, type Esercizio, type Prova } from '../giro/esercizi';
+import { REGOLE, conNote, generatore, type Esercizio, type Prova } from '../giro/esercizi';
 import { fasiPromozione, schedaPromozione } from './compitiCondizioni';
 import { fasiConteggio, fasiDiario, fasiRecord, schedaConteggio, schedaDiario, schedaRecord } from './compitiDiario';
 import { fasiCartello, fasiClassifica, fasiLancio, fasiScala, schedaCartello, schedaClassifica, schedaLancio, schedaScala } from './compitiIniziali';
@@ -131,7 +131,7 @@ function fasiSalvadanaio(seme: number): Esercizio[] {
   const { quota, settimane } = p;
   const base = { tipo: 'progetto' as const, terreno: 'collina' as const, mostraOutput: true, risposta: 'codice' as const };
   const ciclo = `for i in range(1, ${settimane + 1}):`;
-  return [
+  return conNote([
     {
       ...base,
       consegna:
@@ -180,7 +180,7 @@ function fasiSalvadanaio(seme: number): Esercizio[] {
         `print(f"Obiettivo {totale} € raggiunto in ${settimane} settimane")`,
       regola: regolaFase(5),
     },
-  ];
+  ], noteSalvadanaio(p));
 }
 
 function schedaSalvadanaio(seme: number): SchedaCompito {
@@ -250,7 +250,7 @@ function fasiAllenamento(seme: number): Esercizio[] {
   const base = { tipo: 'progetto' as const, terreno: 'montagna' as const, mostraOutput: true, risposta: 'codice' as const };
   const ciclo = `for i in range(1, ${settimane + 1}):`;
   const corpo3 = `    totale += km\n    print(f"Settimana {i}: {km} km (totale {totale})`;
-  return [
+  return conNote([
     {
       ...base,
       consegna:
@@ -300,7 +300,7 @@ function fasiAllenamento(seme: number): Esercizio[] {
         `print(f"In ${settimane} settimane hai pedalato {totale} km")`,
       regola: regolaFase(5, 2),
     },
-  ];
+  ], noteAllenamento(p));
 }
 
 function schedaAllenamento(seme: number): SchedaCompito {
@@ -403,7 +403,7 @@ function fasiScontrino(seme: number): Esercizio[] {
   const r3 = `${r2}\nfor i in range(1, panini + 1):\n    print(f"Panino {i}: ${p.prezzo} €")`;
   const r4 = `${r2}\ntotale = 0\nfor i in range(1, panini + 1):\n    totale += ${p.prezzo}\n    print(f"Panino {i}: ${p.prezzo} €")\nprint(f"Totale: {totale} €")`;
   const r5 = `${r4}\ndato = int(input("Quanto paghi? "))\nprint(f"Hai dato {dato} €, resto {dato - totale} €. Grazie {nome}!")`;
-  return [
+  return conNote([
     fase(
       1,
       `**Fase 1 — il cliente.** Lo scontrino comincia con il nome del cliente. Chiedilo con \`input()\`, mettilo in una ` +
@@ -434,7 +434,7 @@ function fasiScontrino(seme: number): Esercizio[] {
         `\`Hai dato ${a.dato} €, resto ${a.dato - a.panini * p.prezzo} €. Grazie ${a.nome}!\`. Risposte di prova: **${a.nome}**, **${a.panini}**, **${a.dato}**.`,
       r5,
     ),
-  ];
+  ], noteScontrino(p));
 }
 
 function schedaScontrino(seme: number): SchedaCompito {
@@ -505,6 +505,52 @@ export interface Sezione {
  * indovina il numero (`randint`) · dado (`randint` nel ciclo) · duello (il gioco intero) ·
  * il patentino dei cicli while.
  */
+/* ------------------------------------------------------------ le note per il tutor */
+
+function noteSalvadanaio(p: ParametriSalvadanaio): string[] {
+  return [
+    `Una riga per settimana con la f-string e la variabile fra graffe; range(1, ${p.settimane + 1}). Errori tipici: le righe scritte a mano una per una (il giudice boccia), range(${p.settimane}) che parte da 0.`,
+    `Qui la quota è un numero fisso nel testo (${p.quota} €), non ancora il totale. Errori tipici: lo spazio prima di € dimenticato, la quota fra graffe come variabile mai creata.`,
+    `L'accumulatore: totale parte da 0 prima del ciclo (senza rientro), dentro il ciclo cresce di ${p.quota} prima del print, e nella f-string va totale fra graffe. ` +
+      'Errori tipici: totale azzerato dentro il ciclo (riparte sempre), l\'aumento prima del ciclo (resta fisso), l\'aumento dopo il print (prima riga a 0), ' +
+      'la quota moltiplicata per la settimana al posto dell\'accumulo (passa il confronto, il giudice la boccia).',
+    'La barra è l\'asterisco moltiplicato per la variabile del ciclo, attaccata con uno spazio. Errore tipico: virgolette doppie dentro la f-string doppia ' +
+      '(l\'interprete dice virgolette non chiuse): suggerisci di mettere la barra in una variabile prima del print, oppure di usare gli apici singoli dentro.',
+    `Il print finale va dopo il ciclo, senza rientro, con totale fra graffe: finito il ciclo totale vale già ${p.quota * p.settimane}. ` +
+      'Errori tipici: il numero scritto a mano, oppure totale assegnato a mano dentro il ciclo (l\'output torna ma il giudice boccia: il totale deve venire dall\'accumulo). ' +
+      `Il numero di settimane (${p.settimane}) scritto nel testo va bene.`,
+  ];
+}
+
+function noteAllenamento(p: ParametriAllenamento): string[] {
+  return [
+    `Una riga per settimana con la f-string; range(1, ${p.settimane + 1}). Errori tipici: righe scritte a mano, range che parte da 0.`,
+    `Due variabili: la settimana è quella del ciclo, km parte da ${p.partenza} prima del ciclo; dentro, prima il print e poi km cresce di ${p.incremento}. ` +
+      `Errori tipici: aumentare prima di stampare (la prima riga dice già ${p.partenza + p.incremento}, tutte sfasate di una), km rimesso a ${p.partenza} dentro il ciclo, totale usato al posto di km.`,
+    'Un secondo accumulatore: totale parte da 0 prima del ciclo, dentro cresce di km prima del print (così la prima riga ha il totale uguale ai km), poi il print, poi km cresce. ' +
+      'Errori tipici: l\'ordine delle tre righe, le parentesi e le virgolette nella f-string attorno a totale.',
+    'La barra è il segno = moltiplicato per la variabile del ciclo. Errore tipico: virgolette doppie dentro la f-string doppia: suggerisci una variabile d\'appoggio prima del print.',
+    `Il print finale fuori dal ciclo, senza rientro, con totale fra graffe (finito il ciclo vale ${p.settimane * (2 * p.partenza + (p.settimane - 1) * p.incremento) / 2}); le settimane possono essere un numero nel testo. ` +
+      'Errori tipici: la riga rientrata (compare a ogni giro), il numero scritto a mano.',
+  ];
+}
+
+function noteScontrino(p: ParametriScontrino): string[] {
+  const [a] = p.clienti;
+  return [
+    'input() con la domanda fra virgolette, il risultato in una variabile, poi il print con la f-string e la variabile fra graffe. Il testo della domanda è libero: non fa parte dell\'output confrontato. ' +
+      `Errori tipici: print(input(...)) che stampa solo la risposta, il nome «${a.nome}» scritto a mano nel print (passa la prova mostrata, cade su quella nascosta).`,
+    'La risposta di input() è un testo: int() la trasforma in numero, e va messo intorno a input(). ' +
+      `Errori tipici: il numero ${a.panini} scritto a mano (cade sulla prova nascosta), int() applicato alla domanda invece che alla risposta, int dimenticato (si vedrà alla fase 3, quando range lo vuole).`,
+    'Il numero di giri è la variabile letta con input(): range(1, panini + 1). ' +
+      `Errori tipici: range(1, ${a.panini + 1}) scritto a mano (cade sulla prova nascosta), range(panini) che parte da 0, panini senza int() (range vuole un numero: errore di tipo), una riga per panino scritta a mano.`,
+    `totale parte da 0 prima del ciclo, cresce di ${p.prezzo} dentro, e il print del totale va dopo il ciclo senza rientro. ` +
+      'Errori tipici: totale calcolato come panini per prezzo (passa l\'output, il giudice boccia), il print del totale dentro il ciclo (una riga per panino).',
+    'Una terza input() con int() per quanto paga, e il resto calcolato (dato meno totale) dentro la f-string. ' +
+      'Errori tipici: i numeri scritti a mano (cadono sulla prova nascosta), input() senza le virgolette intorno alla domanda, il testo della riga da copiare esatto, con la virgola e il punto.',
+  ];
+}
+
 export const SEZIONI: Sezione[] = [
   {
     id: 'for',

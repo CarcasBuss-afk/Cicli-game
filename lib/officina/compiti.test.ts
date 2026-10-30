@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { valutaRisposta } from '../giro/hint';
 import { esegui } from '../giro/interprete';
-import { eEsame, ELENCO_COMPITI, generaCompito, schedaCompito, SEZIONI, sezioneDi, votoSeFinisce } from './compiti';
+import { eEsame, ELENCO_COMPITI, generaCompito, schedaCompito, SEZIONI, sezioneDi, votoSeFinisce, type CompitoId } from './compiti';
 import { esercizioPerAllievo } from '../giro/esercizi';
 
 const SEMI = Array.from({ length: 40 }, (_, i) => (i + 1) * 1013);
@@ -961,5 +961,38 @@ describe('il patentino dei cicli while (l\'esame della seconda sezione)', () => 
     expect(scheda.esame).toBe(true);
     expect(scheda.committente).toContain('tutor è spento');
     expect(scheda.outputFinale).toEqual(fasi[4].outputAtteso);
+  });
+});
+
+describe('le note per il tutor (PERCORSO.md §23)', () => {
+  const conNota: CompitoId[] = ['cartello', 'classifica', 'lancio', 'scala', 'salvadanaio', 'allenamento', 'scontrino', 'promozione', 'diario', 'record', 'conteggio'];
+
+  it('ogni fase dei compiti della sezione for ha una nota, con i parametri del compito dentro', () => {
+    for (const id of conNota) {
+      for (const seme of [1, 7, 42]) {
+        const fasi = generaCompito(id, seme);
+        expect(fasi).toHaveLength(5);
+        for (const [i, f] of fasi.entries()) {
+          expect(f.nota, `${id} fase ${i + 1} seme ${seme}`).toBeTruthy();
+          expect(f.nota!.length, `${id} fase ${i + 1}`).toBeGreaterThan(60);
+          expect(f.nota).not.toContain('undefined');
+          expect(f.nota).not.toContain('NaN');
+        }
+      }
+    }
+  });
+
+  it("la nota resta sul server: l'allievo non la riceve", () => {
+    for (const id of conNota) {
+      for (const f of generaCompito(id, 5)) {
+        const pubblico = esercizioPerAllievo(f);
+        expect('nota' in pubblico).toBe(false);
+        expect(JSON.stringify(pubblico)).not.toContain(f.nota!.slice(0, 40));
+      }
+    }
+  });
+
+  it('il patentino, con il tutor spento, non ne ha bisogno', () => {
+    for (const f of generaCompito('patentino', 5)) expect(f.nota).toBeUndefined();
   });
 });

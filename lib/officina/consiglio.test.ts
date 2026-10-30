@@ -189,3 +189,67 @@ describe('il consiglio finto', () => {
     expect(consiglioFinto(ctx('FINTO: scrivi `print(i)`'))).toBe('scrivi `print(i)`');
   });
 });
+
+describe('il contesto dopo la prima settimana in classe (PERCORSO.md §23)', () => {
+  const scheda = schedaCompito('promozione', 3);
+  const fasi = generaCompito('promozione', 3);
+  const base: ContestoConsiglio = {
+    scheda,
+    fase: 5,
+    fasiTotali: 5,
+    esercizio: fasi[4],
+    codice: fasi[4].soluzione,
+    esito: {
+      output: fasi[4].outputAtteso,
+      struttura: {
+        numFor: 1,
+        righeCorpoMax: 2,
+        numPrint: 8,
+        printFuoriCiclo: 6,
+        numRighe: 20,
+        numInput: 2,
+        inputNelCiclo: 0,
+        accumuliNelCiclo: 1,
+        numIf: 2,
+        ifNelCiclo: 1,
+        numWhile: 0,
+        whileAggiornati: 0,
+        numCasuali: 0,
+        casualiNelCiclo: 0,
+      },
+      giri: 6,
+    },
+    erroriFase: 16,
+    hint: null,
+    domanda: 'Cosa devo cambiare?',
+    precedenti: [],
+  };
+
+  it("porta la nota dell'autore per il tutor, dicendo che l'allievo non la vede", () => {
+    const m = messaggioConsiglio(base);
+    expect(fasi[4].nota).toBeTruthy();
+    expect(m).toContain("NOTA DELL'AUTORE DEL COMPITO PER TE");
+    expect(m).toContain(fasi[4].nota!);
+    expect(messaggioConsiglio({ ...base, esercizio: { ...fasi[4], nota: undefined } })).not.toContain("NOTA DELL'AUTORE");
+  });
+
+  it('porta i fatti misurati dall\'interprete, come al giudice', () => {
+    const m = messaggioConsiglio(base);
+    expect(m).toContain('FATTI MISURATI SUL SUO CODICE');
+    expect(m).toContain('- cicli for: 1');
+    expect(m).toContain('- if: 2 (di cui dentro un ciclo: 1)');
+    expect(m).toContain('- giri fatti in tutto: 6');
+    expect(messaggioConsiglio({ ...base, esito: { output: [] } })).not.toContain('FATTI MISURATI');
+    expect(messaggioConsiglio({ ...base, esito: { errore: 'manca :' } })).not.toContain('FATTI MISURATI');
+  });
+
+  it('dice quante volte ha già sbagliato la fase, e con tante chiede il passo più piccolo', () => {
+    expect(messaggioConsiglio(base)).toContain('ha già consegnato 16 volte senza passare. È fermo da un pezzo');
+    const poche = messaggioConsiglio({ ...base, erroriFase: 2 });
+    expect(poche).toContain('ha già consegnato 2 volte senza passare.');
+    expect(poche).not.toContain('fermo da un pezzo');
+    expect(messaggioConsiglio({ ...base, erroriFase: 1 })).toContain('1 volta senza passare');
+    expect(messaggioConsiglio({ ...base, erroriFase: 0 })).not.toContain('senza passare');
+    expect(messaggioConsiglio({ ...base, erroriFase: undefined })).not.toContain('senza passare');
+  });
+});

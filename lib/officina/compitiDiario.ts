@@ -11,7 +11,7 @@
  * cadano lì, prima del giudice.
  *
  * Modulo puro. */
-import { generatore, type Esercizio, type Prova } from '../giro/esercizi';
+import { conNote, generatore, type Esercizio, type Prova } from '../giro/esercizi';
 import type { SchedaCompito } from './compiti';
 
 type Rnd = () => number;
@@ -131,7 +131,7 @@ export function fasiDiario(seme: number): Esercizio[] {
   const r3 = diarioBase();
   const r4 = `${TESTA}\ntotale = 0\n${CICLO}\n    totale += km\n    print(f"Uscita {i}: {km} km (finora {totale} km)")\n${CODA}`;
   const r5 = `${r4}\nif totale >= ${p.obiettivo}:\n    print("Obiettivo di ${p.obiettivo} km raggiunto!")\nelse:\n    print(f"Mancano {${p.obiettivo} - totale} km all'obiettivo di ${p.obiettivo} km")`;
-  return [
+  return conNote([
     fase(
       1,
       `**Fase 1 — quante uscite.** Il diario chiede quante uscite hai fatto nel mese (con \`int()\`) e stampa una riga per ciascuna: ` +
@@ -163,7 +163,7 @@ export function fasiDiario(seme: number): Esercizio[] {
         `altrimenti (\`else\`) \`Mancano X km all'obiettivo di ${p.obiettivo} km\`, con X calcolato da \`totale\`. Il mese di prova lo raggiunge: deve funzionare anche per un mese che non lo raggiunge.`,
       r5,
     ),
-  ];
+  ], noteDiario(p));
 }
 
 export function schedaDiario(seme: number): SchedaCompito {
@@ -258,7 +258,7 @@ export function fasiRecord(seme: number): Esercizio[] {
   const r3 = `${testa}\n${corpo}\n${ifRecord}\n${CODA}\nprint(f"Uscita più lunga: la {quale} ({record} km)")`;
   const r4 = `${testa}\nminimo = 1000\n${corpo}\n${ifRecord}\n    if km < minimo:\n        minimo = km\n        corta = i\n${CODA}\nprint(f"Uscita più lunga: la {quale} ({record} km)")\nprint(f"Uscita più corta: la {corta} ({minimo} km)")`;
   const r5 = `${r4}\nprint(f"Fra la più corta e la più lunga: {record - minimo} km di differenza")`;
-  return [
+  return conNote([
     {
       ...fase(
         1,
@@ -293,7 +293,7 @@ export function fasiRecord(seme: number): Esercizio[] {
         `Deve funzionare per qualunque mese, anche se la più lunga è la prima uscita.`,
       r5,
     ),
-  ];
+  ], noteRecord(p));
 }
 
 export function schedaRecord(seme: number): SchedaCompito {
@@ -396,7 +396,7 @@ export function fasiConteggio(seme: number): Esercizio[] {
     `${TESTA}\ntotale = 0\nlunghe = 0\ncorte = 0\nkm_lunghe = 0\n${ramo('        lunghe += 1\n        km_lunghe += km\n', '        corte += 1\n')}\n` +
     `print(f"Uscite lunghe: {lunghe}")\nprint(f"Uscite corte: {corte}")\nprint(f"Km nelle uscite lunghe: {km_lunghe}")`;
   const r5 = `${r4}\nif lunghe >= ${p.obiettivo}:\n    print(f"Obiettivo raggiunto: {lunghe} uscite lunghe")\nelse:\n    print(f"Uscite lunghe mancanti: {${p.obiettivo} - lunghe}")`;
-  return [
+  return conNote([
     {
       ...fase(
         1,
@@ -430,7 +430,7 @@ export function fasiConteggio(seme: number): Esercizio[] {
         `\`Obiettivo raggiunto: ${lunghe.length} uscite lunghe\`, altrimenti \`Uscite lunghe mancanti: X\` con X calcolato. Il mese di prova lo raggiunge; deve funzionare anche per un mese senza nessuna uscita lunga.`,
       r5,
     ),
-  ];
+  ], noteConteggio(p));
 }
 
 export function schedaConteggio(seme: number): SchedaCompito {
@@ -447,4 +447,50 @@ export function schedaConteggio(seme: number): SchedaCompito {
     dati: [`Uscita lunga: da ${p.soglia} km in su`, `Obiettivo: almeno ${p.obiettivo} uscite lunghe al mese`, `Risposte di prova: ${descriviProva(m)}`],
     outputFinale: righeConteggio(p, m, 5),
   };
+}
+
+/* ------------------------------------------------------------ le note per il tutor */
+
+function noteDiario(p: ParametriDiario): string[] {
+  const [m] = p.mesi;
+  return [
+    `Le uscite si leggono con int(input()) e il ciclo gira range(1, uscite + 1) volte, con il print della f-string. Errori tipici: il numero di giri scritto a mano (${m.length}: cade sulla prova nascosta), range che parte da 0, int dimenticato.`,
+    'La domanda dei km va DENTRO il ciclo, rientrata, una per giro: si legge con int(input()) in una variabile e poi il print la usa fra graffe. ' +
+      'Errori tipici: la domanda fuori dal ciclo (chiesta una volta sola: il programma stampa sempre lo stesso km o finisce le risposte di prova), il print prima della domanda (usa il km del giro prima), i km scritti a mano.',
+    'totale parte da 0 prima del ciclo, dentro cresce di km dopo averli letti, e il print del totale va dopo il ciclo senza rientro. ' +
+      'Errori tipici: il print del totale dentro il ciclo (stampato a ogni giro), l\'aumento prima della lettura (somma il valore vecchio), il numero scritto a mano.',
+    'Il «finora» è lo stesso totale, stampato dentro il ciclo nella riga dell\'uscita, dopo l\'aumento: leggi km, totale cresce, print. ' +
+      'Errori tipici: il print prima dell\'aumento (il finora resta indietro di un\'uscita), una seconda variabile che fa lo stesso lavoro.',
+    `Dopo il totale, if totale >= ${p.obiettivo} con il print rientrato, e nell'else l'altra riga con la differenza (${p.obiettivo} meno totale) calcolata. ` +
+      'Errori tipici: l\'if dentro il ciclo, > al posto di >=, i numeri scritti a mano (cadono sulle prove nascoste, dove il mese è più corto).',
+  ];
+}
+
+function noteRecord(p: ParametriRecord): string[] {
+  const [m] = p.mesi;
+  return [
+    'Il diario c\'è già: serve una variabile record che parte da 0 prima del ciclo; dentro, dopo aver letto km, if km > record con sotto record = km; la riga finale fuori dal ciclo con record fra graffe. ' +
+      `Errori tipici: record = km senza if (resta l'ultima uscita), l'if fuori dal ciclo (guarda solo l'ultimo km), record rimesso a 0 dentro il ciclo, il record ${Math.max(...m)} cercato a occhio e scritto a mano (cade sulle prove nascoste).`,
+    'Una seconda variabile per il numero dell\'uscita, aggiornata nello STESSO if con la variabile del ciclo: due righe rientrate sotto l\'if. ' +
+      'Errori tipici: aggiornarla fuori dall\'if (vale sempre l\'ultima uscita), scrivere il numero a mano.',
+    'La riga «nuovo record!» va stampata quando l\'if scatta, al posto della riga normale: serve un else con la riga normale. Anche la prima uscita batte lo 0, quindi è un record. ' +
+      'Errori tipici: stampare tutte e due le righe per l\'uscita record, >= al posto di > (segnala record anche a parità).',
+    'Il minimo si cerca al contrario: una variabile che parte da un numero grande (per esempio 1000) e un if km < minimo che la aggiorna, con la sua variabile per il numero dell\'uscita; la riga va dopo quella della più lunga. ' +
+      'Errori tipici: minimo che parte da 0 (nessun km lo batte: resta 0), > al posto di <, l\'if del minimo scritto dentro l\'if del record.',
+    `L'ultima riga calcola la differenza (record meno minimo, qui ${Math.max(...m) - Math.min(...m)}) dentro la f-string, dopo il ciclo. Errori tipici: il numero scritto a mano, la sottrazione al contrario.`,
+  ];
+}
+
+function noteConteggio(p: ParametriConteggio): string[] {
+  return [
+    `Il diario c'è già: dentro il ciclo, dopo aver letto km, if km >= ${p.soglia} con il print della riga «lunga» rientrato, e nell'else la riga normale. ` +
+      'Errori tipici: > al posto di >= (l\'uscita esattamente sulla soglia non conta), la riga normale stampata sempre più quella lunga in aggiunta, l\'if fuori dal ciclo.',
+    'Un contatore lunghe che parte da 0 prima del ciclo, cresce di 1 dentro il ramo if (rientrato come il print di quel ramo), e si stampa dopo il ciclo senza rientro. ' +
+      'Errori tipici: l\'aumento fuori dall\'if (conta tutte le uscite), il numero scritto a mano, += km al posto di += 1.',
+    'Un secondo contatore corte che cresce di 1 nel ramo else: a ogni giro cresce uno solo dei due. ' +
+      'Errori tipici: corte calcolato come uscite meno lunghe (passa l\'output, il giudice vuole il contatore nel ramo else), l\'aumento fuori dall\'else.',
+    'Un accumulatore dei km delle uscite lunghe: parte da 0 prima del ciclo e cresce di km solo nel ramo if. Errori tipici: += 1 al posto di += km, l\'aumento fuori dall\'if (somma tutti i km), confuso con il totale del mese.',
+    `Dopo il ciclo, if sul contatore lunghe >= ${p.obiettivo} con la riga, e nell'else l'altra riga con la differenza (${p.obiettivo} meno lunghe) calcolata. ` +
+      'Errori tipici: l\'if dentro il ciclo, il confronto sul totale dei km al posto del contatore, i numeri scritti a mano (cadono sui mesi nascosti).',
+  ];
 }

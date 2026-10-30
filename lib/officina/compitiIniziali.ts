@@ -8,7 +8,7 @@
  *
  * Stessa forma degli altri compiti: parametri dal seme, cinque fasi che aggiungono ogni
  * volta un pezzo, la scheda con l'output finale per intero. Modulo puro. */
-import { generatore, REGOLE, type Esercizio } from '../giro/esercizi';
+import { REGOLE, conNote, generatore, type Esercizio } from '../giro/esercizi';
 import type { SchedaCompito } from './compiti';
 
 const base = { tipo: 'progetto' as const, mostraOutput: true, risposta: 'codice' as const };
@@ -53,7 +53,7 @@ export function fasiCartello(seme: number): Esercizio[] {
   const { frase, volte } = p;
   const L = frase.length;
   const b = { ...base, terreno: 'pianura' as const };
-  return [
+  return conNote([
     {
       ...b,
       consegna: `**Fase 1 — ripetere.** Il cartello ripete la frase. Scrivi un ciclo che stampa \`${frase}\` 3 volte.`,
@@ -95,7 +95,7 @@ export function fasiCartello(seme: number): Esercizio[] {
         `Dentro il ciclo ci sono due \`print\` (la frase e la decorazione) e il ciclo gira ${volte} volte: non valgono le righe scritte a mano ` +
         'una per una, né un ciclo da un giro solo con dentro tutte le righe. La cornice sopra e sotto sono `print` fuori dal ciclo, e va bene così.',
     },
-  ];
+  ], noteCartello(p));
 }
 
 export function schedaCartello(seme: number): SchedaCompito {
@@ -146,7 +146,7 @@ export function fasiClassifica(seme: number): Esercizio[] {
   const { gara, iscritti } = p;
   const b = { ...base, terreno: 'pianura' as const };
   const ciclo = `for i in range(1, ${iscritti + 1}):`;
-  return [
+  return conNote([
     {
       ...b,
       consegna:
@@ -190,7 +190,7 @@ export function fasiClassifica(seme: number): Esercizio[] {
         REGOLE.cicloVariabile +
         ' Il numero degli iscritti sta in una variabile usata sia dentro `range` sia nella riga finale: non vale scriverlo a mano nella riga finale.',
     },
-  ];
+  ], noteClassifica(p));
 }
 
 export function schedaClassifica(seme: number): SchedaCompito {
@@ -242,7 +242,7 @@ export function fasiLancio(seme: number): Esercizio[] {
   const p = parametriLancio(seme);
   const { nome, da } = p;
   const b = { ...base, terreno: 'collina' as const };
-  return [
+  return conNote([
     {
       ...b,
       consegna:
@@ -282,7 +282,7 @@ export function fasiLancio(seme: number): Esercizio[] {
       soluzione: `print("Lancio del razzo ${nome}")\nfor i in range(${da}, 0, -2):\n    print("Meno", i)\nprint("Partenza!")`,
       regola: REGOLA_LANCIO,
     },
-  ];
+  ], noteLancio(p));
 }
 
 export function schedaLancio(seme: number): SchedaCompito {
@@ -339,7 +339,7 @@ export function fasiScala(seme: number): Esercizio[] {
   const { gradini, altezza } = p;
   const b = { ...base, terreno: 'collina' as const };
   const ciclo = `for i in range(1, ${gradini + 1}):`;
-  return [
+  return conNote([
     {
       ...b,
       consegna:
@@ -387,7 +387,7 @@ export function fasiScala(seme: number): Esercizio[] {
         REGOLA_SCALA_CM +
         " L'altezza totale, dopo il ciclo, si calcola dalla variabile dei gradini (`gradini * altezza`): non vale il numero scritto a mano.",
     },
-  ];
+  ], noteScala(p));
 }
 
 export function schedaScala(seme: number): SchedaCompito {
@@ -402,4 +402,57 @@ export function schedaScala(seme: number): SchedaCompito {
     dati: [`Gradini: ${p.gradini}`, `Altezza di un gradino: ${p.altezza} cm`],
     outputFinale: righeScala(p, 5),
   };
+}
+
+/* ------------------------------------------------------------ le note per il tutor */
+
+function noteCartello(p: ParametriCartello): string[] {
+  return [
+    'Primo ciclo in assoluto. La riga del for finisce con i due punti e il print sta sotto, spostato a destra; range(3) gira tre volte. ' +
+      'Errore tipico: la frase stampata con tre print scritti a mano (passa il confronto, il giudice la boccia).',
+    `Cambia solo il numero dentro range: range(${p.volte}) gira ${p.volte} volte. Chi aggiunge un print o un secondo ciclo sta sbagliando strada.`,
+    `La cornice è un print prima del for, senza rientro; "=" ripetuto ${p.frase.length} volte si ottiene moltiplicando il simbolo per il numero. ` +
+      'Errore tipico: il print della cornice dentro il ciclo (compare a ogni giro).',
+    'Il print di chiusura va dopo il ciclo con il rientro tolto: se resta rientrato la cornice compare dopo ogni frase.',
+    'Due print dentro il ciclo, tutti e due con lo stesso rientro. Errori tipici: la decorazione fuori dal ciclo (compare una volta sola) o il ciclo scritto due volte.',
+  ];
+}
+
+function noteClassifica(p: ParametriClassifica): string[] {
+  return [
+    `range deve partire da 1 e fermarsi a ${p.iscritti + 1}, perché il secondo numero è escluso. Errori tipici: range(${p.iscritti}) che dà da 0 a ${p.iscritti - 1}, ` +
+      `range(1, ${p.iscritti}) che perde l'ultimo posto, il for scritto dentro il print.`,
+    'Nel print due pezzi: la parola e la variabile. Con la virgola Python mette lo spazio da solo; con la f-string lo spazio va scritto. ' +
+      'Errore tipico: la i dentro le virgolette senza graffe, che stampa la lettera.',
+    'Qui serve la f-string: la f davanti alle virgolette e la variabile fra graffe, il simbolo ° attaccato alla graffa chiusa. ' +
+      'Errori tipici: manca la f (stampa le graffe così come sono), parentesi tonde al posto delle graffe, uno spazio prima del °.',
+    "L'intestazione è un print prima del for e senza rientro: se è dentro il ciclo compare prima di ogni posto.",
+    `La variabile iscritti va prima del ciclo; in range ci va iscritti + 1; nella riga finale la variabile fra graffe, non il numero ${p.iscritti} a mano (il giudice lo boccia). ` +
+      'Errore tipico: la variabile creata ma non usata, o creata dentro il ciclo.',
+  ];
+}
+
+function noteLancio(p: ParametriLancio): string[] {
+  return [
+    `range con tre numeri: ${p.da}, 0 e -1. Il secondo è escluso, quindi 0 per arrivare a 1. Errori tipici: range(${p.da}, 1, -1) che perde l'1; ` +
+      'senza il passo negativo il ciclo non gira nemmeno una volta e non stampa niente (l\'hint automatico parla del print dentro il ciclo: in quel caso è fuori strada).',
+    'Il print di «Partenza!» va dopo il ciclo, senza rientro: dentro al ciclo comparirebbe dopo ogni numero.',
+    'Nel print due pezzi, la parola e la variabile: con la virgola lo spazio è automatico. Errore tipico: la variabile fra virgolette, o la parola e il numero attaccati.',
+    `Cambia solo il passo: -2. Da ${p.da} con il passo -2 si arriva a 2, e lo 0 resta escluso come prima. Errore tipico: cambiare anche il secondo numero.`,
+    "L'annuncio è un print prima del for, senza rientro: se finisce dentro il ciclo compare prima di ogni numero. Il resto del programma non si tocca.",
+  ];
+}
+
+function noteScala(p: ParametriScala): string[] {
+  return [
+    'Il disegno è il cancelletto moltiplicato per la variabile del ciclo: il numero di ripetizioni cambia a ogni giro. ' +
+      'Errori tipici: un numero fisso al posto della variabile (tutte le righe uguali), la variabile dentro le virgolette, range che parte da 0 (prima riga vuota).',
+    `Dopo il disegno due pezzi nuovi: l'altezza calcolata (la variabile per ${p.altezza}) e la scritta cm; con la virgola gli spazi sono automatici. ` +
+      "Errori tipici: l'altezza scritta a mano riga per riga, oppure una variabile dei centimetri aumentata fuori dal ciclo (e mai creata: errore di nome).",
+    'La f-string con tre graffe: il numero del gradino, il disegno, il calcolo. La consegna consiglia di mettere il disegno in una variabile prima del print. ' +
+      'Errori tipici: virgolette doppie dentro una f-string doppia (l\'interprete dice virgolette non chiuse: suggerisci la variabile d\'appoggio), graffe vuote, la f mancante.',
+    "L'intestazione è un print prima del ciclo, senza rientro: se finisce dentro il ciclo compare prima di ogni gradino. Il resto non si tocca.",
+    `La variabile gradini prima del ciclo, usata in range(1, gradini + 1) e nel totale (gradini per ${p.altezza}) dopo il ciclo, senza rientro. ` +
+      'Errori tipici: il totale scritto a mano (il giudice lo boccia), il print del totale dentro il ciclo, un nome di variabile con lo spazio (Altezza totale), che Python non accetta.',
+  ];
 }

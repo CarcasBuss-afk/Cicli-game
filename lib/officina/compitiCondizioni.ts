@@ -9,7 +9,7 @@
  * senza sconto, uno con l'omaggio ma sotto la soglia. Chi scrive l'omaggio a mano cade lì.
  *
  * Modulo puro. */
-import { generatore, type Esercizio, type Prova } from '../giro/esercizi';
+import { conNote, generatore, type Esercizio, type Prova } from '../giro/esercizi';
 import type { SchedaCompito } from './compiti';
 
 const CLIENTI = ['Luca', 'Sara', 'Marco', 'Giulia', 'Omar', 'Aisha', 'Nadia', 'Pietro'] as const;
@@ -141,7 +141,7 @@ export function fasiPromozione(seme: number): Esercizio[] {
   const r4 = `${r3}\nif totale >= ${soglia}:\n    print("Sconto fedeltà: -${sconto} €")\n    print(f"Da pagare: {totale - ${sconto}} €")`;
   const r5 = `${r4}\nelse:\n    print(f"Ti mancano {${soglia} - totale} € per lo sconto")\nprint(f"Grazie, {nome}!")`;
   const totaleA = totaleDi(p, a);
-  return [
+  return conNote([
     {
       ...fase(
         1,
@@ -176,7 +176,7 @@ export function fasiPromozione(seme: number): Esercizio[] {
         `e X è \`${soglia} - totale\`, calcolato. Per tutti, in fondo, \`Grazie, ${a.nome}!\` con il nome del cliente. Risposte di prova: **${a.nome}**, **${a.panini}**.`,
       r5,
     ),
-  ];
+  ], notePromozione(p));
 }
 
 export function schedaPromozione(seme: number): SchedaCompito {
@@ -198,4 +198,25 @@ export function schedaPromozione(seme: number): SchedaCompito {
     ],
     outputFinale: righePromozione(p, a, 5),
   };
+}
+
+/* ------------------------------------------------------------ le note per il tutor */
+
+function notePromozione(p: ParametriPromozione): string[] {
+  const [, b, c] = p.clienti;
+  const nascosti = `con i clienti nascosti (${b.nome} con ${b.panini} panini, ${c.nome} con ${c.panini})`;
+  return [
+    `Il codice c'è già: va solo aggiunto l'if dentro il ciclo, sotto il print del prezzo, con la condizione i == ${OMAGGIO} e il print rientrato di altri quattro spazi. ` +
+      'Errori tipici: l\'if fuori dal ciclo (la riga compare una volta sola, alla fine), la condizione su panini invece che sulla variabile del ciclo, ' +
+      'un confronto lasciato da solo su una riga, l\'avviso stampato senza if (compare a ogni giro). Con 2 panini la riga non deve comparire: la prova nascosta lo controlla.',
+    'if ed else allo stesso rientro, dentro il ciclo: a ogni giro si stampa una sola delle due righe. ' +
+      'Errori tipici: tenere anche il print del prezzo prima dell\'if (il terzo panino stampa due righe), else senza i due punti, else con una condizione.',
+    `La riga che fa crescere totale va spostata nel ramo else, rientrata sotto l'else: il panino in omaggio non si somma, e il totale scende di ${p.prezzo}. ` +
+      'Errori tipici: l\'aumento lasciato prima dell\'if (il totale non cambia), l\'aumento scritto in tutti e due i rami, il totale calcolato con (panini - 1) per prezzo (il giudice boccia).',
+    `Dopo il ciclo, senza rientro, if totale >= ${p.soglia} con due print rientrati; da pagare è totale meno ${p.sconto}, calcolato. ` +
+      `Errori tipici: l'if dentro il ciclo (le righe compaiono più volte), > al posto di >=, lo sconto stampato sempre senza if (cade ${nascosti}), il numero da pagare scritto a mano.`,
+    `L'else dell'if sul totale stampa quanto manca (${p.soglia} meno totale, calcolato), e il saluto va dopo, fuori dall'if, senza rientro. ` +
+      `Il ramo else si vede SOLO ${nascosti}: con la prova mostrata il totale supera la soglia, quindi un errore in quella riga non si vede finché non si consegna. ` +
+      'Errori tipici: il testo della riga scritto diverso (maiuscole, un punto in fondo), il saluto dentro l\'else o dentro l\'if, il numero mancante scritto a mano.',
+  ];
 }

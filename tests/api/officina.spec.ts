@@ -381,8 +381,10 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await page.getByRole('button', { name: 'Consegna ✔' }).click();
     await expect(page.getByRole('status')).toBeVisible();
 
-    await page.getByLabel('domanda al tutor').fill('Non capisco perché stampa dei numeri invece delle settimane, puoi spiegarmelo bene?');
-    await page.getByRole('button', { name: 'Chiedi al tutor' }).click();
+    // Le domande rapide: un pulsante al posto della domanda vuota, poi la conferma del punto.
+    await expect(page.getByRole('group', { name: 'domande rapide' }).getByRole('button')).toHaveCount(3);
+    await page.getByRole('button', { name: 'Non capisco la consegna' }).click();
+    await expect(page.getByLabel('domanda al tutor')).toHaveValue('Non capisco la consegna');
     await expect(page.getByText('il voto passa da 10 a 9')).toBeVisible();
     await page.getByRole('button', { name: /Sì, manda/ }).click();
     await expect(page.getByLabel('conversazione con il tutor').locator('li')).toHaveCount(1);

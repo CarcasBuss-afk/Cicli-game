@@ -7,7 +7,8 @@
  */
 import { descriviProva, opzioniDiProva, type Esercizio } from '../giro/esercizi';
 import { contieneCodice, pulisciConsiglio } from '../giro/filtroCodice';
-import { esegui } from '../giro/interprete';
+import { descriviFatti } from '../giro/giudice';
+import { esegui, type Struttura } from '../giro/interprete';
 import type { SchedaCompito } from './compiti';
 
 /** La domanda dell'allievo è facoltativa e corta. */
@@ -32,11 +33,16 @@ export interface ContestoConsiglio {
   /** Numero della fase, da 1. */
   fase: number;
   fasiTotali: number;
-  esercizio: Pick<Esercizio, 'consegna' | 'outputAtteso' | 'prove' | 'regola'>;
+  esercizio: Pick<Esercizio, 'consegna' | 'outputAtteso' | 'prove' | 'regola' | 'nota'>;
   /** Il codice com'è adesso nell'editor. */
   codice: string;
-  /** Che cosa produce quel codice: le righe, oppure l'errore del micro-interprete. */
-  esito: { output: string[] } | { errore: string };
+  /**
+   * Che cosa produce quel codice: le righe (con i fatti misurati dall'interprete e i giri fatti),
+   * oppure l'errore del micro-interprete.
+   */
+  esito: { output: string[]; struttura?: Struttura; giri?: number } | { errore: string };
+  /** Quante consegne sbagliate ha già fatto su questa fase: con tante, il passo deve essere più piccolo. */
+  erroriFase?: number;
   /** L'hint automatico che il Giro gli ha già mostrato all'ultima consegna, se c'è. */
   hint: string | null;
   /** La prova nascosta che non passa, se il codice passa quella mostrata e cade su un'altra. */
@@ -92,10 +98,25 @@ export function messaggioConsiglio(c: ContestoConsiglio): string {
       `Il programma usa random.randint(): nella prova il numero "casuale" è ${prova.casuali.join(', poi ')} (l'allievo non lo vede nel codice e non deve scriverlo a mano; con altre prove cambia).`,
     );
   }
+  if (c.esercizio.nota) {
+    parti.push(`NOTA DELL'AUTORE DEL COMPITO PER TE (l'allievo non la vede; usala per capire dov'è fermo, non ripeterla): ${c.esercizio.nota}`);
+  }
   parti.push(blocco('OUTPUT CHE DEVE PRODURRE:', c.esercizio.outputAtteso));
   parti.push(blocco("CODICE DELL'ALLIEVO ADESSO:", c.codice.trim() ? c.codice.replace(/\r\n?/g, '\n').split('\n') : []));
   if ('errore' in c.esito) parti.push(`IL SUO CODICE NON GIRA. Errore: ${c.esito.errore}`);
-  else parti.push(blocco('OUTPUT CHE PRODUCE IL SUO CODICE:', c.esito.output));
+  else {
+    parti.push(blocco('OUTPUT CHE PRODUCE IL SUO CODICE:', c.esito.output));
+    if (c.esito.struttura) {
+      parti.push(blocco('FATTI MISURATI SUL SUO CODICE (esatti, contati da un analizzatore: non contraddirli):', descriviFatti(c.esito.struttura, c.esito.giri ?? 0).map((f) => `- ${f}`)));
+    }
+  }
+  if (c.erroriFase !== undefined && c.erroriFase > 0) {
+    const tanti = c.erroriFase >= 8;
+    parti.push(
+      `Su questa fase ha già consegnato ${c.erroriFase} ${c.erroriFase === 1 ? 'volta' : 'volte'} senza passare.` +
+        (tanti ? ' È fermo da un pezzo: un passo solo, il più piccolo possibile, e niente altro.' : ''),
+    );
+  }
   if (c.provaNascosta) {
     const p = c.provaNascosta;
     parti.push(

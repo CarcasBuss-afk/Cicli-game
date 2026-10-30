@@ -5,6 +5,7 @@
 import { useState } from 'react';
 import Testo from '@/components/Testo';
 import { messaggioErrore, type Scambio } from '@/lib/officina/client';
+import { DOMANDE_RAPIDE } from '@/lib/officina/tutorPrompt';
 
 interface Props {
   scambi: Scambio[];
@@ -85,6 +86,23 @@ export default function TutorChat({ scambi, votoSeFinisci, domandeRimaste, onChi
 
       {attivo && domandeRimaste > 0 && (
         <div className="flex flex-col gap-2">
+          <div role="group" className="flex flex-wrap items-center gap-2" aria-label="domande rapide">
+            <span className="text-sm text-(--color-testo-tenue)">Di che aiuto hai bisogno?</span>
+            {DOMANDE_RAPIDE.map((d) => (
+              <button
+                key={d}
+                type="button"
+                disabled={attesa}
+                onClick={() => {
+                  setDomanda(d);
+                  setConferma(true);
+                }}
+                className="rounded-full border border-(--color-bordo) bg-black/30 px-3 py-1 text-sm hover:border-(--color-giallo) disabled:opacity-50"
+              >
+                {d}
+              </button>
+            ))}
+          </div>
           <textarea
             value={domanda}
             onChange={(e) => setDomanda(e.target.value)}

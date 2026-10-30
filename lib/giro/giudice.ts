@@ -41,13 +41,12 @@ export interface ContestoGiudizio {
 
 export type Verdetto = { genuino: true } | { genuino: false; motivo: string };
 
-/** Il messaggio con la regola, il codice e i fatti. Niente soluzione di riferimento: non serve. */
-export function messaggioGiudizio(c: ContestoGiudizio): string {
-  const s = c.struttura;
-  const fatti = [
+/** I fatti misurati dall'interprete, in righe leggibili: li ricevono il giudice e il tutor. */
+export function descriviFatti(s: Struttura, giri: number): string[] {
+  return [
     `cicli for: ${s.numFor}`,
     `cicli while: ${s.numWhile} (di cui con una variabile della condizione che cambia nel corpo: ${s.whileAggiornati})`,
-    `giri fatti in tutto: ${c.giri}`,
+    `giri fatti in tutto: ${giri}`,
     `print dentro i cicli: ${s.numPrint - s.printFuoriCiclo}`,
     `print fuori dai cicli: ${s.printFuoriCiclo}`,
     `aggiornamenti dentro i cicli (x += ..., x -= ..., x *= ... o x = x + ...): ${s.accumuliNelCiclo}`,
@@ -55,8 +54,12 @@ export function messaggioGiudizio(c: ContestoGiudizio): string {
     `input() dentro i cicli (la domanda si ripete a ogni giro): ${s.inputNelCiclo}`,
     `input() fuori dai cicli: ${s.numInput - s.inputNelCiclo}`,
     `random.randint(): ${s.numCasuali} (di cui dentro un ciclo: ${s.casualiNelCiclo})`,
-    `righe di output: ${c.outputAtteso.length}`,
   ];
+}
+
+/** Il messaggio con la regola, il codice e i fatti. Niente soluzione di riferimento: non serve. */
+export function messaggioGiudizio(c: ContestoGiudizio): string {
+  const fatti = [...descriviFatti(c.struttura, c.giri), `righe di output: ${c.outputAtteso.length}`];
   const parti = [
     `CONSEGNA: ${c.consegna.replace(/\*\*/g, '')}`,
     `REGOLA: ${c.regola}`,
