@@ -5,7 +5,7 @@
  *
  * Stessa forma degli altri compiti: parametri dal seme, cinque fasi che aggiungono ogni
  * volta un pezzo, la scheda con l'output finale per intero. Modulo puro. */
-import { generatore, type Esercizio, type Prova } from '../giro/esercizi';
+import { conNote, generatore, type Esercizio, type Prova } from '../giro/esercizi';
 import type { SchedaCompito } from './compiti';
 
 const base = { tipo: 'progetto' as const, mostraOutput: true, risposta: 'codice' as const };
@@ -83,7 +83,7 @@ export function fasiDistributore(seme: number): Esercizio[] {
   const r4 = `versato = 0\nmonete = 0\nwhile versato < ${prezzo}:\n    moneta = int(input("Moneta? "))\n    versato += moneta\n    monete += 1\n    print(f"Versati {versato} centesimi")\nprint("Ecco ${nome}!")\nprint(f"Monete inserite: {monete}")\nprint(f"Resto: {versato - ${prezzo}} centesimi")`;
   const r5 = r4.replace(`print(f"Resto: {versato - ${prezzo}} centesimi")`, `if versato == ${prezzo}:\n    print("Nessun resto")\nelse:\n    print(f"Resto: {versato - ${prezzo}} centesimi")`);
   const resto = somma(mostrate) - prezzo;
-  return [
+  return conNote([
     fase(
       1,
       `**Fase 1 — finché basta.** ${nome[0].toUpperCase() + nome.slice(1)} costa ${prezzo} centesimi. Il distributore chiede una moneta alla volta (con \`input()\` e \`int()\` **dentro** il ciclo) ` +
@@ -108,7 +108,7 @@ export function fasiDistributore(seme: number): Esercizio[] {
       r5,
       REGOLA_DISTRIBUTORE + ' La riga del resto la sceglie un `if` fuori dal ciclo.',
     ),
-  ];
+  ], noteDistributore(p));
 }
 
 export function schedaDistributore(seme: number): SchedaCompito {
@@ -214,7 +214,7 @@ export function fasiMenu(seme: number): Esercizio[] {
     `totale = 0\n${caffe ? 'caffe = 0\n' : ''}${domanda}\nwhile scelta != 0:\n${caffe ? rami.replace(`        totale += ${CAFFE}`, `        totale += ${CAFFE}\n        caffe += 1`) : rami}\n    ${domanda}\n` +
     `${caffe ? 'print(f"Caffè venduti: {caffe}")\n' : ''}print(f"Totale: {totale} €")${offerta ? '\nif caffe >= 2:\n    print(f"Hai preso {caffe} caffè: il prossimo è gratis!")' : ''}`;
   const mostrate = scelteMenu(p, 0, 3);
-  return [
+  return conNote([
     fase(
       1,
       `**Fase 1 — il codice al posto del prezzo.** La cassa riparte da quella del bar, già scritta. Ora il barista digita il **codice** del prodotto: ` +
@@ -241,7 +241,7 @@ export function fasiMenu(seme: number): Esercizio[] {
       programma(rami4, true, true),
       { regola: REGOLA_MENU + " L'offerta la decide un `if` fuori dal ciclo sul numero dei caffè." },
     ),
-  ];
+  ], noteMenu(p));
 }
 
 export function schedaMenu(seme: number): SchedaCompito {
@@ -257,4 +257,39 @@ export function schedaMenu(seme: number): SchedaCompito {
     dati: [`Menu: 1 caffè ${CAFFE} € · 2 cornetto ${p.cornetto} € · 3 panino ${p.panino} €`, `Scelte di prova: ${mostrate.join(' · ')} (poi 0)`],
     outputFinale: righeMenu(p, mostrate, 5),
   };
+}
+
+/* ------------------------------------------------------- le note per il tutor (§23) */
+
+function noteDistributore(p: ParametriDistributore): string[] {
+  const { prezzo, nome } = p.snack;
+  const [mostrate] = p.monete;
+  return [
+    `versato = 0 prima; while versato < ${prezzo}; dentro moneta = int(input(...)), versato += moneta, poi il print. È la prima volta che la input sta solo dentro il ciclo: la condizione guarda versato, non la moneta. ` +
+      "Errori tipici: una input prima del ciclo come nella cassa (una moneta in più o in meno), il print prima del += (parte da Versati 0), <= (chiede una moneta di troppo), int dimenticato (il += con un testo dà errore).",
+    `Il print di «Ecco ${nome}!» dopo il ciclo, senza rientro. ` +
+      'Errori tipici: il print dentro il ciclo (una riga per moneta), la maiuscola e il punto esclamativo, l\'articolo del prodotto cambiato.',
+    `La f-string con {versato - ${prezzo}} dopo il prodotto. ` +
+      `Errori tipici: il resto scritto a mano (cade sulla prova nascosta con la moneta da 200), la sottrazione al contrario (numero negativo), il print con il rientro, la parola centesimi dimenticata.`,
+    'monete = 0 prima del ciclo, monete += 1 dentro, il print fra il prodotto e il resto. ' +
+      `Errori tipici: l'ordine dei print finali, il contatore messo nella f-string del resto, ${mostrate.length} scritto a mano (le prove nascoste hanno un numero diverso di monete).`,
+    `Un if/else fuori dal ciclo al posto della riga del resto: se versato == ${prezzo} stampa Nessun resto, altrimenti la riga del resto di prima. ` +
+      'Errori tipici: la vecchia riga del resto lasciata insieme all\'if (due righe), = al posto di ==, l\'if dentro il ciclo, la prova nascosta con le monete giuste deve dire Nessun resto.',
+  ];
+}
+
+function noteMenu(p: ParametriMenu): string[] {
+  const { cornetto, panino } = p;
+  return [
+    'Riparte dalla cassa: la variabile diventa scelta, la condizione scelta != 0, dentro if scelta == 1 / elif scelta == 2 con il print e totale += del prezzo giusto; le due domande (prima e in fondo) restano. ' +
+      `Errori tipici: la vecchia riga Articolo: {prezzo} lasciata, totale += scelta (somma il codice, non il prezzo), prezzo e scelta mescolati fra le due domande, il print del ramo con un livello solo di rientro, il prezzo del cornetto ${cornetto} scritto nel caffè.`,
+    `Un elif scelta == 3 con il print Panino: ${panino} € e totale += ${panino}. ` +
+      `Errori tipici: il prezzo del cornetto ${cornetto} copiato nel panino, i due punti dopo la condizione dimenticati, l'elif allineato male (deve stare sotto l'if, con lo stesso rientro).`,
+    'Un else in fondo alla catena: il print Codice sconosciuto, senza aggiungere niente al totale. ' +
+      'Errori tipici: else con una condizione dietro, un elif scelta == 0 che prende la sentinella (la riga esce anche allo 0), un += nel ramo dello sconosciuto, l\'else allineato con il while.',
+    'caffe = 0 prima del ciclo, caffe += 1 solo nel ramo del codice 1 (due livelli di rientro), il print Caffè venduti: prima del totale. ' +
+      'Errori tipici: il += in tutti i rami o fuori dall\'if (conta tutte le scelte), il += con un livello solo di rientro (vale per ogni giro), il numero scritto a mano, l\'ordine dei due print finali.',
+    'Un if dopo il print del totale, senza else: se caffe >= 2 stampa la f-string con {caffe}. ' +
+      'Errori tipici: > al posto di >= (la prova mostrata ha esattamente due caffè e deve stamparla), l\'if dentro il ciclo, il numero dei caffè scritto a mano, il punto esclamativo e i due punti nel testo.',
+  ];
 }

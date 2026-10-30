@@ -6,7 +6,7 @@
  *
  * Stessa forma degli altri compiti: parametri dal seme, cinque fasi che aggiungono ogni
  * volta un pezzo, la scheda con l'output finale per intero. Modulo puro. */
-import { generatore, type Esercizio, type Prova } from '../giro/esercizi';
+import { conNote, generatore, type Esercizio, type Prova } from '../giro/esercizi';
 import type { SchedaCompito } from './compiti';
 
 const base = { tipo: 'progetto' as const, mostraOutput: true, risposta: 'codice' as const };
@@ -69,7 +69,7 @@ export function fasiParola(seme: number): Esercizio[] {
   const r3 = r2.replace('print("Sbagliata, riprova")', 'print(f"Sbagliata: {parola} non è la parola")');
   const r4 = r3.replace(`    ${domanda}\n    tentativi += 1`, `    if tentativi == 3:\n        print("Chiama il prof!")\n    ${domanda}\n    tentativi += 1`);
   const r5 = `${r4}\nif tentativi > 2:\n    print("Troppi tentativi: impara la parola!")`;
-  return [
+  return conNote([
     fase(
       1,
       `**Fase 1 — richiedi finché non è giusta.** La parola d'ordine è \`${parola}\`. Chiedila con \`input()\` **prima** del ciclo; poi un \`while\` gira ` +
@@ -100,7 +100,7 @@ export function fasiParola(seme: number): Esercizio[] {
       r5,
       REGOLA_PAROLA + ' La riga finale la decide un `if` fuori dal ciclo sui tentativi.',
     ),
-  ];
+  ], noteParola(p));
 }
 
 export function schedaParola(seme: number): SchedaCompito {
@@ -180,7 +180,7 @@ export function fasiCassa(seme: number): Esercizio[] {
     `print(f"Articoli: {articoli}")\nprint(f"Totale: {totale} €")`;
   const r5 = `${r4}\npagato = int(input("Quanto paga? "))\nprint(f"Resto: {pagato - totale} €")`;
   const tot = somma(mostrati);
-  return [
+  return conNote([
     fase(
       1,
       `**Fase 1 — la sentinella.** La cassa chiede un prezzo alla volta e si ferma quando il barista digita **0**. Il codice è quasi pronto: la prima domanda ` +
@@ -204,7 +204,7 @@ export function fasiCassa(seme: number): Esercizio[] {
       r5,
       { regola: REGOLA_CASSA + ' Quanto paga arriva da `input()` dopo il ciclo.' },
     ),
-  ];
+  ], noteCassa(p));
 }
 
 export function schedaCassa(seme: number): SchedaCompito {
@@ -220,4 +220,41 @@ export function schedaCassa(seme: number): SchedaCompito {
     dati: [`Prezzi di prova: ${mostrati.join(' · ')} € (poi 0)`, `Paga: ${pagatoCassa(mostrati)} €`],
     outputFinale: righeCassa(mostrati, 5),
   };
+}
+
+/* ------------------------------------------------------- le note per il tutor (§23) */
+
+function noteParola(p: ParametriParola): string[] {
+  const { parola } = p;
+  const [mostrate] = tentativiParola(p);
+  return [
+    `Due input nella stessa variabile parola: una prima del ciclo e una in fondo al corpo; while parola != "${parola}"; Porta aperta! fuori dal ciclo. ` +
+      "Errori tipici: la seconda input dimenticata (il ciclo non si ferma: l'hint dice che dopo l'ultima risposta doveva fermarsi), == al posto di != (non entra mai nel ciclo), int() intorno all'input (la risposta è un testo), " +
+      `${parola} senza virgolette o fra graffe, la seconda domanda in una variabile diversa (parola non cambia).`,
+    'tentativi = 1 prima del ciclo (il primo tentativo lo fa la domanda fuori), tentativi += 1 dentro, e la f-string finale con {tentativi}. ' +
+      `Errori tipici: parte da 0 (uno in meno: con la prova mostrata deve dire ${mostrate.length + 1}), il numero scritto a mano, il += 1 fuori dal ciclo.`,
+    `La f-string Sbagliata: {parola} non è la parola stampa la risposta appena data: il print resta prima della nuova input. ` +
+      `Errori tipici: il print spostato dopo la seconda input (stampa la parola successiva), la f dimenticata, «${mostrate[0]}» scritto a mano (cade sulle prove nascoste), l'accento di «è».`,
+    'Un if dentro il ciclo, dopo il messaggio e prima della nuova input e del += 1: se tentativi == 3 stampa Chiama il prof!. ' +
+      "Errori tipici: l'if dopo il += 1 (scatta al secondo errore), = al posto di ==, il print dell'if con un livello solo di rientro, l'if fuori dal ciclo (nella prova mostrata la riga sta fra il terzo errore e la porta).",
+    'Un if dopo il ciclo, senza else: se tentativi > 2 stampa Troppi tentativi: impara la parola!. ' +
+      'Errori tipici: >= 2 (scatta anche con un errore solo: la prova nascosta da un errore cade), l\'if con il rientro dentro il ciclo, un else con una riga che non c\'è, i due punti nel testo.',
+  ];
+}
+
+function noteCassa(p: ParametriCassa): string[] {
+  const [mostrati] = p.spese;
+  const tot = somma(mostrati);
+  return [
+    'Fase guidata: manca prezzo = int(input("Prezzo? ")) in fondo al corpo, con il rientro, nella stessa variabile prezzo. ' +
+      'Errori tipici: la riga senza rientro (fuori dal ciclo: non si ferma), senza int (il confronto != 0 con un testo è sempre vero: non si ferma), una variabile nuova (prezzo non cambia), la riga messa prima del print (salta il primo articolo).',
+    'totale = 0 prima della prima domanda, totale += prezzo dentro il ciclo prima della nuova domanda, il print del totale fuori. ' +
+      `Errori tipici: il += dopo la nuova domanda (somma il prezzo dopo, e alla fine lo 0), il print del totale con il rientro, ${tot} scritto a mano (il giudice boccia e le prove nascoste cadono).`,
+    'articoli = 0 prima, articoli += 1 dentro, il print Articoli: prima di quello del totale. ' +
+      `Errori tipici: l'ordine dei due print finali invertito, il contatore messo nella f-string del totale, ${mostrati.length} scritto a mano (le prove nascoste hanno 1 e 5 articoli).`,
+    'Lo spostamento di articoli += 1 prima del print, così la riga dice Articolo 1. ' +
+      'Errori tipici: il += lasciato dopo il print (Articolo 0: ...), le graffe di articoli e prezzo scambiate, i due punti e lo spazio nel testo.',
+    'Dopo il ciclo e dopo il print del totale: pagato = int(input(...)) e la f-string con {pagato - totale}. ' +
+      `Errori tipici: la domanda messa prima del ciclo (le risposte di prova si sfasano: legge ${mostrati[0]} come pagato), il resto ${pagatoCassa(mostrati) - tot} scritto a mano, int dimenticato, la sottrazione al contrario (totale - pagato: viene negativo).`,
+  ];
 }

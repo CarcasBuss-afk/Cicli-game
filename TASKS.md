@@ -91,3 +91,4 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 13b. Il tutor: prompt corto e a un passo, nota per fase visibile solo al tutor, fatti misurati ed errori nel contesto, pulsanti rapidi al posto della domanda vuota.
 - [x] 13c. La correzione: hint in una frase «attuale invece di atteso», diagnosi di sintassi mirate con la riga, riga evidenziata nell'editor.
 - [x] 13d. Il giudice su Sonnet con il verdetto corto, i controlli sul testo prima del giudice, il registro dei giudizi per il docente.
+- [x] 13e. Le note per il tutor anche sugli undici compiti della sezione `while` (30 ottobre 2026). Decisione di Fabio: niente esempio di sintassi su un caso estraneo, resta «mai codice».

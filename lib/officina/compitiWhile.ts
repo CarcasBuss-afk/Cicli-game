@@ -9,7 +9,7 @@
  *
  * Stessa forma degli altri compiti: parametri dal seme, cinque fasi che aggiungono ogni
  * volta un pezzo, la scheda con l'output finale per intero. Modulo puro. */
-import { generatore, type Esercizio, type Prova } from '../giro/esercizi';
+import { conNote, generatore, type Esercizio, type Prova } from '../giro/esercizi';
 import type { SchedaCompito } from './compiti';
 
 const base = { tipo: 'progetto' as const, mostraOutput: true, risposta: 'codice' as const };
@@ -65,7 +65,7 @@ export function fasiTimer(seme: number): Esercizio[] {
   const b = { ...base, terreno: 'pianura' as const };
   const prove = (fase: 4 | 5): Prova[] => [minuti, ...MINUTI_NASCOSTI].map((m) => ({ risposte: [String(m)], output: righeTimer(p, m, fase) }));
   const corpoInput = 'minuti = int(input("Quanti minuti? "))';
-  return [
+  return conNote([
     {
       ...b,
       consegna:
@@ -119,7 +119,7 @@ export function fasiTimer(seme: number): Esercizio[] {
         `    minuti -= 1\nprint("${piatto.pronto}")`,
       regola: REGOLA_TIMER_INPUT + ' La riga dell\'ultimo minuto la sceglie un `if` dentro il ciclo.',
     },
-  ];
+  ], noteTimer(p));
 }
 
 export function schedaTimer(seme: number): SchedaCompito {
@@ -135,4 +135,23 @@ export function schedaTimer(seme: number): SchedaCompito {
     dati: [`Piatto: ${p.piatto.nome}`, `Minuti di prova: ${p.minuti}`],
     outputFinale: righeTimer(p, p.minuti, 5),
   };
+}
+
+/* ------------------------------------------------------- le note per il tutor (§23) */
+
+function noteTimer(p: ParametriTimer): string[] {
+  const { minuti, piatto } = p;
+  return [
+    'Fase guidata: manca solo la riga che fa scendere i minuti (minuti -= 1 oppure minuti = minuti - 1) sotto il print, con lo stesso rientro. ' +
+      `Far capire: il while rilegge la condizione a ogni giro, e se minuti non cambia resta ${minuti} per sempre (l'hint del ciclo infinito). ` +
+      `Errori tipici: la riga senza rientro (fuori dal ciclo: stampa ${minuti} all'infinito), minuti - 1 senza assegnare, += 1 che sale invece di scendere, un for con range al posto del while (il giudice lo boccia).`,
+    `Il print di «${piatto.pronto}» va dopo il ciclo, senza rientro, allineato con while. ` +
+      `Errori tipici: il print dentro il ciclo (la riga compare ${minuti} volte), il testo copiato male (maiuscola, punto esclamativo, accento), il print messo prima del while.`,
+    'Una f-string con la variabile fra graffe: Mancano {minuti} minuti. ' +
+      `Errori tipici: la f davanti alle virgolette dimenticata (stampa le graffe), il numero ${minuti} scritto nel testo (stessa riga a ogni giro), la variabile fuori dalle virgolette con la virgola, «minuto» al singolare già adesso (arriva alla fase 5).`,
+    `Il numero fisso ${minuti} è sostituito da int(input(...)) prima del ciclo; il while non cambia. ` +
+      `Errori tipici: input senza int (il confronto > fra un testo e un numero dà errore), la domanda dentro il ciclo (richiesta a ogni giro: le risposte finiscono), ${minuti} lasciato scritto (passa la prova mostrata, cade sulle prove nascoste da 3 e 10 minuti).`,
+    'Un if/else dentro il ciclo, prima dell\'aggiornamento: se minuti == 1 stampa Manca 1 minuto, altrimenti la f-string di prima. ' +
+      "Errori tipici: = al posto di ==, l'else dimenticato (all'ultimo giro escono due righe), l'if messo dopo minuti -= 1 (confronta già con 0: la riga non esce mai), il print dell'if con il rientro sbagliato, «Manca 1 minuti».",
+  ];
 }

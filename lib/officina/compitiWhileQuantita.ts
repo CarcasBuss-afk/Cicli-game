@@ -8,7 +8,7 @@
  *
  * Stessa forma degli altri compiti: parametri dal seme, cinque fasi che aggiungono ogni
  * volta un pezzo, la scheda con l'output finale per intero. Modulo puro. */
-import { generatore, type Esercizio, type Prova } from '../giro/esercizi';
+import { conNote, generatore, type Esercizio, type Prova } from '../giro/esercizi';
 import type { SchedaCompito } from './compiti';
 
 const base = { tipo: 'progetto' as const, mostraOutput: true, risposta: 'codice' as const };
@@ -70,7 +70,7 @@ export function fasiObiettivo(seme: number): Esercizio[] {
   const r3 = `totale = 0\nsettimane = 0\n${corpo(String(quota))}\nprint(f"Ce la fai in {settimane} settimane")`;
   const r4 = `quota = int(input("Quanto metti via a settimana? "))\ntotale = 0\nsettimane = 0\n${corpo('quota')}\nprint(f"Ce la fai in {settimane} settimane")`;
   const settimane = obiettivo / quota;
-  return [
+  return conNote([
     {
       ...b,
       consegna:
@@ -117,7 +117,7 @@ export function fasiObiettivo(seme: number): Esercizio[] {
       soluzione: `${r4}\nif totale > ${obiettivo}:\n    print(f"Ti avanzano {totale - ${obiettivo}} €")\nelse:\n    print("Giusto giusto, niente resto")`,
       regola: REGOLA_OBIETTIVO + ' La quota arriva da `input()`. La riga del resto la sceglie un `if` fuori dal ciclo sul totale.',
     },
-  ];
+  ], noteObiettivo(p));
 }
 
 export function schedaObiettivo(seme: number): SchedaCompito {
@@ -184,7 +184,7 @@ export function fasiBatteria(seme: number): Esercizio[] {
   const r3 = `${corpo(String(consumo))}\nprint(f"Si scarica dopo {ore} ore")`;
   const r4 = `consumo = int(input("Quanto consuma all'ora? "))\n${corpo('consumo')}\nprint(f"Si scarica dopo {ore} ore")`;
   const ore = righeBatteria(p, consumo, 1).length;
-  return [
+  return conNote([
     {
       ...b,
       consegna:
@@ -228,7 +228,7 @@ export function fasiBatteria(seme: number): Esercizio[] {
       soluzione: r4.replace(`    print(f"Ora {ore}: {carica}%")`, `    print(f"Ora {ore}: {carica}%")\n    if carica <= ${SOGLIA_SCARICA}:\n        print("Carica il telefono!")`),
       regola: REGOLA_BATTERIA + " Il consumo arriva da `input()`. L'avviso lo decide un `if` dentro il ciclo sulla carica.",
     },
-  ];
+  ], noteBatteria(p));
 }
 
 export function schedaBatteria(seme: number): SchedaCompito {
@@ -292,7 +292,7 @@ export function fasiPettegolezzo(seme: number): Esercizio[] {
   const r3 = `sanno = ${inizio}\nore = 0\n${corpo}\nprint(f"Tutta la scuola lo sa dopo {ore} ore")`;
   const r4 = `sanno = int(input("Quanti lo sanno all'inizio? "))\nore = 0\n${corpo}\nprint(f"Tutta la scuola lo sa dopo {ore} ore")`;
   const ore = righePettegolezzo(p, inizio, 1).length;
-  return [
+  return conNote([
     {
       ...b,
       consegna:
@@ -334,7 +334,7 @@ export function fasiPettegolezzo(seme: number): Esercizio[] {
       soluzione: r4.replace(`    print(f"Ora {ore}: {sanno} persone")`, `    print(f"Ora {ore}: {sanno} persone")\n    if sanno >= ${scuola / 2}:\n        print("Metà scuola lo sa!")`),
       regola: REGOLA_PETTEGOLEZZO + " Quanti lo sanno all'inizio arriva da `input()`. La riga di metà scuola la decide un `if` dentro il ciclo.",
     },
-  ];
+  ], notePettegolezzo(p));
 }
 
 export function schedaPettegolezzo(seme: number): SchedaCompito {
@@ -349,4 +349,58 @@ export function schedaPettegolezzo(seme: number): SchedaCompito {
     dati: [`Allievi della scuola: ${p.scuola}`, `Lo sanno all'inizio (prova): ${p.inizio}`],
     outputFinale: righePettegolezzo(p, p.inizio, 5),
   };
+}
+
+/* ------------------------------------------------------- le note per il tutor (§23) */
+
+function noteObiettivo(p: ParametriObiettivo): string[] {
+  const { quota, obiettivo } = p;
+  const settimane = obiettivo / quota;
+  const [n1, n2] = quoteNascoste(p);
+  return [
+    `Tre gesti: totale = 0 prima del ciclo, while totale < ${obiettivo}, dentro totale += ${quota} e poi il print con la f-string. ` +
+      `Errori tipici: il print prima dell'aggiornamento (la prima riga è 0 €), <= al posto di < (un giro di troppo), un for con range(${settimane}) che passa l'interprete ma il giudice boccia, il simbolo € fuori dalle virgolette.`,
+    'Una seconda variabile: settimane = 0 prima del ciclo, settimane += 1 dentro, e nella f-string Settimana {settimane}: {totale} €. ' +
+      'Errori tipici: settimane = 0 dentro il ciclo (resta sempre 1), l\'aggiornamento dopo il print (parte da Settimana 0), le due variabili scambiate nelle graffe.',
+    'Dopo il ciclo, senza rientro, la f-string con {settimane}. ' +
+      `Errori tipici: ${settimane} scritto a mano (il giudice boccia, e alla fase 4 cade), il print con il rientro (una riga per settimana), la parola settimane nel testo senza graffe.`,
+    'quota = int(input(...)) prima del ciclo, e totale += quota. ' +
+      `Errori tipici: ${quota} lasciato nel += (passa la prova mostrata, cade sulle prove nascoste con quota ${n1} e ${n2}), input senza int (il += fra numero e testo dà errore), la domanda dentro il ciclo (le risposte finiscono).`,
+    `Un if/else dopo il ciclo: se totale > ${obiettivo} stampa la differenza totale - ${obiettivo} nella f-string, altrimenti Giusto giusto, niente resto. ` +
+      `Errori tipici: >= al posto di > (con la quota di prova si arriva esatti a ${obiettivo}: deve dire Giusto giusto), l'if con il rientro dentro il ciclo, la differenza scritta a mano, maiuscole e virgola nei testi.`,
+  ];
+}
+
+function noteBatteria(p: ParametriBatteria): string[] {
+  const { carica, consumo } = p;
+  const [n1, n2] = consumiNascosti(p);
+  return [
+    `carica = ${carica} prima del ciclo, while carica > 0, dentro prima il print e poi carica -= ${consumo}. ` +
+      `Errori tipici: l'ordine invertito (la prima riga è ${carica - consumo}%), >= 0 (stampa anche sotto zero), il % fuori dalle virgolette, += al posto di -= (la carica sale: ciclo infinito, l'hint lo dice).`,
+    'ore = 0 prima del ciclo, ore += 1 dentro prima del print, e la f-string Ora {ore}: {carica}%. ' +
+      'Errori tipici: ore += 1 dopo il print (parte da Ora 0), ore = 0 dentro il ciclo (resta 1), le graffe scambiate.',
+    'La f-string con {ore} dopo il ciclo, senza rientro. ' +
+      'Errori tipici: il numero delle ore scritto a mano (il giudice boccia, alla fase 4 cade), il print con il rientro dentro il ciclo.',
+    'consumo = int(input(...)) prima del ciclo, e carica -= consumo. ' +
+      `Errori tipici: ${consumo} lasciato nel -= (cade sulle prove nascoste con consumo ${n1} e ${n2}), int dimenticato (il -= con un testo dà errore), la domanda dentro il ciclo.`,
+    `Un if dentro il ciclo, dopo il print dell'ora e prima di carica -= consumo: se carica <= ${SOGLIA_SCARICA} stampa Carica il telefono!. ` +
+      `Errori tipici: l'if dopo la sottrazione (guarda la carica dell'ora dopo: l'avviso arriva in anticipo), < al posto di <= (manca l'avviso proprio a ${SOGLIA_SCARICA}%), l'if fuori dal ciclo (una riga sola alla fine), il rientro del print dentro l'if.`,
+  ];
+}
+
+function notePettegolezzo(p: ParametriPettegolezzo): string[] {
+  const { scuola, inizio } = p;
+  const [n1, n2] = INIZI_NASCOSTI;
+  return [
+    `sanno = ${inizio} prima del ciclo, while sanno < ${scuola}, dentro prima sanno *= 2 e poi il print. ` +
+      `Errori tipici: il print prima del raddoppio (la prima riga è ${inizio} persone), += 2 o sanno + 2 al posto di *= 2 (cresce piano: troppe righe), <= al posto di <, sanno = sanno * 2 va bene.`,
+    'ore = 0 prima del ciclo, ore += 1 dentro, e la f-string Ora {ore}: {sanno} persone. ' +
+      'Errori tipici: ore += 1 dopo il print (Ora 0), le due variabili scambiate nelle graffe, ore = 0 dentro il ciclo.',
+    'La f-string con {ore} dopo il ciclo, senza rientro. ' +
+      'Errori tipici: il numero delle ore scritto a mano (il giudice boccia, alla fase 4 cade), il print con il rientro.',
+    `sanno = int(input(...)) al posto di sanno = ${inizio}, prima del ciclo. ` +
+      `Errori tipici: ${inizio} lasciato scritto (cade sulle prove nascoste con ${n1} e ${n2} persone all'inizio), int dimenticato (il *= 2 su un testo lo ripete invece di raddoppiare), la domanda dentro il ciclo.`,
+    `Un if dentro il ciclo, dopo il print dell'ora: se sanno >= ${scuola / 2} stampa Metà scuola lo sa!. ` +
+      `Errori tipici: > al posto di >= (se sanno è esattamente ${scuola / 2} la riga manca), l'if fuori dal ciclo (una riga sola alla fine), l'if prima del raddoppio (guarda l'ora prima), la soglia scritta come ${scuola} / 2 va bene.`,
+  ];
 }

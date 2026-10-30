@@ -965,9 +965,10 @@ describe('il patentino dei cicli while (l\'esame della seconda sezione)', () => 
 });
 
 describe('le note per il tutor (PERCORSO.md §23)', () => {
-  const conNota: CompitoId[] = ['cartello', 'classifica', 'lancio', 'scala', 'salvadanaio', 'allenamento', 'scontrino', 'promozione', 'diario', 'record', 'conteggio'];
+  const conNota: CompitoId[] = ELENCO_COMPITI.filter((id) => !eEsame(id));
 
-  it('ogni fase dei compiti della sezione for ha una nota, con i parametri del compito dentro', () => {
+  it('ogni fase dei compiti con il tutor acceso (le due sezioni) ha una nota, con i parametri del compito dentro', () => {
+    expect(conNota).toHaveLength(22);
     for (const id of conNota) {
       for (const seme of [1, 7, 42]) {
         const fasi = generaCompito(id, seme);
@@ -992,7 +993,8 @@ describe('le note per il tutor (PERCORSO.md §23)', () => {
     }
   });
 
-  it('il patentino, con il tutor spento, non ne ha bisogno', () => {
+  it('i patentini, con il tutor spento, non ne hanno bisogno', () => {
     for (const f of generaCompito('patentino', 5)) expect(f.nota).toBeUndefined();
+    for (const f of generaCompito('patentinoWhile', 5)) expect(f.nota).toBeUndefined();
   });
 });
