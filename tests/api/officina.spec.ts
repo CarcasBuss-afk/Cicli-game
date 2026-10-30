@@ -425,6 +425,10 @@ test.describe("l'Officina nella dashboard del docente", () => {
     await finisci(request, luca, classeId, 'cartello');
     const fasi2 = await fasiDi(request, luca.uid, 'classifica');
     for (let k = 0; k < 2; k++) await officina(request, luca, 'consegna', { classeId, compitoId: 'classifica', fase: k, codice: fasi2[k].soluzione });
+    // Output giusto ma bocciato dal giudice (finto): finisce nel registro con il motivo.
+    const furbo = await officina(request, luca, 'consegna', { classeId, compitoId: 'classifica', fase: 2, codice: `${fasi2[2].soluzione}  # furbo` });
+    expect(furbo.corpo.promosso).toBe(false);
+    expect(furbo.corpo.hint).toContain("non è fatto come chiede la tappa");
     await officina(request, luca, 'tutor', { classeId, compitoId: 'classifica', domanda: 'come si fa il totale?', codice: '' });
 
     await page.goto('/docente/officina');
@@ -444,6 +448,13 @@ test.describe("l'Officina nella dashboard del docente", () => {
     await expect(lavoro.getByText('Fase 2', { exact: true })).toBeVisible();
     await expect(lavoro.getByRole('list', { name: 'conversazione' }).locator('li')).toHaveCount(1);
     await expect(lavoro).toContainText('come si fa il totale?');
+    // Il registro del giudice: due OK sulle fasi promosse, il NO del furbo con il motivo.
+    await lavoro.getByText('Registro del giudice (1 NO su 3)').click();
+    const registro = lavoro.getByRole('list', { name: 'registro del giudice' }).locator('li');
+    await expect(registro).toHaveCount(3);
+    await expect(registro.nth(2)).toContainText('NO');
+    await expect(registro.nth(2)).toContainText('fase 3');
+    await expect(registro.nth(2)).toContainText('giudice di prova');
 
     const download = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Scarica CSV' }).click();

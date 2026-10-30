@@ -3,7 +3,7 @@
  * giudice finto boccia solo il marcatore dei test. */
 import { describe, expect, it } from 'vitest';
 import { REGOLE } from './esercizi';
-import { giudizioFinto, hintGiudice, interpretaVerdetto, MARCATORE_FURBO, messaggioGiudizio, PROMPT_GIUDICE, type ContestoGiudizio } from './giudice';
+import { descriviFatti, giudizioDa, giudizioFinto, hintGiudice, interpretaVerdetto, MARCATORE_FURBO, messaggioGiudizio, PROMPT_GIUDICE, type ContestoGiudizio } from './giudice';
 import { esegui } from './interprete';
 
 function contesto(codice: string, regola: string = REGOLE.ciclo): ContestoGiudizio {
@@ -102,5 +102,28 @@ describe('i fatti sui while e sul caso', () => {
     expect(m).toContain('random.randint(): 2 (di cui dentro un ciclo: 1)');
     expect(m).toContain('randint() ha dato in questa prova, nell\'ordine: 2, 6');
     expect(PROMPT_GIUDICE).toContain('while');
+  });
+});
+
+describe('il giudice dopo la prima settimana in classe (PERCORSO.md §23)', () => {
+  it('il prompt vuole il NO in 25 parole, solo che cosa non rispetta la regola, senza consigli', () => {
+    expect(PROMPT_GIUDICE).toContain('al massimo 25 parole');
+    expect(PROMPT_GIUDICE).toContain('SOLO che cosa non rispetta la regola');
+    expect(PROMPT_GIUDICE).toContain('Non dire come si corregge');
+    expect(PROMPT_GIUDICE).toContain('totale = 35');
+  });
+
+  it('i fatti portano il numero fisso assegnato dentro il ciclo', () => {
+    const esito = esegui('for i in range(3):\n    totale = 35\n    print(totale)');
+    expect(esito.ok).toBe(true);
+    if (!esito.ok) return;
+    const fatti = descriviFatti(esito.struttura, esito.giri).join('\n');
+    expect(fatti).toContain('assegnato un numero fisso (x = 35): 1');
+  });
+
+  it('il giudizio per il registro: OK, NO con il motivo, GUASTO', () => {
+    expect(giudizioDa({ genuino: true })).toEqual({ verdetto: 'OK' });
+    expect(giudizioDa({ genuino: true, guasto: true })).toEqual({ verdetto: 'GUASTO' });
+    expect(giudizioDa({ genuino: false, motivo: 'il totale è scritto a mano' })).toEqual({ verdetto: 'NO', motivo: 'il totale è scritto a mano' });
   });
 });

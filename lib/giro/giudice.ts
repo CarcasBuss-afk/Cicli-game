@@ -16,13 +16,13 @@ export const PROMPT_GIUDICE = `Sei il giudice di una gara di programmazione per 
 
 Rispondi OK oppure NO.
 - OK se il programma rispetta la regola. Variabili d'appoggio, nomi diversi, righe in più, un modo diverso ma onesto di scrivere la stessa cosa: tutto OK. In dubbio: OK.
-- NO solo se c'è una frode evidente rispetto alla regola: le righe stampate a mano una per una, un ciclo che gira una volta sola con un print per riga, print aggiunti fuori dal ciclo per completare l'output, il risultato scritto a mano o calcolato con una formula dove la regola chiede l'accumulo, i dati scritti nel programma dove la regola chiede input() o randint(), un for con il numero di giri scritto a mano dove la regola chiede un while che si ferma da solo.
+- NO solo se c'è una frode evidente rispetto alla regola: le righe stampate a mano una per una, un ciclo che gira una volta sola con un print per riga, print aggiunti fuori dal ciclo per completare l'output, il risultato scritto a mano o calcolato con una formula dove la regola chiede l'accumulo (anche assegnato a mano dentro il ciclo, come totale = 35), i dati scritti nel programma dove la regola chiede input() o randint(), un for con il numero di giri scritto a mano dove la regola chiede un while che si ferma da solo.
 
 I FATTI MISURATI SUL CODICE sono esatti, contati da un interprete: se dicono che un print, un if o un input() sta dentro un ciclo, è così. Non contraddirli.
 
 Formato della risposta, senza altro testo:
 - prima riga: OK oppure NO
-- se NO, seconda riga: una frase sola in italiano, al massimo 40 parole, rivolta all'allievo (dai del tu), che dice che cosa non va e che cosa deve fare invece, senza scrivere codice (niente righe di programma, niente "scrivi così"). Puoi nominare for, while, print, range, input, randint e i nomi delle sue variabili.`;
+- se NO, seconda riga: una frase sola in italiano, al massimo 25 parole, rivolta all'allievo (dai del tu), che dice SOLO che cosa non rispetta la regola, come un messaggio di errore (per esempio: «il totale è scritto a mano dentro il ciclo, la regola chiede che cresca a ogni giro»). Non dire come si corregge, niente consigli né esempi, niente codice: a spiegare ci pensa il tutor. Puoi nominare for, while, print, range, input, randint e i nomi delle sue variabili.`;
 
 export interface ContestoGiudizio {
   consegna: string;
@@ -39,7 +39,20 @@ export interface ContestoGiudizio {
   casuali?: number[];
 }
 
-export type Verdetto = { genuino: true } | { genuino: false; motivo: string };
+/** `guasto`: il modello non ha risposto o non si è capito, e la consegna passa senza giudizio. */
+export type Verdetto = { genuino: true; guasto?: boolean } | { genuino: false; motivo: string };
+
+/** Il giudizio come resta nel registro del docente (PERCORSO.md §23). */
+export type EsitoGiudizio = 'OK' | 'NO' | 'GUASTO';
+export interface Giudizio {
+  verdetto: EsitoGiudizio;
+  motivo?: string;
+}
+
+export function giudizioDa(v: Verdetto): Giudizio {
+  if (!v.genuino) return { verdetto: 'NO', motivo: v.motivo };
+  return { verdetto: v.guasto ? 'GUASTO' : 'OK' };
+}
 
 /** I fatti misurati dall'interprete, in righe leggibili: li ricevono il giudice e il tutor. */
 export function descriviFatti(s: Struttura, giri: number): string[] {
@@ -54,6 +67,7 @@ export function descriviFatti(s: Struttura, giri: number): string[] {
     `input() dentro i cicli (la domanda si ripete a ogni giro): ${s.inputNelCiclo}`,
     `input() fuori dai cicli: ${s.numInput - s.inputNelCiclo}`,
     `random.randint(): ${s.numCasuali} (di cui dentro un ciclo: ${s.casualiNelCiclo})`,
+    `variabili a cui dentro un ciclo viene assegnato un numero fisso (x = 35): ${s.assegnazioniFisseNelCiclo}`,
   ];
 }
 

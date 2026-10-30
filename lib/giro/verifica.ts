@@ -4,7 +4,7 @@
  * può fallire: si chiama **fuori** dalle transazioni Firestore. */
 import 'server-only';
 import { opzioniDiProva, type Esercizio } from './esercizi';
-import { hintGiudice } from './giudice';
+import { giudizioDa, hintGiudice } from './giudice';
 import { giudica } from './giudiceClient';
 import { valutaRisposta, type Valutazione } from './hint';
 import { esegui } from './interprete';
@@ -27,6 +27,7 @@ export async function verificaConsegna(esercizio: Esercizio, codice: string): Pr
     risposte: prova?.risposte,
     casuali: prova?.casuali,
   });
-  if (verdetto.genuino) return valutazione;
-  return { ...valutazione, promosso: false, hint: hintGiudice(verdetto.motivo, codice) };
+  const giudizio = giudizioDa(verdetto);
+  if (verdetto.genuino) return { ...valutazione, giudizio };
+  return { ...valutazione, promosso: false, hint: hintGiudice(verdetto.motivo, codice), giudizio };
 }

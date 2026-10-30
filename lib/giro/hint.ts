@@ -9,6 +9,7 @@
  * chiede la tappa (il ciclo per davvero, non le righe a mano) lo decide il giudice
  * (giudice.ts), chiamato dal server dopo, sul codice già promosso.
  */
+import type { Giudizio } from './giudice';
 import { esegui, type CicloVuoto, type RigaSchermo } from './interprete';
 import { descriviProva, opzioniDiProva, type Esercizio } from './esercizi';
 
@@ -22,6 +23,8 @@ export interface Valutazione {
   schermo?: RigaSchermo[];
   /** La riga del codice (1-based) a cui si riferisce l'hint, quando c'è: l'editor la evidenzia. */
   riga?: number | null;
+  /** Il verdetto del giudice, se è stato chiamato (`verificaConsegna`): per il registro del docente. */
+  giudizio?: Giudizio;
 }
 
 /** Normalizza l'output: via gli spazi a fine riga e le righe vuote finali. */

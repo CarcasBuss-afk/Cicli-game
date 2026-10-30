@@ -27,6 +27,15 @@ export type ScambioDoc = {
   at: Timestamp;
 };
 
+/** Un verdetto del giudice su una consegna con l'output giusto: il registro che il docente legge. */
+export type GiudizioDoc = {
+  /** Fase (0-based). */
+  fase: number;
+  verdetto: 'OK' | 'NO' | 'GUASTO';
+  motivo: string | null;
+  at: Timestamp;
+};
+
 /** Il lavoro di un allievo su un compito (chiave = id del progetto). */
 export type LavoroDoc = {
   /** Fasi completate. */
@@ -40,6 +49,8 @@ export type LavoroDoc = {
   erroriFase: Record<string, number>;
   consigli: number;
   tutor: ScambioDoc[];
+  /** Gli ultimi verdetti del giudice (al massimo 20). */
+  giudizi?: GiudizioDoc[];
   finitoAt: Timestamp | null;
   ultimoAt: Timestamp | null;
 };
@@ -80,6 +91,7 @@ export function lavoroVuoto(): LavoroDoc {
     erroriFase: {},
     consigli: 0,
     tutor: [],
+    giudizi: [],
     finitoAt: null,
     ultimoAt: null,
   };

@@ -216,6 +216,7 @@ describe('il contesto dopo la prima settimana in classe (PERCORSO.md §23)', () 
         whileAggiornati: 0,
         numCasuali: 0,
         casualiNelCiclo: 0,
+        assegnazioniFisseNelCiclo: 0,
       },
       giri: 6,
     },

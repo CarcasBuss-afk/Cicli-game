@@ -225,12 +225,17 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
     const { progetto, lavoro, fasi, f } = faseInConsegna(ctx, body, utente.uid);
     const salva = (dati: Partial<LavoroDoc>) =>
       tx.set(ctx.allievoRef, { lavori: { [progetto]: { ...lavoro, ...dati, ultimoAt: Timestamp.now() } } }, { merge: true });
+    // Il registro del giudice: ogni verdetto (anche il guasto) resta, il docente lo legge.
+    const giudizi = valutazione.giudizio
+      ? [...(lavoro.giudizi ?? []), { fase: f, verdetto: valutazione.giudizio.verdetto, motivo: valutazione.giudizio.motivo ?? null, at: Timestamp.now() }].slice(-20)
+      : (lavoro.giudizi ?? []);
 
     if (!valutazione.promosso) {
       salva({
         bozza: codice,
         errori: lavoro.errori + 1,
         erroriFase: { ...lavoro.erroriFase, [String(f)]: (lavoro.erroriFase?.[String(f)] ?? 0) + 1 },
+        giudizi,
       });
       return {
         promosso: false,
@@ -251,6 +256,7 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
       codice: { ...lavoro.codice, [String(f)]: codice },
       bozza: '',
       finitoAt: finito ? ora : (lavoro.finitoAt ?? null),
+      giudizi,
     });
     const seguente = finito ? undefined : fasi[nuoveFasi];
     return {

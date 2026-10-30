@@ -881,3 +881,14 @@ describe('altre diagnosi dalla classe: parentesi attorno alla condizione, virgol
     expect(errore('print("ciao)').messaggio).toContain('Virgolette aperte e mai chiuse');
   });
 });
+
+describe('il fatto nuovo per il giudice: il numero fisso assegnato dentro il ciclo', () => {
+  it('conta `totale = 35` dentro il for, non gli accumuli né le assegnazioni fuori', () => {
+    const furbo = esegui('soldi = 5\nfor i in range(1, 8):\n    print(f"Settimana {i}: {soldi * i} €")\n    totale = 35\n    settimane = 7\nprint(f"Obiettivo {totale} € in {settimane} settimane")');
+    expect(furbo.ok).toBe(true);
+    if (furbo.ok) expect(furbo.struttura.assegnazioniFisseNelCiclo).toBe(2);
+    const onesto = esegui('totale = 0\nfor i in range(1, 8):\n    totale += 5\n    print(totale)');
+    expect(onesto.ok).toBe(true);
+    if (onesto.ok) expect(onesto.struttura).toMatchObject({ assegnazioniFisseNelCiclo: 0, accumuliNelCiclo: 1 });
+  });
+});

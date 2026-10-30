@@ -81,6 +81,12 @@ export interface Struttura {
   numCasuali: number;
   /** Quante di quelle `randint()` stanno dentro un ciclo (il dado lanciato a ogni giro). */
   casualiNelCiclo: number;
+  /**
+   * `x = <numero>` dentro un ciclo: quasi sempre il risultato scritto a mano al posto
+   * dell'accumulo (`totale = 35`). Nei cicli annidati può essere un azzeramento legittimo:
+   * decide il giudice, qui si conta.
+   */
+  assegnazioniFisseNelCiclo: number;
 }
 
 /** Un `for` su `range(a, b[, c])` che non ha fatto nemmeno un giro. */
@@ -1498,6 +1504,7 @@ function struttura(corpo: Istruzione[]): Struttura {
     whileAggiornati: 0,
     numCasuali: 0,
     casualiNelCiclo: 0,
+    assegnazioniFisseNelCiclo: 0,
   };
 
   const visita = (istruzioni: Istruzione[], dentroCiclo: boolean) => {
@@ -1527,6 +1534,7 @@ function struttura(corpo: Istruzione[]): Struttura {
       if (istr.k === 'assegna') {
         espressione(istr.espr);
         if (dentroCiclo && (istr.op !== '=' || usaNome(istr.espr, istr.nome))) s.accumuliNelCiclo++;
+        if (dentroCiclo && istr.op === '=' && istr.espr.k === 'num') s.assegnazioniFisseNelCiclo++;
         continue;
       }
       if (istr.k === 'print') {

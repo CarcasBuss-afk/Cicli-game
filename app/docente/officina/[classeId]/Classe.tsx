@@ -32,6 +32,12 @@ function lavoroDa(grezzo: Record<string, unknown>): LavoroVisto {
       risposta: (s.risposta as string) ?? '',
       at: data(s.at),
     })),
+    giudizi: ((grezzo.giudizi ?? []) as Array<Record<string, unknown>>).map((g) => ({
+      fase: ((g.fase as number) ?? 0) + 1,
+      verdetto: (g.verdetto as 'OK' | 'NO' | 'GUASTO') ?? 'OK',
+      motivo: (g.motivo as string | null) ?? null,
+      at: data(g.at),
+    })),
   };
 }
 
@@ -267,6 +273,28 @@ function Lavoro({ allievo, titolo, lavoro, onChiudi }: { allievo: AllievoVisto; 
               <details className="mb-1">
                 <summary className="cursor-pointer text-sm">Bozza in corso (fase {lavoro.fasi + 1})</summary>
                 <pre className="overflow-x-auto rounded bg-black/40 p-2 font-mono text-sm">{lavoro.bozza}</pre>
+              </details>
+            )}
+            {lavoro.giudizi && lavoro.giudizi.length > 0 && (
+              <details className="mb-1">
+                <summary className="cursor-pointer text-sm">
+                  Registro del giudice ({lavoro.giudizi.filter((g) => g.verdetto === 'NO').length} NO su {lavoro.giudizi.length})
+                </summary>
+                <ol aria-label="registro del giudice" className="mt-1 flex flex-col gap-1 text-sm">
+                  {lavoro.giudizi.map((g, i) => (
+                    <li key={i} className="rounded bg-black/30 p-2">
+                      <span className={`font-mono font-bold ${g.verdetto === 'NO' ? 'text-red-300' : g.verdetto === 'GUASTO' ? 'text-(--color-testo-tenue)' : 'text-(--color-verde)'}`}>
+                        {g.verdetto}
+                      </span>
+                      <span className="text-(--color-testo-tenue)">
+                        {' '}
+                        · fase {g.fase}
+                        {g.at && ` · ${g.at.toLocaleString('it-IT')}`}
+                      </span>
+                      {g.motivo && <p>{g.motivo}</p>}
+                    </li>
+                  ))}
+                </ol>
               </details>
             )}
           </div>
