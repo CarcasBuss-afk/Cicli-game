@@ -378,7 +378,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await expect(page.getByLabel('voto')).toHaveText('10');
 
     await digita(page, 'for i in range(3):\n    print(i)');
-    await page.getByRole('button', { name: 'Esegui ▶' }).click();
+    await page.getByRole('button', { name: 'Consegna ✔' }).click();
     await expect(page.getByRole('status')).toBeVisible();
 
     await page.getByLabel('domanda al tutor').fill('Non capisco perché stampa dei numeri invece delle settimane, puoi spiegarmelo bene?');
@@ -388,8 +388,20 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await expect(page.getByLabel('conversazione con il tutor').locator('li')).toHaveCount(1);
     await expect(page.getByLabel('voto')).toHaveText('9');
 
+    // La Prova: il programma gira nel browser con le risposte che vuole lui. Non è una consegna.
+    await digita(page, 'nome = input("Nome? ")\nprint(f"Ciao {nome}")');
+    await page.getByRole('button', { name: 'Prova ▶' }).click();
+    const prova = page.getByRole('region', { name: 'la tua prova' });
+    await page.getByLabel('la tua risposta').fill('Luca');
+    await page.getByLabel('la tua risposta').press('Enter');
+    await expect(prova).toContainText('Nome? Luca');
+    await expect(prova).toContainText('Ciao Luca');
+    await expect(prova).toContainText('fine del programma');
+    await expect(page.getByRole('button', { name: 'Riprova ▶' })).toBeVisible();
+    await expect(page.getByLabel('voto')).toHaveText('9');
+
     await digita(page, fasi[0].soluzione);
-    await page.getByRole('button', { name: 'Esegui ▶' }).click();
+    await page.getByRole('button', { name: 'Consegna ✔' }).click();
     // La festa: il cartello della fase superata (con i coriandoli), poi si passa alla fase dopo.
     await expect(page.getByRole('status', { name: 'fase superata' })).toContainText('Fase 1 superata!');
     await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();

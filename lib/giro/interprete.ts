@@ -34,7 +34,8 @@ export type TipoErrore =
   | 'nome' // variabile mai definita
   | 'tipo' // operazione fra tipi incompatibili
   | 'limite' // troppe iterazioni o troppe righe stampate
-  | 'nonAmmesso'; // costrutto fuori dal sottoinsieme del gioco
+  | 'nonAmmesso' // costrutto fuori dal sottoinsieme del gioco
+  | 'input'; // solo in modalità interattiva: il programma aspetta una risposta che ancora non c'è
 
 export interface ErroreCodice {
   tipo: TipoErrore;
@@ -101,7 +102,14 @@ export type Esito =
       interazioni: Interazione[];
       schermo: RigaSchermo[];
     }
-  | { ok: false; errore: ErroreCodice };
+  | {
+      ok: false;
+      errore: ErroreCodice;
+      /** Lo schermo fino al punto dell'errore (domande con risposta e righe stampate). */
+      schermo: RigaSchermo[];
+      /** In modalità interattiva: la domanda dell'`input()` rimasta senza risposta (errore di tipo `input`). */
+      attesaInput?: string;
+    };
 
 export interface Opzioni {
   /** Tetto alle iterazioni totali dei cicli (default 1000). */
@@ -119,6 +127,13 @@ export interface Opzioni {
    * scritto nella prova, così l'output da confrontare è uno solo.
    */
   casuali?: number[];
+  /**
+   * Modalità interattiva (la «Prova» dell'allievo nel browser): quando le `risposte` finiscono
+   * il programma non è in errore, aspetta: l'esito è `ok: false` con `errore.tipo === 'input'`
+   * e la domanda in `attesaInput`; chi chiama aggiunge la risposta e riesegue da capo. Senza
+   * `casuali`, `randint` dà un numero casuale vero.
+   */
+  interattivo?: boolean;
 }
 
 export const MAX_ITERAZIONI = 1000;
@@ -134,6 +149,16 @@ class ErrPy extends Error {
     readonly riga: number | null,
   ) {
     super(messaggio);
+  }
+}
+
+/** In modalità interattiva: il programma ha chiesto una cosa a cui non c'è ancora risposta. */
+class ErrInput extends Error {
+  constructor(
+    readonly domanda: string,
+    readonly riga: number | null,
+  ) {
+    super(`input: ${domanda}`);
   }
 }
 
@@ -958,12 +983,16 @@ class Macchina {
     private readonly maxRigheOutput: number,
     private readonly risposte: string[] | null,
     private readonly casuali: number[] | null,
+    private readonly interattivo = false,
   ) {}
 
   /** `input()`: la risposta è la prossima della lista; la domanda finisce sullo schermo, non nell'output. */
   private chiedi(domanda: string, riga: number): string {
     if (this.risposte === null) {
       err('nonAmmesso', '`input()` non è ammesso in questa tappa: il programma non chiede niente, stampa soltanto', riga);
+    }
+    if (this.prossimaRisposta >= this.risposte.length && this.interattivo) {
+      throw new ErrInput(domanda, riga);
     }
     if (this.prossimaRisposta >= this.risposte.length) {
       const ultima = this.risposte[this.risposte.length - 1];
@@ -982,6 +1011,12 @@ class Macchina {
 
   /** `random.randint(a, b)`: il numero è il prossimo della prova, e deve stare fra a e b. */
   private casuale(a: number, b: number, riga: number): number {
+    if (this.casuali === null && this.interattivo) {
+      if (a > b) {
+        err('limite', `\`random.randint(${a}, ${b})\` non può dare niente: il primo numero deve essere il più piccolo`, riga);
+      }
+      return a + Math.floor(Math.random() * (b - a + 1));
+    }
     if (this.casuali === null) {
       err('nonAmmesso', '`random.randint()` non è ammesso in questa tappa: qui i numeri non sono casuali', riga);
     }
@@ -1446,10 +1481,11 @@ function struttura(corpo: Istruzione[]): Struttura {
 export function esegui(codice: string, opzioni: Opzioni = {}): Esito {
   const maxIterazioni = opzioni.maxIterazioni ?? MAX_ITERAZIONI;
   const maxRigheOutput = opzioni.maxRigheOutput ?? MAX_RIGHE_OUTPUT;
+  let macchina: Macchina | undefined;
   try {
     const righe = righeUtili(codice);
     if (righe.length === 0) {
-      return { ok: false, errore: { tipo: 'sintassi', messaggio: 'Non hai scritto niente', riga: null } };
+      return { ok: false, errore: { tipo: 'sintassi', messaggio: 'Non hai scritto niente', riga: null }, schermo: [] };
     }
     if (righe[0].indent > 0) {
       return {
@@ -1459,6 +1495,7 @@ export function esegui(codice: string, opzioni: Opzioni = {}): Esito {
           messaggio: 'La prima riga non può essere spostata a destra: toglile gli spazi davanti',
           riga: righe[0].numero,
         },
+        schermo: [],
       };
     }
     righeConRandint = [];
@@ -1467,7 +1504,7 @@ export function esegui(codice: string, opzioni: Opzioni = {}): Esito {
     if (righeConRandint.length > 0 && !parser.importRandom) {
       err('nome', '`random` non esiste: per usare `random.randint` serve la riga `import random` in cima al programma', righeConRandint[0]);
     }
-    const macchina = new Macchina(maxIterazioni, maxRigheOutput, opzioni.risposte ?? null, opzioni.casuali ?? null);
+    macchina = new Macchina(maxIterazioni, maxRigheOutput, opzioni.risposte ?? null, opzioni.casuali ?? null, opzioni.interattivo ?? false);
     macchina.esegui(programma);
     return {
       ok: true,
@@ -1478,8 +1515,17 @@ export function esegui(codice: string, opzioni: Opzioni = {}): Esito {
       schermo: macchina.schermo,
     };
   } catch (e) {
+    const schermo = macchina?.schermo ?? [];
+    if (e instanceof ErrInput) {
+      return {
+        ok: false,
+        errore: { tipo: 'input', messaggio: `Il programma aspetta una risposta: ${e.domanda}`, riga: e.riga },
+        schermo,
+        attesaInput: e.domanda,
+      };
+    }
     if (e instanceof ErrPy) {
-      return { ok: false, errore: { tipo: e.tipo, messaggio: e.messaggio, riga: e.riga } };
+      return { ok: false, errore: { tipo: e.tipo, messaggio: e.messaggio, riga: e.riga }, schermo };
     }
     throw e;
   }

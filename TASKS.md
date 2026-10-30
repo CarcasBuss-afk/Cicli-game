@@ -84,3 +84,10 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 12c. Il motore per i `while` (PERCORSO.md §22): `while`, `-=`/`*=`, `random.randint` dalle prove (`Prova.casuali`), i tetti come hint del ciclo infinito, i fatti nuovi per il giudice, i suggerimenti dell'editor.
 - [x] 12i. I dodici compiti della sezione «Il ciclo while» (PERCORSO.md §22), nell'ordine della progressione: timer del forno (fase 1 guidata) · salvadanaio della bici · parola d'ordine · batteria · cassa del bar (fase 1 guidata) · pettegolezzo · distributore · cassa con il menu · indovina il numero (fase 1 guidata con `randint`) · dado · duello · patentino dei cicli `while`. File `compitiWhile*.ts` e `compitiPatentinoWhile.ts`; test mirati in `compiti.test.ts`.
 - [ ] 12j. Provare i compiti `while` in classe e rivedere consegne e regole su quello che si vede (i testi non sono stati ancora letti da Fabio).
+
+## Task 13 — Dopo la prima settimana in classe (PERCORSO.md §23)
+
+- [x] 13a. La «Prova ▶»: il programma gira nel browser con gli input dell'allievo (interprete in modalità interattiva); la consegna si chiama «Consegna ✔».
+- [ ] 13b. Il tutor: prompt corto e a un passo, nota per fase visibile solo al tutor, fatti misurati ed errori nel contesto, pulsanti rapidi al posto della domanda vuota.
+- [ ] 13c. La correzione: hint in una frase «attuale invece di atteso», diagnosi di sintassi mirate con la riga, riga evidenziata nell'editor.
+- [ ] 13d. Il giudice su Sonnet con il verdetto corto, i controlli sul testo prima del giudice, il registro dei giudizi per il docente.

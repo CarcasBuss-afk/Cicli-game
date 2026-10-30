@@ -76,7 +76,8 @@ Logica pura in `lib/giro/giro.ts` (la usano il server e la LIM).
 - **CodeMirror 6** con `@codemirror/lang-python` e tema scuro stile VS Code (One Dark): stessi colori che gli allievi vedono in VS Code.
 - 2-4 righe, indentazione automatica dopo `:`, parentesi e virgolette auto-chiuse.
 - **Autocompletamento** essenziale stile VS Code: `for`, `range()`, `print()`, `in`, nomi di variabile già scritti.
-- Invio = a capo con indentazione; **Ctrl+Invio** o pulsante **"Esegui ▶"** = consegna.
+- Invio = a capo con indentazione; **Ctrl+Invio** o pulsante **"Esegui ▶"** = consegna (nell'Officina il pulsante si chiama **"Consegna ✔"**).
+- **Solo nell'Officina, la «Prova ▶»** (`components/Prova.tsx`, PERCORSO.md §23): il programma gira **nel browser** come in un terminale, con le risposte che l'allievo digita lui a ogni `input()` e un `randint` casuale vero; non è una consegna, non conta errori, non tocca il server. Usa il micro-interprete in **modalità interattiva** (`Opzioni.interattivo`: quando le risposte finiscono l'esito è `ok: false` con `errore.tipo === 'input'` e la domanda in `attesaInput`; si riesegue da capo con una risposta in più, il programma è deterministico). È l'unico punto in cui l'interprete gira sul client: non contiene output attesi né generatori, quindi il vincolo «validazione solo sul server» resta.
 - Feedback arcade come PRINT RUSH: tappa completata → la card vola via con burst + suono, arriva la prossima; errore → shake + hint nel pannello, suono soft.
 
 ## Architettura

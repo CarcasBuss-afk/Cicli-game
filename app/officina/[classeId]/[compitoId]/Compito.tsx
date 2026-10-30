@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import Coriandoli from '@/components/Coriandoli';
 import EditorPython from '@/components/EditorPython';
+import Prova from '@/components/Prova';
 import SchedaCompito from '@/components/SchedaCompito';
 import Schermo, { RisposteDiProva } from '@/components/Schermo';
 import Testo from '@/components/Testo';
@@ -230,16 +231,18 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
             onConsegna={() => void consegna()}
             attivo={!invio && !c.classeChiusa}
           />
-          <div className="flex flex-wrap items-center gap-3">
+          <Prova codice={() => codiceRef.current} fase={c.fasi} attivo={!c.classeChiusa} />
+          <div className="flex flex-wrap items-center gap-3 border-t border-(--color-bordo) pt-4">
             <button
               onClick={() => void consegna()}
               disabled={invio || c.classeChiusa}
               className="rounded-lg bg-(--color-rosa) px-5 py-2.5 text-lg font-bold text-white hover:brightness-110 disabled:opacity-40"
             >
-              {invio ? '…' : 'Esegui ▶'}
+              {invio ? '…' : 'Consegna ✔'}
             </button>
             <span className="text-sm text-(--color-testo-tenue)">
               oppure <kbd className="rounded bg-black/40 px-1.5 py-0.5 font-mono">Ctrl</kbd>+<kbd className="rounded bg-black/40 px-1.5 py-0.5 font-mono">Invio</kbd>
+              {es.risposte && es.risposte.length > 0 ? ': gira con le risposte di prova e viene controllato' : ': viene controllato'}
             </span>
           </div>
         </section>

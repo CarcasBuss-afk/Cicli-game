@@ -751,3 +751,57 @@ describe('input() e int(), con le risposte fornite dalle opzioni', () => {
     expect(errore('input = 3').tipo).toBe('nonAmmesso');
   });
 });
+
+describe('modalità interattiva (la «Prova» dell\'allievo con i suoi input)', () => {
+  const scontrino = ['nome = input("Nome? ")', 'panini = int(input("Panini? "))', 'for i in range(panini):', '    print(f"Panino {i + 1}")', 'print(f"Grazie {nome}")'].join('\n');
+
+  it('senza risposte si ferma alla prima domanda, con lo schermo fin lì', () => {
+    const esito = esegui('print("Benvenuto")\n' + scontrino, { risposte: [], interattivo: true });
+    expect(esito.ok).toBe(false);
+    if (esito.ok) return;
+    expect(esito.errore.tipo).toBe('input');
+    expect(esito.attesaInput).toBe('Nome? ');
+    expect(esito.schermo).toEqual([{ k: 'out', v: 'Benvenuto' }]);
+  });
+
+  it('con una risposta si ferma alla seconda domanda, e la prima resta sullo schermo', () => {
+    const esito = esegui(scontrino, { risposte: ['Luca'], interattivo: true });
+    expect(esito.ok).toBe(false);
+    if (esito.ok) return;
+    expect(esito.attesaInput).toBe('Panini? ');
+    expect(esito.schermo).toEqual([{ k: 'in', domanda: 'Nome? ', risposta: 'Luca' }]);
+  });
+
+  it('con tutte le risposte arriva in fondo', () => {
+    const esito = esegui(scontrino, { risposte: ['Luca', '2'], interattivo: true });
+    expect(esito.ok).toBe(true);
+    if (!esito.ok) return;
+    expect(esito.output).toEqual(['Panino 1', 'Panino 2', 'Grazie Luca']);
+  });
+
+  it('un errore dopo una risposta porta con sé lo schermo fino a lì', () => {
+    const esito = esegui('nome = input("Nome? ")\nprint(nomee)', { risposte: ['Luca'], interattivo: true });
+    expect(esito.ok).toBe(false);
+    if (esito.ok) return;
+    expect(esito.errore.tipo).toBe('nome');
+    expect(esito.attesaInput).toBeUndefined();
+    expect(esito.schermo).toEqual([{ k: 'in', domanda: 'Nome? ', risposta: 'Luca' }]);
+  });
+
+  it('senza numeri di prova randint dà un numero vero fra i limiti', () => {
+    for (let k = 0; k < 20; k++) {
+      const esito = esegui('import random\nn = random.randint(3, 5)\nprint(n)', { interattivo: true });
+      expect(esito.ok).toBe(true);
+      if (!esito.ok) return;
+      expect([3, 4, 5]).toContain(Number(esito.output[0]));
+    }
+  });
+
+  it('fuori dalla modalità interattiva le risposte finite restano un errore di limite', () => {
+    const esito = esegui(scontrino, { risposte: ['Luca'] });
+    expect(esito.ok).toBe(false);
+    if (esito.ok) return;
+    expect(esito.errore.tipo).toBe('limite');
+    expect(esito.attesaInput).toBeUndefined();
+  });
+});
