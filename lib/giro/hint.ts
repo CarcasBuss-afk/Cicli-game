@@ -9,7 +9,7 @@
  * chiede la tappa (il ciclo per davvero, non le righe a mano) lo decide il giudice
  * (giudice.ts), chiamato dal server dopo, sul codice già promosso.
  */
-import { esegui, type RigaSchermo } from './interprete';
+import { esegui, type CicloVuoto, type RigaSchermo } from './interprete';
 import { descriviProva, opzioniDiProva, type Esercizio } from './esercizi';
 
 export interface Valutazione {
@@ -20,6 +20,8 @@ export interface Valutazione {
   output: string[] | null;
   /** Con le `input()`: lo schermo come lo vedrebbe l'allievo (domande con la risposta, e le righe stampate). */
   schermo?: RigaSchermo[];
+  /** La riga del codice (1-based) a cui si riferisce l'hint, quando c'è: l'editor la evidenzia. */
+  riga?: number | null;
 }
 
 /** Normalizza l'output: via gli spazi a fine riga e le righe vuote finali. */
@@ -256,6 +258,33 @@ function scivoloneDiTesto(prodotto: string[], atteso: string[]): { riga: string;
   return primo;
 }
 
+/** Un `for` su `range` che non ha fatto nemmeno un giro: il passo va nella direzione sbagliata, o i numeri sono invertiti. */
+function hintCicloVuoto(c: CicloVuoto): string {
+  const dove = `Il ciclo alla riga ${c.riga} non gira nemmeno una volta`;
+  if (c.fine < c.inizio && c.passo > 0) {
+    return `${dove}: \`range\` conta in avanti da ${c.inizio}, e ${c.fine} è già passato. Per scendere ci vuole il passo negativo, il terzo numero di \`range\``;
+  }
+  if (c.fine > c.inizio && c.passo < 0) {
+    return `${dove}: con il passo negativo \`range\` conta all'indietro da ${c.inizio}, e ${c.fine} è più grande. Controlla l'ordine dei numeri`;
+  }
+  return `${dove}: \`range(${c.inizio}, ${c.fine})\` non contiene nessun numero, perché il secondo è escluso. Controlla i numeri dentro \`range\``;
+}
+
+/**
+ * Dove l'output di una prova nascosta diverge dall'atteso, senza dire che cosa ci andava:
+ * quante righe, da quale riga, e la riga dell'allievo. Chi sbaglia il ramo che la prova
+ * mostrata non percorre capisce dove guardare.
+ */
+function descriviDifferenza(prodotto: string[], atteso: string[]): string {
+  const k = prodotto.findIndex((r, i) => r !== atteso[i]);
+  const prima = k < 0 ? Math.min(prodotto.length, atteso.length) : k;
+  const righe = prodotto.length !== atteso.length ? `${prodotto.length} righe invece di ${atteso.length}` : `${atteso.length} righe come deve, ma non tutte giuste`;
+  if (prima === 0) return `${righe}, e già la prima riga è diversa`;
+  const suo = prodotto[prima];
+  const dove = suo === undefined ? `dopo la riga ${prima} manca qualcosa` : `alla riga ${prima + 1} stampi ${virgolette(suo)}`;
+  return `${righe}: le prime ${prima} righe sono giuste, ${dove}. Pensa a che cosa deve succedere con quei dati`;
+}
+
 /** Il codice senza le differenze che non contano (spazi a fine riga, righe vuote). */
 function normalizzaCodice(codice: string): string {
   return codice
@@ -317,12 +346,18 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
   const prove = tappa.prove && tappa.prove.length > 0 ? tappa.prove : null;
   const esito = esegui(testo, opzioniDiProva(prove?.[0]));
   if (!esito.ok) {
-    return { promosso: false, hint: esito.errore.messaggio, output: null };
+    return { promosso: false, hint: esito.errore.messaggio, output: null, riga: esito.errore.riga };
   }
   const schermo = prove ? esito.schermo : undefined;
 
   const prodotto = normalizza(esito.output);
   if (!uguali(prodotto, atteso)) {
+    // Un `for` che non ha girato nemmeno una volta spiega le righe che mancano meglio di
+    // qualunque confronto: senza questo, su `range(6, 0)` l'hint diceva di mettere il print nel ciclo.
+    const vuoto = esito.cicliVuoti[0];
+    if (vuoto && prodotto.length < atteso.length) {
+      return { promosso: false, hint: hintCicloVuoto(vuoto), output: prodotto, schermo, riga: vuoto.riga };
+    }
     return { promosso: false, hint: spiega(tappa, prodotto, atteso), output: prodotto, schermo };
   }
 
@@ -343,10 +378,20 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
       if (!uguali(prodottoAltro, normalizza(prova.output))) {
         // Una riga scritta male (maiuscole, spazi, punteggiatura) non è un valore a mano:
         // succede nel ramo che la prova mostrata non percorre, e l'hint dell'`input()` confonderebbe.
-        const scivolone = scivoloneDiTesto(prodottoAltro, normalizza(prova.output));
+        const attesoAltro = normalizza(prova.output);
+        const scivolone = scivoloneDiTesto(prodottoAltro, attesoAltro);
+        // I valori scritti a mano si riconoscono: con altre risposte stampa le stesse righe della
+        // prova mostrata, oppure non legge tutte le risposte (o nessun randint). Altrimenti si dice
+        // che cosa cambia (quante righe, da dove), senza dettare il contenuto.
+        const aMano =
+          uguali(prodottoAltro, atteso) ||
+          altro.interazioni.length < prova.risposte.length ||
+          ((prova.casuali?.length ?? 0) > 0 && altro.struttura.numCasuali === 0);
         const motivo = scivolone
           ? `una riga non è scritta come dice la consegna. Stampi ${virgolette(scivolone.riga)}: controlla ${scivolone.cosa}`
-          : `stampa un'altra cosa: ${daDove}`;
+          : aMano
+            ? `stampa un'altra cosa: ${daDove}`
+            : `stampa un'altra cosa: ${descriviDifferenza(prodottoAltro, attesoAltro)}`;
         return {
           promosso: false,
           hint: `Con i dati di prova funziona, ma ${descriviProva(prova)} ${motivo}`,

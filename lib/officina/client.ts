@@ -101,6 +101,6 @@ export type RispostaConsegna =
       votoSeFinisci: number;
       esercizio: EsercizioPubblico | null;
     }
-  | { promosso: false; hint: string; output: string[] | null; schermo?: RigaSchermo[]; errori: number };
+  | { promosso: false; hint: string; output: string[] | null; schermo?: RigaSchermo[]; riga?: number | null; errori: number };
 
 export type RispostaTutor = { risposta: string; consigli: number; domandeRimaste: number; votoSeFinisci: number; fase: number };

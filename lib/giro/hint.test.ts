@@ -464,3 +464,85 @@ describe('prove con il numero casuale (randint dalla prova)', () => {
     expect(esito.hint).toContain('si ferma');
   });
 });
+
+describe('il ciclo che non gira mai e la riga dell\'errore (PERCORSO.md §23)', () => {
+  const lancio: Esercizio = {
+    tipo: 'progetto',
+    terreno: 'collina',
+    consegna: 'Il conto alla rovescia da 6 a 1, poi Partenza!',
+    outputAtteso: ['6', '5', '4', '3', '2', '1', 'Partenza!'],
+    mostraOutput: true,
+    risposta: 'codice',
+    soluzione: 'for i in range(6, 0, -1):\n    print(i)\nprint("Partenza!")',
+  };
+
+  it('senza il passo negativo l\'hint parla del ciclo che non gira, non del print da mettere dentro', () => {
+    const esito = valutaRisposta(lancio, 'for i in range(6, 0):\n    print(i)\nprint("Partenza!")');
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('Il ciclo alla riga 1 non gira nemmeno una volta');
+    expect(esito.hint).toContain('passo negativo');
+    expect(esito.hint).not.toContain('dentro il ciclo');
+    expect(esito.riga).toBe(1);
+  });
+
+  it('con i numeri invertiti e il passo negativo dice di controllare l\'ordine', () => {
+    const esito = valutaRisposta(lancio, 'for i in range(0, 6, -1):\n    print(i)\nprint("Partenza!")');
+    expect(esito.hint).toContain("Controlla l'ordine dei numeri");
+  });
+
+  it('gli errori di sintassi portano la riga, e la soluzione passa', () => {
+    const esito = valutaRisposta(lancio, 'print("Lancio")\nfor i in range(6, 0, -1)\n    print(i)');
+    expect(esito.promosso).toBe(false);
+    expect(esito.riga).toBe(2);
+    expect(valutaRisposta(lancio, lancio.soluzione)).toMatchObject({ promosso: true });
+  });
+});
+
+describe('la prova nascosta che cade: che cosa si dice (PERCORSO.md §23)', () => {
+  const sconto: Esercizio = {
+    tipo: 'progetto',
+    terreno: 'montagna',
+    consegna: 'Sotto la soglia la riga `Ti mancano X € per lo sconto`, poi il saluto',
+    outputAtteso: ['Totale: 25 €', 'Sconto: -1 €', 'Grazie!'],
+    mostraOutput: true,
+    risposta: 'codice',
+    soluzione: [
+      'panini = int(input("Quanti panini? "))',
+      'totale = panini * 5',
+      'print(f"Totale: {totale} €")',
+      'if totale >= 20:',
+      '    print("Sconto: -1 €")',
+      'else:',
+      '    print(f"Ti mancano {20 - totale} € per lo sconto")',
+      'print("Grazie!")',
+    ].join('\n'),
+    prove: [
+      { risposte: ['5'], output: ['Totale: 25 €', 'Sconto: -1 €', 'Grazie!'] },
+      { risposte: ['2'], output: ['Totale: 10 €', 'Ti mancano 10 € per lo sconto', 'Grazie!'] },
+    ],
+  };
+
+  it('il ramo else dimenticato: quante righe e da dove, senza dettare la riga', () => {
+    const senzaElse = sconto.soluzione.replace('else:\n    print(f"Ti mancano {20 - totale} € per lo sconto")\n', '');
+    const esito = valutaRisposta(sconto, senzaElse);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('rispondendo «2» stampa un\'altra cosa: 2 righe invece di 3');
+    expect(esito.hint).toContain('le prime 1 righe sono giuste, alla riga 2 stampi «Grazie!»');
+    expect(esito.hint).not.toContain('`input()`');
+    expect(esito.hint).not.toContain('Ti mancano');
+  });
+
+  it('i valori scritti a mano: con altre risposte stampa le stesse righe, e si parla di input()', () => {
+    const aMano = 'panini = int(input("Quanti panini? "))\nprint("Totale: 25 €")\nprint("Sconto: -1 €")\nprint("Grazie!")';
+    const esito = valutaRisposta(sconto, aMano);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain("stampa un'altra cosa: i valori devono arrivare da `input()`");
+    // Anche chi non legge tutte le risposte le ha scritte a mano.
+    const senzaInput = 'print("Totale: 25 €")\nprint("Sconto: -1 €")\nprint("Grazie!")';
+    expect(valutaRisposta(sconto, senzaInput).hint).toContain('`input()`');
+  });
+
+  it('la soluzione passa tutte le prove', () => {
+    expect(valutaRisposta(sconto, sconto.soluzione).promosso).toBe(true);
+  });
+});

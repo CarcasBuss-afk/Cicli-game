@@ -24,6 +24,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
   const [hint, setHint] = useState<string | null>(null);
   const [output, setOutput] = useState<string[] | null>(null);
   const [schermo, setSchermo] = useState<RigaSchermo[] | null>(null);
+  const [rigaErrore, setRigaErrore] = useState<number | null>(null);
   const [invio, setInvio] = useState(false);
   const [scossa, setScossa] = useState(false);
   /** La festa della fase appena superata: quale fase, e se con quella il compito è finito. */
@@ -55,6 +56,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
       setSchermo(r.schermo ?? null);
       if (!r.promosso) {
         setHint(r.hint);
+        setRigaErrore(r.riga ?? null);
         setOutput(r.output);
         setC((p) => (p ? { ...p, errori: r.errori } : p));
         suonoErrore();
@@ -63,6 +65,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
         return;
       }
       setHint(null);
+      setRigaErrore(null);
       setOutput(null);
       setSchermo(null);
       // La festa: coriandoli, il cartello, il suono; poi la pagina scorre alla fase dopo (o al voto).
@@ -230,6 +233,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
             }}
             onConsegna={() => void consegna()}
             attivo={!invio && !c.classeChiusa}
+            rigaErrore={rigaErrore}
           />
           <Prova codice={() => codiceRef.current} fase={c.fasi} attivo={!c.classeChiusa} />
           <div className="flex flex-wrap items-center gap-3 border-t border-(--color-bordo) pt-4">

@@ -83,6 +83,14 @@ export interface Struttura {
   casualiNelCiclo: number;
 }
 
+/** Un `for` su `range(a, b[, c])` che non ha fatto nemmeno un giro. */
+export interface CicloVuoto {
+  riga: number;
+  inizio: number;
+  fine: number;
+  passo: number;
+}
+
 /** Una domanda fatta con `input()` e la risposta che ha ricevuto. */
 export interface Interazione {
   domanda: string;
@@ -101,6 +109,8 @@ export type Esito =
       giri: number;
       interazioni: Interazione[];
       schermo: RigaSchermo[];
+      /** I cicli `for` su `range` che non hanno girato nemmeno una volta. */
+      cicliVuoti: CicloVuoto[];
     }
   | {
       ok: false;
@@ -208,7 +218,7 @@ function leggiTesto(src: string, i: number, apice: string, riga: number): { valo
     valore += c;
     j++;
   }
-  err('sintassi', `Virgolette aperte e mai chiuse: manca \`${apice}\` alla fine del testo`, riga);
+  errVirgolette(src, apice, riga);
 }
 
 function tokenizza(src: string, riga: number): Tok[] {
@@ -264,10 +274,35 @@ function tokenizza(src: string, riga: number): Tok[] {
       i++;
       continue;
     }
-    err('sintassi', `Il carattere \`${c}\` non si può usare qui`, riga);
+    if (c === '{' || c === '}') {
+      err(
+        'sintassi',
+        'Le graffe `{}` si usano solo dentro una f-string. Se volevi metterci una variabile, la f-string si è chiusa prima: ' +
+          'controlla che dentro le graffe non ci siano le stesse virgolette che aprono la f-string',
+        riga,
+      );
+    }
+    err('sintassi', `Il carattere \`${c}\` non si può usare qui: se fa parte di un testo, il testo va fra virgolette`, riga);
   }
   tok.push({ t: 'fine' });
   return tok;
+}
+
+/**
+ * Virgolette aperte e mai chiuse. Se sulla riga c'è una f-string con le graffe, nove volte su
+ * dieci dentro le graffe ci sono le stesse virgolette che aprono la f-string: Python la chiude
+ * lì, e il resto della riga non torna più.
+ */
+function errVirgolette(src: string, apice: string, riga: number): never {
+  if (/f["']/.test(src) && src.includes('{')) {
+    err(
+      'sintassi',
+      'Le virgolette non tornano: dentro le graffe della f-string ci sono le stesse virgolette che la aprono, e Python la chiude lì. ' +
+        'Dentro le graffe usa gli apici singoli, oppure metti quel pezzo in una variabile prima del `print`',
+      riga,
+    );
+  }
+  err('sintassi', `Virgolette aperte e mai chiuse: manca \`${apice}\` alla fine del testo`, riga);
 }
 
 /** Come `leggiTesto` ma senza interpretare gli escape: serve alle f-string, che vanno
@@ -286,7 +321,7 @@ function leggiTestoGrezzo(src: string, i: number, apice: string, riga: number): 
     valore += c;
     j++;
   }
-  err('sintassi', `Virgolette aperte e mai chiuse: manca \`${apice}\` alla fine del testo`, riga);
+  errVirgolette(src, apice, riga);
 }
 
 /* -------------------------------------------------------------------------- sintassi */
@@ -432,6 +467,26 @@ class Lettore {
     err('sintassi', messaggio, this.riga);
   }
 
+  /**
+   * Con il prossimo token `(`: true se la sua `)` è seguita dai due punti o dalla fine della
+   * riga, cioè le parentesi avvolgono tutta la condizione (`if (x <= 5):`, come in Python).
+   */
+  parentesiAvvolgonoTutto(): boolean {
+    let profondita = 0;
+    for (let k = this.pos; k < this.tok.length; k++) {
+      const t = this.tok[k];
+      if (t.t === 'op' && t.v === '(') profondita++;
+      else if (t.t === 'op' && t.v === ')') {
+        profondita--;
+        if (profondita === 0) {
+          const dopo = this.tok[k + 1];
+          return !dopo || dopo.t === 'fine' || (dopo.t === 'op' && dopo.v === ':');
+        }
+      }
+    }
+    return false;
+  }
+
   prossimoEOp(v: string): boolean {
     const t = this.guarda();
     return t.t === 'op' && t.v === v;
@@ -544,6 +599,14 @@ function parseFattore(l: Lettore): Espr {
     return { k: 'nome', v: t.v };
   }
   if (t.t === 'fine') err('sintassi', 'La riga finisce prima del previsto: manca qualcosa', l.riga);
+  if (t.t === 'op' && (t.v === '{' || t.v === '}')) {
+    err(
+      'sintassi',
+      'Le graffe `{}` si usano solo dentro una f-string. Se volevi metterci una variabile, la f-string si è chiusa prima: ' +
+        'controlla che dentro le graffe non ci siano le stesse virgolette che aprono la f-string',
+      l.riga,
+    );
+  }
   err('sintassi', `\`${'v' in t ? t.v : ''}\` non ci va qui`, l.riga);
 }
 
@@ -614,6 +677,14 @@ function parseFString(grezzo: string, riga: number): Espr {
     }
     if (c === '{') {
       const chiusa = grezzo.indexOf('}', i + 1);
+      if (chiusa < 0 && grezzo.slice(i + 1).trim() === '') {
+        err(
+          'sintassi',
+          'Subito dopo la `{` la f-string si chiude: dentro le graffe ci sono le stesse virgolette che la aprono, e Python la chiude lì. ' +
+            'Dentro le graffe usa gli apici singoli, oppure metti quel pezzo in una variabile prima del `print`',
+          riga,
+        );
+      }
       if (chiusa < 0) err('sintassi', 'Nella f-string hai aperto `{` e non l\'hai chiusa con `}`', riga);
       const dentro = grezzo.slice(i + 1, chiusa);
       if (dentro.trim() === '') err('sintassi', 'Nella f-string le graffe `{}` sono vuote: dentro ci va una variabile', riga);
@@ -653,6 +724,12 @@ function parseCondizione(l: Lettore, parola: 'if' | 'elif' | 'while'): Espr {
   }
   if (parola === 'while' && (l.prossimoENome('True') || l.prossimoENome('False'))) {
     err('nonAmmesso', 'Niente `while True`: la condizione deve dire quando il ciclo si ferma, per esempio `while totale < 100:` oppure `while risposta != "0":`', l.riga);
+  }
+  if (l.prossimoEOp('(') && l.parentesiAvvolgonoTutto()) {
+    l.avanti();
+    const dentro = parseCondizione(l, parola);
+    l.attesoOp(')', 'Manca la parentesi tonda chiusa `)`');
+    return dentro;
   }
   const sx = parseEspressione(l);
   const t = l.guarda();
@@ -793,6 +870,13 @@ class Parser {
       err(
         'sintassi',
         `\`${nome}\` da solo non fa niente: per stampare serve \`print(${nome})\`, per assegnare serve \`=\``,
+        riga.numero,
+      );
+    }
+    if (/(==|!=|<=|>=|<|>)/.test(riga.testo)) {
+      err(
+        'sintassi',
+        'Un confronto da solo non fa niente: va dopo `if` (o `while`), con i due punti in fondo, e sotto, spostata a destra, la riga che vale solo se è vero',
         riga.numero,
       );
     }
@@ -977,6 +1061,8 @@ class Macchina {
   readonly output: string[] = [];
   readonly interazioni: Interazione[] = [];
   readonly schermo: RigaSchermo[] = [];
+  /** I `for` su `range` che non hanno fatto nemmeno un giro: quasi sempre un passo sbagliato (hint.ts). */
+  readonly cicliVuoti: CicloVuoto[] = [];
 
   constructor(
     private readonly maxIterazioni: number,
@@ -1185,6 +1271,7 @@ class Macchina {
       err('limite', 'Il passo di `range` non può essere 0: il ciclo non finirebbe mai', istr.riga);
     }
     const quante = Math.max(0, Math.ceil((fine - inizio) / passo));
+    if (quante === 0 && numeri.length >= 2) this.cicliVuoti.push({ riga: istr.riga, inizio, fine, passo });
     if (quante > this.maxIterazioni) {
       err(
         'limite',
@@ -1472,6 +1559,43 @@ function struttura(corpo: Istruzione[]): Struttura {
   return s;
 }
 
+/* ------------------------------------------------------------------- diagnosi preliminari */
+
+const JAVASCRIPT = /^(console\.log\s*\(|(let|const|var)\s+\w+\s*=|function\s+\w+\s*\(|document\.)/;
+/** `print(` o `input(` con dentro due parole separate da spazio, o un simbolo da testo, e nessuna virgoletta. */
+const TESTO_NUDO = /^(print|input)\s*\(\s*([^"'()]*)\)\s*$/;
+
+/**
+ * Gli errori che il tokenizzatore racconterebbe male: codice JavaScript incollato («il carattere
+ * `;`», «`console` da solo»), e il testo scritto dentro `print()` o `input()` senza virgolette
+ * («il carattere `€` non si può usare»). Si guardano prima, riga per riga.
+ */
+function diagnosiPreliminare(righe: Riga[]): ErroreCodice | null {
+  for (const r of righe) {
+    if (JAVASCRIPT.test(r.testo)) {
+      return {
+        tipo: 'sintassi',
+        messaggio: 'Questo è JavaScript, non Python: qui si stampa con `print(...)`, le variabili si creano senza `let` o `const`, e le righe non finiscono con `;`',
+        riga: r.numero,
+      };
+    }
+    const m = r.testo.match(TESTO_NUDO);
+    if (m) {
+      const dentro = m[2].trim();
+      const dueParole = /[A-Za-zÀ-ÿ]+\s+[A-Za-zÀ-ÿ]+/.test(dentro);
+      const simboloDaTesto = /[€!?.:;]/.test(dentro);
+      if (dueParole || (simboloDaTesto && /^[A-Za-zÀ-ÿ]/.test(dentro))) {
+        return {
+          tipo: 'sintassi',
+          messaggio: `Il testo dentro \`${m[1]}(...)\` va fra virgolette: senza, Python legge «${dentro.slice(0, 30)}» come nomi di variabili`,
+          riga: r.numero,
+        };
+      }
+    }
+  }
+  return null;
+}
+
 /* -------------------------------------------------------------------------- pubblico */
 
 /**
@@ -1498,6 +1622,8 @@ export function esegui(codice: string, opzioni: Opzioni = {}): Esito {
         schermo: [],
       };
     }
+    const sbagliata = diagnosiPreliminare(righe);
+    if (sbagliata) return { ok: false, errore: sbagliata, schermo: [] };
     righeConRandint = [];
     const parser = new Parser(righe);
     const programma = parser.blocco(0);
@@ -1513,6 +1639,7 @@ export function esegui(codice: string, opzioni: Opzioni = {}): Esito {
       giri: macchina.giri,
       interazioni: macchina.interazioni,
       schermo: macchina.schermo,
+      cicliVuoti: macchina.cicliVuoti,
     };
   } catch (e) {
     const schermo = macchina?.schermo ?? [];

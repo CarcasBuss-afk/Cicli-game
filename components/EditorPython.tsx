@@ -23,9 +23,11 @@ import {
 import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { python } from '@codemirror/lang-python';
 import { indentOnInput, indentUnit } from '@codemirror/language';
-import { EditorState, Prec } from '@codemirror/state';
+import { EditorState, Prec, StateEffect, StateField } from '@codemirror/state';
 import { oneDark } from '@codemirror/theme-one-dark';
 import {
+  Decoration,
+  type DecorationSet,
   drawSelection,
   EditorView,
   highlightActiveLine,
@@ -65,6 +67,22 @@ function suggerimentiGiro(context: CompletionContext) {
   };
 }
 
+/** La riga da evidenziare (quella dell'errore dell'hint); sparisce appena l'allievo scrive. */
+const evidenziaRiga = StateEffect.define<number | null>();
+const rigaEvidenziata = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    for (const e of tr.effects) {
+      if (e.is(evidenziaRiga)) {
+        if (e.value === null || e.value < 1 || e.value > tr.state.doc.lines) return Decoration.none;
+        return Decoration.set([Decoration.line({ class: 'cm-riga-errore' }).range(tr.state.doc.line(e.value).from)]);
+      }
+    }
+    return tr.docChanged ? Decoration.none : deco;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
 interface Props {
   /** Contenuto con cui (ri)parte l'editor. */
   valoreIniziale: string;
@@ -75,6 +93,8 @@ interface Props {
   onConsegna(): void;
   attivo: boolean;
   segnaposto?: string;
+  /** La riga (1-based) a cui si riferisce l'ultimo hint, da evidenziare; null = niente. */
+  rigaErrore?: number | null;
 }
 
 export default function EditorPython({
@@ -84,6 +104,7 @@ export default function EditorPython({
   onConsegna,
   attivo,
   segnaposto = '# scrivi qui il tuo codice',
+  rigaErrore = null,
 }: Props) {
   const contenitore = useRef<HTMLDivElement>(null);
   const vista = useRef<EditorView | null>(null);
@@ -138,12 +159,14 @@ export default function EditorPython({
           ),
           keymap.of([...closeBracketsKeymap, ...defaultKeymap, ...historyKeymap, indentWithTab]),
           placeholderExt(segnaposto),
+          rigaEvidenziata,
           EditorView.lineWrapping,
           EditorView.theme({
             '&': { fontSize: '17px', borderRadius: '10px', overflow: 'hidden' },
             '.cm-content': { minHeight: '120px', fontFamily: 'Consolas, "Courier New", monospace' },
             '.cm-gutters': { fontFamily: 'Consolas, "Courier New", monospace' },
             '&.cm-focused': { outline: '2px solid rgb(236 72 153)' },
+            '.cm-riga-errore': { backgroundColor: 'rgba(239, 68, 68, 0.22)' },
           }),
           EditorView.updateListener.of((u) => {
             if (u.docChanged) cambio.current(u.state.doc.toString());
@@ -160,6 +183,11 @@ export default function EditorPython({
     // Costruito una volta sola: il contenuto delle tappe successive arriva dall'effetto sotto.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // L'hint indica una riga: si evidenzia finché l'allievo non tocca il testo.
+  useEffect(() => {
+    vista.current?.dispatch({ effects: evidenziaRiga.of(rigaErrore) });
+  }, [rigaErrore]);
 
   // Tappa nuova: si riparte dal testo iniziale (vuoto, o il ciclo da completare).
   useEffect(() => {

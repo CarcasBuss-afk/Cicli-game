@@ -88,6 +88,6 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 ## Task 13 — Dopo la prima settimana in classe (PERCORSO.md §23)
 
 - [x] 13a. La «Prova ▶»: il programma gira nel browser con gli input dell'allievo (interprete in modalità interattiva); la consegna si chiama «Consegna ✔».
-- [ ] 13b. Il tutor: prompt corto e a un passo, nota per fase visibile solo al tutor, fatti misurati ed errori nel contesto, pulsanti rapidi al posto della domanda vuota.
-- [ ] 13c. La correzione: hint in una frase «attuale invece di atteso», diagnosi di sintassi mirate con la riga, riga evidenziata nell'editor.
+- [x] 13b. Il tutor: prompt corto e a un passo, nota per fase visibile solo al tutor, fatti misurati ed errori nel contesto, pulsanti rapidi al posto della domanda vuota.
+- [x] 13c. La correzione: hint in una frase «attuale invece di atteso», diagnosi di sintassi mirate con la riga, riga evidenziata nell'editor.
 - [ ] 13d. Il giudice su Sonnet con il verdetto corto, i controlli sul testo prima del giudice, il registro dei giudizi per il docente.

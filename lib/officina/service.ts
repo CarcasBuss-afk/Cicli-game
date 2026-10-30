@@ -232,7 +232,14 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
         errori: lavoro.errori + 1,
         erroriFase: { ...lavoro.erroriFase, [String(f)]: (lavoro.erroriFase?.[String(f)] ?? 0) + 1 },
       });
-      return { promosso: false, hint: valutazione.hint, output: valutazione.output, schermo: valutazione.schermo, errori: lavoro.errori + 1 };
+      return {
+        promosso: false,
+        hint: valutazione.hint,
+        output: valutazione.output,
+        schermo: valutazione.schermo,
+        riga: valutazione.riga ?? null,
+        errori: lavoro.errori + 1,
+      };
     }
 
     const nuoveFasi = f + 1;

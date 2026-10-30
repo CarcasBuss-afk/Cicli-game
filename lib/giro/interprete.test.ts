@@ -805,3 +805,79 @@ describe('modalità interattiva (la «Prova» dell\'allievo con i suoi input)', 
     expect(esito.attesaInput).toBeUndefined();
   });
 });
+
+describe('diagnosi mirate sugli errori visti in classe (PERCORSO.md §23)', () => {
+  it('il testo senza virgolette dentro print() o input() dice che mancano le virgolette, non «il carattere € non si può usare»', () => {
+    const e = errore('nome = input("Nome? ")\ninput(Hai dato 50 €, resto 25 €. Grazie Pietro!)');
+    expect(e.messaggio).toContain('va fra virgolette');
+    expect(e.messaggio).toContain('`input(...)`');
+    expect(e.riga).toBe(2);
+    expect(errore('print(Settimana i)').messaggio).toContain('va fra virgolette');
+    // Le variabili e i calcoli dentro print() non c'entrano.
+    expect(out('a = 3\nprint(a)')).toEqual(['3']);
+    expect(out('a = 3\nb = 4\nprint(a, b)')).toEqual(['3 4']);
+    expect(out('a = 3\nprint(a + 5)')).toEqual(['8']);
+  });
+
+  it('il carattere fuori dalle virgolette suggerisce le virgolette', () => {
+    expect(errore('print("ciao") €').messaggio).toContain('il testo va fra virgolette');
+  });
+
+  it('il codice JavaScript viene riconosciuto', () => {
+    const e = errore('console.log("Bar Stazione")');
+    expect(e.messaggio).toContain('JavaScript');
+    expect(e.messaggio).toContain('`print(...)`');
+    expect(errore('let x = 3\nprint(x)').messaggio).toContain('JavaScript');
+    expect(errore('const totale = 0').messaggio).toContain('JavaScript');
+  });
+
+  it('un confronto da solo su una riga dice che va dopo if', () => {
+    const codice = 'panini = 4\nfor i in range(1, panini + 1):\n    print(f"Panino {i}")\n    (i == 3)\n    print("omaggio")';
+    const e = errore(codice);
+    expect(e.messaggio).toContain('Un confronto da solo non fa niente');
+    expect(e.messaggio).toContain('`if`');
+    expect(e.riga).toBe(4);
+  });
+
+  it('le stesse virgolette dentro le graffe della f-string: il messaggio lo dice', () => {
+    const e = errore('for i in range(1, 4):\n    print(f"Settimana {i}: {"*" * i}")');
+    expect(e.messaggio).toContain('stesse virgolette');
+    expect(e.messaggio).toContain('apici singoli');
+    expect(e.riga).toBe(2);
+    // Le graffe fuori da una f-string: stesso indizio.
+    const g = errore('n = 3\nprint(f"Totale: " + {n})');
+    expect(g.messaggio).toContain('Le graffe `{}` si usano solo dentro una f-string');
+    // La graffa aperta con del testo dopo resta l'errore di prima.
+    expect(errore('print(f"Totale {n euro")').messaggio).toContain("non l'hai chiusa");
+  });
+
+  it('i cicli for che non girano mai vengono registrati, con i numeri di range', () => {
+    const esito = esegui('for i in range(6, 0):\n    print(i)\nprint("Partenza!")');
+    expect(esito.ok).toBe(true);
+    if (!esito.ok) return;
+    expect(esito.output).toEqual(['Partenza!']);
+    expect(esito.cicliVuoti).toEqual([{ riga: 1, inizio: 6, fine: 0, passo: 1 }]);
+    // range(0) in un ciclo annidato è legittimo e non è un errore.
+    const scala = esegui('for i in range(3):\n    for j in range(i):\n        print("*")\n    print("-")');
+    expect(scala.ok).toBe(true);
+    if (scala.ok) expect(scala.cicliVuoti).toEqual([]);
+  });
+});
+
+describe('altre diagnosi dalla classe: parentesi attorno alla condizione, virgolette nella f-string', () => {
+  it('if (x <= 5): con le parentesi attorno alla condizione va bene, come in Python', () => {
+    expect(out('x = 3\nif (x <= 5):\n    print("ok")')).toEqual(['ok']);
+    expect(out('x = 3\nif(x == 3):\n    print("tre")\nelse:\n    print("altro")')).toEqual(['tre']);
+    expect(out('n = 3\nwhile (n > 0):\n    print(n)\n    n -= 1')).toEqual(['3', '2', '1']);
+    // Le parentesi che non avvolgono tutta la condizione restano un calcolo.
+    expect(out('x = 3\nif (x + 1) == 4:\n    print("quattro")')).toEqual(['quattro']);
+  });
+
+  it('le stesse virgolette dentro le graffe con il resto della riga dopo: il messaggio indica la causa', () => {
+    const e = errore('a = 2\nfor i in range(1, 4):\n    print(f"Settimana {i}: {a} € (f"\'*\'* {i}"")")');
+    expect(e.messaggio).toContain('stesse virgolette');
+    expect(e.riga).toBe(3);
+    // Senza f-string sulla riga, le virgolette mai chiuse restano il messaggio di prima.
+    expect(errore('print("ciao)').messaggio).toContain('Virgolette aperte e mai chiuse');
+  });
+});
