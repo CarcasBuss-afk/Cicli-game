@@ -132,14 +132,15 @@ export function schedaDistributore(seme: number): SchedaCompito {
  * prodotto, e dentro il ciclo un `if`/`elif`/`else` decide che cosa è e quanto costa. */
 
 const PREZZI_CORNETTO = [1, 2] as const;
-const PREZZI_PANINO = [3, 4, 5] as const;
+/** Mai 3: il codice del panino è 3, e `totale += scelta` (sommare il codice) deve cadere alla fase 2. */
+const PREZZI_PANINO = [4, 5] as const;
 const CAFFE = 1;
 const CODICE_SCONOSCIUTO = [7, 8, 9] as const;
 
 interface ParametriMenu {
   cornetto: number;
   panino: number;
-  /** Le scelte base delle tre prove (solo caffè e cornetti), e i codici sbagliati di ciascuna. */
+  /** Le scelte base delle tre prove (solo caffè e cornetti; la terza ha tre caffè, così «Hai preso 2 caffè» a mano cade), e i codici sbagliati di ciascuna. */
   scelte: [number[], number[], number[]];
   sbagliati: [number, number, number];
 }
@@ -151,7 +152,7 @@ function parametriMenu(seme: number): ParametriMenu {
   // La prova mostrata ha sempre due caffè (l'offerta della fase 5) e un cornetto, in ordine casuale.
   const mostrata = rnd() < 0.5 ? [1, 2, 1] : [1, 1, 2];
   const sbagliato = () => CODICE_SCONOSCIUTO[Math.floor(rnd() * CODICE_SCONOSCIUTO.length)];
-  return { cornetto, panino, scelte: [mostrata, [2], [1, 1]], sbagliati: [sbagliato(), sbagliato(), sbagliato()] };
+  return { cornetto, panino, scelte: [mostrata, [2], [1, 1, 1]], sbagliati: [sbagliato(), sbagliato(), sbagliato()] };
 }
 
 /** Le scelte di una prova a una certa fase: dalla 2 compare il panino (3), dalla 3 un codice sconosciuto; lo 0 chiude. */

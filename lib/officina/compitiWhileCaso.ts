@@ -133,7 +133,7 @@ export function schedaIndovina(seme: number): SchedaCompito {
 
 interface ParametriDado {
   gioco: string;
-  /** I lanci delle prove: la sequenza mostrata (3..5 lanci non 6, poi il 6), il 6 subito, due lanci e il 6. */
+  /** I lanci delle prove: la sequenza mostrata (3..5 lanci non 6, poi il 6), il 6 subito, due lanci e il 6 (tre in tutto: il confine di «più di 3»). */
   lanci: [number[], number[], number[]];
 }
 
@@ -145,7 +145,8 @@ function parametriDado(seme: number): ParametriDado {
   const quanti = 3 + Math.floor(rnd() * 3);
   const mostrata = Array.from({ length: quanti }, () => 1 + Math.floor(rnd() * 5));
   mostrata.push(6);
-  const breve = [1 + Math.floor(rnd() * 5), 6];
+  // Tre lanci esatti: alla fase 5 «più di 3» deve dire «Pochi lanci», e `>= 3` deve cadere qui.
+  const breve = [1 + Math.floor(rnd() * 5), 1 + Math.floor(rnd() * 5), 6];
   return { gioco, lanci: [mostrata, [6], breve] };
 }
 
@@ -220,7 +221,8 @@ export function schedaDado(seme: number): SchedaCompito {
 /* -------------------------------------------------------------------- 11. il duello */
 
 const DRAGHI = ['Fumone', 'Bracefredda', 'Scaglia', 'Vulcan', 'Nebbia'] as const;
-const VITE = [35, 40, 45, 50, 55, 60] as const;
+/** Multipli di 10 o di 15: con i colpi fissi delle prove nascoste la vita arriva a 0 esatto, e `>= 0` fa un giro di troppo. */
+const VITE = [40, 45, 50, 60] as const;
 const COLPO_MIN = 5;
 const COLPO_MAX = 15;
 const CRITICO = 12;
@@ -228,7 +230,7 @@ const CRITICO = 12;
 interface ParametriDuello {
   drago: string;
   vita: number;
-  /** I colpi delle prove: la sequenza mostrata (colpi da 8 a 15, almeno un critico, l'ultimo va sotto zero), tutti da 15, tutti da 10. */
+  /** I colpi delle prove: la sequenza mostrata (colpi da 8 a 15, un critico da 12 esatto, l'ultimo va sotto zero), tutti da 15, tutti da 10. */
   colpi: [number[], number[], number[]];
 }
 
@@ -243,7 +245,7 @@ function parametriDuello(seme: number): ParametriDuello {
   const drago = DRAGHI[Math.floor(rnd() * DRAGHI.length)];
   const vita = VITE[Math.floor(rnd() * VITE.length)];
   let mostrata: number[] = [];
-  for (let prova = 0; prova < 30; prova++) {
+  for (let prova = 0; prova < 200; prova++) {
     mostrata = [];
     let resta = vita;
     while (resta > 0) {
@@ -251,8 +253,11 @@ function parametriDuello(seme: number): ParametriDuello {
       mostrata.push(c);
       resta -= c;
     }
-    // Serve un critico e la vita che va sotto zero, così alla fase 4 e 5 si vede qualcosa già nella prova mostrata.
-    if (resta < 0 && mostrata.some((c) => c >= CRITICO)) break;
+    // Serve un critico da 12 esatto (il confine di «almeno 12»: `> 12` deve cadere) e la vita che va
+    // sotto zero, così alla fase 4 e 5 si vede qualcosa già nella prova mostrata.
+    // E al massimo 10 righe fra colpi e «Colpo critico!», così la fase 5 resta entro le 12 righe.
+    const righe = mostrata.length + mostrata.filter((x) => x >= CRITICO).length;
+    if (resta < 0 && mostrata.includes(CRITICO) && righe <= 10) break;
   }
   return { drago, vita, colpi: [mostrata, colpiFissi(vita, 15), colpiFissi(vita, 10)] };
 }

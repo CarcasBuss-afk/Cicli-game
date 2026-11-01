@@ -37,9 +37,15 @@ function parametriObiettivo(seme: number): ParametriObiettivo {
   return { bici, quota, obiettivo: quota * settimane };
 }
 
-/** Le quote delle prove nascoste: più alta di 5, e doppia. Settimane diverse, mai più di quelle mostrate. */
+/**
+ * Le quote delle prove nascoste: più alta di 5, e doppia. Settimane diverse, mai più di quelle
+ * mostrate. Se tutte e due dividono l'obiettivo (120 con 20 e 30, 150 con 30 e 50) nessuna prova
+ * percorrerebbe il ramo «Ti avanzano» della fase 5: la seconda diventa doppia più 5.
+ */
 function quoteNascoste(p: ParametriObiettivo): number[] {
-  return [p.quota + 5, p.quota * 2];
+  const prima = p.quota + 5;
+  const seconda = p.obiettivo % prima === 0 && p.obiettivo % (p.quota * 2) === 0 ? p.quota * 2 + 5 : p.quota * 2;
+  return [prima, seconda];
 }
 
 function righeObiettivo(p: ParametriObiettivo, quota: number, fase: 1 | 2 | 3 | 4 | 5): string[] {
@@ -252,8 +258,13 @@ export function schedaBatteria(seme: number): SchedaCompito {
 
 const SCUOLE = [200, 300, 400, 500, 600] as const;
 const INIZI = [2, 3, 5] as const;
-/** Gli inizi delle prove nascoste: più gente all'inizio, meno ore. */
-const INIZI_NASCOSTI = [10, 25] as const;
+/**
+ * Gli inizi delle prove nascoste: più gente all'inizio, meno ore. Il secondo è un quarto della
+ * scuola: dopo un'ora lo sa esattamente metà scuola, e alla fase 5 `>` al posto di `>=` cade.
+ */
+function iniziNascosti(p: ParametriPettegolezzo): number[] {
+  return [10, p.scuola / 4];
+}
 
 interface ParametriPettegolezzo {
   scuola: number;
@@ -287,7 +298,7 @@ export function fasiPettegolezzo(seme: number): Esercizio[] {
   const p = parametriPettegolezzo(seme);
   const { scuola, inizio } = p;
   const b = { ...base, terreno: 'montagna' as const };
-  const prove = (fase: 4 | 5): Prova[] => [inizio, ...INIZI_NASCOSTI].map((n) => ({ risposte: [String(n)], output: righePettegolezzo(p, n, fase) }));
+  const prove = (fase: 4 | 5): Prova[] => [inizio, ...iniziNascosti(p)].map((n) => ({ risposte: [String(n)], output: righePettegolezzo(p, n, fase) }));
   const corpo = `while sanno < ${scuola}:\n    sanno *= 2\n    ore += 1\n    print(f"Ora {ore}: {sanno} persone")`;
   const r3 = `sanno = ${inizio}\nore = 0\n${corpo}\nprint(f"Tutta la scuola lo sa dopo {ore} ore")`;
   const r4 = `sanno = int(input("Quanti lo sanno all'inizio? "))\nore = 0\n${corpo}\nprint(f"Tutta la scuola lo sa dopo {ore} ore")`;
@@ -390,7 +401,7 @@ function noteBatteria(p: ParametriBatteria): string[] {
 
 function notePettegolezzo(p: ParametriPettegolezzo): string[] {
   const { scuola, inizio } = p;
-  const [n1, n2] = INIZI_NASCOSTI;
+  const [n1, n2] = iniziNascosti(p);
   return [
     `sanno = ${inizio} prima del ciclo, while sanno < ${scuola}, dentro prima sanno *= 2 e poi il print. ` +
       `Errori tipici: il print prima del raddoppio (la prima riga è ${inizio} persone), += 2 o sanno + 2 al posto di *= 2 (cresce piano: troppe righe), <= al posto di <, sanno = sanno * 2 va bene.`,

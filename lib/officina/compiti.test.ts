@@ -867,7 +867,7 @@ describe('indovina il numero (randint, fase 1 guidata)', () => {
 describe('il dado per partire (randint dentro il ciclo)', () => {
   const fasi = generaCompito('dado', 44);
 
-  it('la sequenza mostrata finisce con il 6 e ha da 4 a 6 lanci; le nascoste: il 6 subito, due lanci', () => {
+  it('la sequenza mostrata finisce con il 6 e ha da 4 a 6 lanci; le nascoste: il 6 subito, tre lanci (il confine di «più di 3»)', () => {
     for (const seme of SEMI) {
       const [mostrata, subito, breve] = generaCompito('dado', seme)[1].prove!;
       expect(mostrata.casuali![mostrata.casuali!.length - 1]).toBe(6);
@@ -875,7 +875,7 @@ describe('il dado per partire (randint dentro il ciclo)', () => {
       expect(mostrata.casuali!.length).toBeGreaterThanOrEqual(4);
       expect(mostrata.casuali!.length).toBeLessThanOrEqual(6);
       expect(subito.casuali).toEqual([6]);
-      expect(breve.casuali).toHaveLength(2);
+      expect(breve.casuali).toHaveLength(3);
     }
   });
 
@@ -996,5 +996,68 @@ describe('le note per il tutor (PERCORSO.md §23)', () => {
   it('i patentini, con il tutor spento, non ne hanno bisogno', () => {
     for (const f of generaCompito('patentino', 5)) expect(f.nota).toBeUndefined();
     for (const f of generaCompito('patentinoWhile', 5)) expect(f.nota).toBeUndefined();
+  });
+});
+
+describe('i confini che le prove devono vedere (revisione del 1° novembre 2026)', () => {
+  const SEMI_CONFINI = Array.from({ length: 60 }, (_, i) => i * 7 + 1);
+
+  it('patentino while: la carica arriva esattamente a 100, la giornata mostrata ha quattro clienti e `> 4` cade', () => {
+    for (const seme of SEMI_CONFINI) {
+      const fasi = generaCompito('patentinoWhile', seme);
+      expect(fasi[0].outputAtteso[fasi[0].outputAtteso.length - 1], `seme ${seme}`).toBe('Carica: 100%');
+      expect(fasi[1].prove![0].risposte).toHaveLength(5);
+      for (const prova of fasi[4].prove!) expect(prova.output.length, `seme ${seme}`).toBeLessThanOrEqual(12);
+      const stretto = fasi[4].soluzione.replace('if clienti >= 4:', 'if clienti > 4:');
+      expect(valutaRisposta(fasi[4], stretto).promosso, `seme ${seme}`).toBe(false);
+    }
+  });
+
+  it('dado: una prova nascosta ha tre lanci, e `>= 3` al posto di `> 3` cade', () => {
+    for (const seme of SEMI_CONFINI) {
+      const fasi = generaCompito('dado', seme);
+      expect(fasi[4].prove!.some((pr) => pr.casuali!.length === 3)).toBe(true);
+      expect(valutaRisposta(fasi[4], fasi[4].soluzione.replace('if lanci > 3:', 'if lanci >= 3:')).promosso, `seme ${seme}`).toBe(false);
+    }
+  });
+
+  it('duello: la prova mostrata ha un colpo da 12 esatto, e `> 12` cade; la vita arriva a 0 esatto e `>= 0` cade', () => {
+    for (const seme of SEMI_CONFINI) {
+      const fasi = generaCompito('duello', seme);
+      expect(fasi[4].prove![0].casuali).toContain(12);
+      expect(valutaRisposta(fasi[4], fasi[4].soluzione.replace('if colpo >= 12:', 'if colpo > 12:')).promosso, `seme ${seme}`).toBe(false);
+      expect(valutaRisposta(fasi[1], fasi[1].soluzione.replace('while vita > 0:', 'while vita >= 0:')).promosso, `seme ${seme}`).toBe(false);
+      for (const prova of fasi[4].prove!) expect(prova.output.length).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it('pettegolezzo: una prova nascosta tocca esattamente metà scuola, e `>` al posto di `>=` cade', () => {
+    for (const seme of SEMI_CONFINI) {
+      const fasi = generaCompito('pettegolezzo', seme);
+      const largo = fasi[4].soluzione.replace(/if sanno >= (\d+):/, 'if sanno > $1:');
+      expect(largo).not.toBe(fasi[4].soluzione);
+      expect(valutaRisposta(fasi[4], largo).promosso, `seme ${seme}`).toBe(false);
+      for (const prova of fasi[4].prove!) expect(prova.output.length).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it('salvadanaio della bici: una prova percorre il ramo «Ti avanzano», così il programma senza if cade', () => {
+    for (const seme of SEMI_CONFINI) {
+      const fasi = generaCompito('obiettivo', seme);
+      expect(fasi[4].prove!.some((pr) => pr.output.some((r) => r.startsWith('Ti avanzano'))), `seme ${seme}`).toBe(true);
+      for (const prova of fasi[4].prove!) expect(prova.output.length).toBeLessThanOrEqual(12);
+    }
+  });
+
+  it('menu: il numero dei caffè scritto a mano cade, e sommare il codice al posto del prezzo cade dalla fase 2', () => {
+    for (const seme of SEMI_CONFINI) {
+      const fasi = generaCompito('menu', seme);
+      const aMano = fasi[4].soluzione.replace('print(f"Hai preso {caffe} caffè: il prossimo è gratis!")', 'print("Hai preso 2 caffè: il prossimo è gratis!")');
+      expect(aMano).not.toBe(fasi[4].soluzione);
+      expect(valutaRisposta(fasi[4], aMano).promosso, `seme ${seme}`).toBe(false);
+      const codice = fasi[1].soluzione.replace(/totale \+= \d+/g, 'totale += scelta');
+      expect(valutaRisposta(fasi[1], codice).promosso, `seme ${seme}`).toBe(false);
+      for (const prova of fasi[4].prove!) expect(prova.output.length).toBeLessThanOrEqual(12);
+    }
   });
 });

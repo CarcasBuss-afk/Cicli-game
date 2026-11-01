@@ -11,7 +11,8 @@
 import { generatore, type Esercizio, type Prova } from '../giro/esercizi';
 import type { SchedaCompito } from './compiti';
 
-const CARICHE_INIZIALI = [40, 50, 60] as const;
+/** Multipli del passo: la carica arriva esattamente a 100, come dice la consegna (con 50 arrivava a 110). */
+const CARICHE_INIZIALI = [20, 40, 60] as const;
 const PASSO_CARICA = 20;
 const KM_LUNGO = 20;
 const CLIENTI_PIENA = 4;
@@ -19,7 +20,7 @@ const CLIENTI_PIENA = 4;
 interface ParametriNoleggio {
   spiaggia: string;
   carica: number;
-  /** I km dei clienti nelle tre giornate di prova: quella mostrata (3 o 4 clienti), una da un cliente, una da cinque. */
+  /** I km dei clienti nelle tre giornate di prova: quella mostrata (4 clienti: il confine di «Giornata piena!»), una da un cliente, una da cinque. */
   giornate: [number[], number[], number[]];
 }
 
@@ -41,10 +42,12 @@ function parametriNoleggio(seme: number): ParametriNoleggio {
   const rnd = generatore(seme);
   const spiaggia = SPIAGGE[Math.floor(rnd() * SPIAGGE.length)];
   const carica = CARICHE_INIZIALI[Math.floor(rnd() * CARICHE_INIZIALI.length)];
-  const mostrata = kmClienti(rnd, 3 + Math.floor(rnd() * 2), 2);
+  // Quattro clienti esatti: la fase 5 dice «almeno 4», e un esame verifica il confine (`> 4` deve cadere).
+  const mostrata = kmClienti(rnd, CLIENTI_PIENA, 2);
   // Nella giornata mostrata almeno un giro lungo, così «Giro lungo!» si vede.
   if (!mostrata.some((k) => k > KM_LUNGO)) mostrata[0] = KM_LUNGO + 1 + Math.floor(rnd() * 9);
-  return { spiaggia, carica, giornate: [mostrata, kmClienti(rnd, 1, 1), kmClienti(rnd, 5, 2)] };
+  // La giornata da cinque ha un giro lungo solo: con la carica da 20 (quattro righe) si resta entro le 12 righe.
+  return { spiaggia, carica, giornate: [mostrata, kmClienti(rnd, 1, 1), kmClienti(rnd, 5, 1)] };
 }
 
 function righeNoleggio(p: ParametriNoleggio, km: number[], fase: 1 | 2 | 3 | 4 | 5): string[] {
@@ -64,10 +67,10 @@ function righeNoleggio(p: ParametriNoleggio, km: number[], fase: 1 | 2 | 3 | 4 |
 }
 
 function regolaNoleggio(fase: number): string {
-  const carica = `La carica sale di ${PASSO_CARICA} a ogni giro di un ciclo \`while\` che gira finché è sotto 100: non si scrivono le righe a mano né un \`for\` con il numero di giri.`;
+  const carica = `La carica sale di ${PASSO_CARICA} a ogni giro di un ciclo \`while\` che gira finché è sotto 100: non si scrivono le righe a mano, né un \`for\` con il numero di giri, né un contatore di giri scritto a mano.`;
   const clienti =
     fase >= 2
-      ? ' I km dei clienti arrivano da `input()` dentro un secondo ciclo `while` che si ferma allo 0 (la sentinella): la domanda sta prima del ciclo e si ripete in fondo al corpo; non si sa prima quanti clienti saranno.'
+      ? ' I km dei clienti arrivano da `input()` a ogni cliente, dentro un secondo ciclo `while` che si ferma quando la risposta è 0 (la sentinella): non si sa prima quanti clienti saranno, quindi niente `for` né numero di clienti scritto.'
       : '';
   const totale = fase >= 3 ? ' I clienti li conta una variabile e i km li accumula un\'altra, entrambe da 0, stampate dopo il ciclo: niente numeri scritti a mano.' : '';
   const lungo = fase >= 4 ? ` «Giro lungo!» lo decide un \`if\` dentro il ciclo sui km del cliente (sopra ${KM_LUNGO}).` : '';
@@ -127,7 +130,7 @@ export function schedaPatentinoWhile(seme: number): SchedaCompito {
     esame: true,
     committente:
       `È l'esame per il patentino dei cicli while: cinque fasi, ognuna su un gesto del percorso. Il tutor è spento, restano gli hint automatici. ` +
-      `Il noleggio bici del ${p.spiaggia} vuole il programma della giornata: la e-bike che si carica dal ${p.carica}% fino al 100%, poi i clienti con i loro km finché non ce ne sono più, il riepilogo e il giudizio sulla giornata.`,
+      `Il noleggio bici di «${p.spiaggia}» vuole il programma della giornata: la e-bike che si carica dal ${p.carica}% fino al 100%, poi i clienti con i loro km finché non ce ne sono più, il riepilogo e il giudizio sulla giornata.`,
     prodotto: 'La carica che sale fino a 100, i clienti con i km e «Giro lungo!», quanti clienti e km in tutto, com\'è andata la giornata.',
     dati: [`Carica iniziale: ${p.carica}%, +${PASSO_CARICA}% a quarto d'ora`, `Giro lungo: sopra ${KM_LUNGO} km`, `Giornata piena: da ${CLIENTI_PIENA} clienti`, `Clienti di prova: ${giornata.join(' · ')} km`],
     outputFinale: righeNoleggio(p, giornata, 5),
