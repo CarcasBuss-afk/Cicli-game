@@ -58,7 +58,12 @@ function virgolette(s: string): string {
 
 /* ------------------------------------------------------------- confronto numerico */
 
-function hintNumerico(prodotto: string[], atteso: string[]): string {
+/**
+ * Confronto fra numeri. Con `conWhile` il codice ha un `while` e nessun `for`: le frasi parlano
+ * della condizione e della riga che cambia la variabile, non dei numeri di `range` che non ci sono.
+ */
+function hintNumerico(prodotto: string[], atteso: string[], conWhile = false): string {
+  if (conWhile) return hintNumericoWhile(prodotto, atteso);
   const p = prodotto.map((r) => Number(r.trim()));
   const a = atteso.map((r) => Number(r.trim()));
 
@@ -109,9 +114,47 @@ function hintNumerico(prodotto: string[], atteso: string[]): string {
 
 /* ----------------------------------------------------------------- confronto testo */
 
+function hintNumericoWhile(prodotto: string[], atteso: string[]): string {
+  const p = prodotto.map((r) => Number(r.trim()));
+  const a = atteso.map((r) => Number(r.trim()));
+  if (a.length === 1) {
+    if (p.length > 1) return `Stampi ${p.length} righe invece di una: il \`print\` va fuori dal ciclo, dopo`;
+    return `Ti viene ${p[0]}, invece deve venire ${a[0]}: controlla il valore di partenza e la condizione del \`while\``;
+  }
+  if (p.length === 1) {
+    return `Stampi una riga sola invece di ${a.length}: o il \`print\` sta fuori dal ciclo, o il ciclo si ferma dopo un giro. Guarda la riga che cambia la variabile`;
+  }
+  const passoP = passo(p);
+  const passoA = passo(a);
+  if (passoP !== null && passoA !== null && passoP !== passoA) {
+    if (passoA < 0 && passoP > 0) return 'Questi numeri devono scendere, invece salgono: a ogni giro la variabile deve diminuire, non crescere';
+    if (passoA > 0 && passoP < 0) return 'I tuoi numeri scendono, invece devono salire: a ogni giro la variabile deve crescere, non diminuire';
+    return `I tuoi numeri cambiano di ${Math.abs(passoP)} in ${Math.abs(passoP)}, devono cambiare di ${Math.abs(passoA)} in ${Math.abs(passoA)}: guarda di quanto cambia la variabile a ogni giro`;
+  }
+  if (p[0] !== a[0]) {
+    return `Parti da ${p[0]}, invece il primo numero deve essere ${a[0]}: controlla il valore di partenza, e se il \`print\` viene prima o dopo la riga che cambia la variabile`;
+  }
+  if (p.length !== a.length) {
+    const differenza = p.length - a.length;
+    if (differenza === 1) return 'Una riga di troppo: il ciclo fa un giro in più. Guarda la condizione del `while`, il confronto e il numero a cui si ferma';
+    if (differenza === -1) return 'Una riga di meno: il ciclo si ferma un giro prima. Guarda la condizione del `while`, il confronto e il numero a cui si ferma';
+    return `Stampi ${p.length} numeri invece di ${a.length}: guarda la condizione del \`while\`, dice quando il ciclo si ferma`;
+  }
+  return `L'ultimo numero che stampi è ${p[p.length - 1]}, invece deve essere ${a[a.length - 1]}`;
+}
+
 function hintTesto(prodotto: string[], atteso: string[]): string {
   if (prodotto.length === 0) {
     return 'Il tuo programma non stampa niente: ci vuole un `print` dentro il ciclo';
+  }
+
+  // Una riga di troppo in mezzo (l'`else` dimenticato: escono tutte e due le righe): senza
+  // questo l'hint parlava della riga dopo, come se fosse un problema di ordine.
+  if (prodotto.length === atteso.length + 1) {
+    const i = prodotto.findIndex((r, idx) => r !== atteso[idx]);
+    if (i >= 0 && i < atteso.length && uguali([...prodotto.slice(0, i), ...prodotto.slice(i + 1)], atteso)) {
+      return `Stampi una riga di troppo: la riga ${i + 1}, ${virgolette(prodotto[i])}, non ci doveva essere`;
+    }
   }
 
   // Stessa frase ripetuta, numero di volte sbagliato: è il caso della tappa "ripeti N volte".
@@ -140,13 +183,21 @@ function hintTesto(prodotto: string[], atteso: string[]): string {
 
   // Le righe in comune coincidono: ne mancano o ce ne sono di troppo in fondo.
   if (prodotto.length < atteso.length) {
-    return `Stampi ${prodotto.length} righe invece di ${atteso.length}: il ciclo gira troppe poche volte`;
+    // Se le righe che mancano sono ripetizioni di quelle già stampate, il ciclo si è fermato presto.
+    // Se sono righe nuove, il ciclo è giusto e manca quello che viene dopo (il print finale, l'else):
+    // dire «il ciclo gira poco» mandava a toccare il while giusto.
+    const mancanti = atteso.slice(prodotto.length);
+    if (mancanti.every((r) => prodotto.includes(r))) {
+      return `Stampi ${prodotto.length} righe invece di ${atteso.length}: il ciclo gira troppe poche volte`;
+    }
+    const giuste = prodotto.length === 1 ? 'la prima riga è giusta' : `le prime ${prodotto.length} righe sono giuste`;
+    return `Stampi ${prodotto.length} righe invece di ${atteso.length}: ${giuste}, manca qualcosa in fondo, dopo il ciclo. Rileggi che cosa chiede questa fase`;
   }
   return `Stampi ${prodotto.length} righe invece di ${atteso.length}: il ciclo gira troppe volte`;
 }
 
-function hintConfronto(prodotto: string[], atteso: string[]): string {
-  if (tuttiNumeri(atteso) && tuttiNumeri(prodotto)) return hintNumerico(prodotto, atteso);
+function hintConfronto(prodotto: string[], atteso: string[], conWhile = false): string {
+  if (tuttiNumeri(atteso) && tuttiNumeri(prodotto)) return hintNumerico(prodotto, atteso, conWhile);
   return hintTesto(prodotto, atteso);
 }
 
@@ -230,9 +281,13 @@ function hintSpecifico(tappa: Esercizio, prodotto: string[], atteso: string[]): 
 /* -------------------------------------------------------------------- valutazione */
 
 /** Sceglie l'hint giusto per un output sbagliato. */
-function spiega(tappa: Esercizio, prodotto: string[], atteso: string[]): string {
+function spiega(tappa: Esercizio, prodotto: string[], atteso: string[], conWhile = false): string {
   if (TIPI_SEGRETI.has(tappa.tipo)) return hintSegreto(tappa, prodotto, atteso);
-  return hintSpecifico(tappa, prodotto, atteso) ?? hintConfronto(prodotto, atteso);
+  return hintSpecifico(tappa, prodotto, atteso) ?? hintConfronto(prodotto, atteso, conWhile);
+}
+
+function hintWhileVuoto(riga: number): string {
+  return `Il ciclo \`while\` alla riga ${riga} non gira nemmeno una volta: la sua condizione è già falsa all'inizio. Controlla il confronto (\`==\` e \`!=\` si confondono) e il valore di partenza della variabile`;
 }
 
 /**
@@ -281,11 +336,17 @@ function hintCicloVuoto(c: CicloVuoto): string {
 function descriviDifferenza(prodotto: string[], atteso: string[]): string {
   const k = prodotto.findIndex((r, i) => r !== atteso[i]);
   const prima = k < 0 ? Math.min(prodotto.length, atteso.length) : k;
-  const righe = prodotto.length !== atteso.length ? `${prodotto.length} righe invece di ${atteso.length}` : `${atteso.length} righe come deve, ma non tutte giuste`;
+  const righe =
+    prodotto.length !== atteso.length
+      ? `${prodotto.length} righe invece di ${atteso.length}`
+      : atteso.length === 1
+        ? 'una riga come deve, ma non quella giusta'
+        : `${atteso.length} righe come deve, ma non tutte giuste`;
   if (prima === 0) return `${righe}, e già la prima riga è diversa`;
   const suo = prodotto[prima];
   const dove = suo === undefined ? `dopo la riga ${prima} manca qualcosa` : `alla riga ${prima + 1} stampi ${virgolette(suo)}`;
-  return `${righe}: le prime ${prima} righe sono giuste, ${dove}. Pensa a che cosa deve succedere con quei dati`;
+  const giuste = prima === 1 ? 'la prima riga è giusta' : `le prime ${prima} righe sono giuste`;
+  return `${righe}: ${giuste}, ${dove}. Pensa a che cosa deve succedere con quei dati`;
 }
 
 /** Il codice senza le differenze che non contano (spazi a fine riga, righe vuote). */
@@ -340,7 +401,9 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
   if (tappa.codiceIniziale && normalizzaCodice(testo) === normalizzaCodice(tappa.codiceIniziale)) {
     return {
       promosso: false,
-      hint: 'Non hai cambiato niente: il codice è ancora quello di partenza. Confronta quello che stampa con quello che deve stampare',
+      hint: tappa.codiceIniziale.includes('#')
+        ? 'Non hai cambiato niente: il codice è ancora quello di partenza. Al posto del commento va la riga che chiede la consegna'
+        : 'Non hai cambiato niente: il codice è ancora quello di partenza. Confronta quello che stampa con quello che deve stampare',
       output: null,
     };
   }
@@ -361,7 +424,13 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
     if (vuoto && prodotto.length < atteso.length) {
       return { promosso: false, hint: hintCicloVuoto(vuoto), output: prodotto, schermo, riga: vuoto.riga };
     }
-    return { promosso: false, hint: spiega(tappa, prodotto, atteso), output: prodotto, schermo };
+    // Stesso discorso per un `while` che non è entrato mai: `==` al posto di `!=`.
+    const whileVuoto = esito.whileVuoti[0];
+    if (whileVuoto !== undefined && prodotto.length < atteso.length) {
+      return { promosso: false, hint: hintWhileVuoto(whileVuoto), output: prodotto, schermo, riga: whileVuoto };
+    }
+    const conWhile = esito.struttura.numWhile > 0 && esito.struttura.numFor === 0;
+    return { promosso: false, hint: spiega(tappa, prodotto, atteso, conWhile), output: prodotto, schermo };
   }
 
   // Le prove nascoste: con altre risposte il programma deve funzionare lo stesso.

@@ -892,3 +892,79 @@ describe('il fatto nuovo per il giudice: il numero fisso assegnato dentro il cic
     if (onesto.ok) expect(onesto.struttura).toMatchObject({ assegnazioniFisseNelCiclo: 0, accumuliNelCiclo: 1 });
   });
 });
+
+describe('i messaggi nati dalla revisione dei compiti while (1° novembre 2026)', () => {
+  it('le risposte finiscono dentro un while: la riga è quella del ciclo e si nominano i due motivi', () => {
+    const esito = esegui('p = input("Parola? ")\nwhile p != "Borraccia":\n    print("No")\n    p = input("Parola? ")\nprint("Ok")', { risposte: ['pizza', 'borraccia'] });
+    expect(esito.ok).toBe(false);
+    if (!esito.ok) {
+      expect(esito.errore.riga).toBe(2);
+      expect(esito.errore.messaggio).toContain('il ciclo `while` alla riga 2 chiede ancora');
+      expect(esito.errore.messaggio).toContain('`input()` di troppo');
+    }
+  });
+
+  it('i numeri casuali finiscono dentro un while: idem, con la condizione da controllare', () => {
+    const esito = esegui('import random\nvita = 20\nwhile vita >= 0:\n    colpo = random.randint(5, 15)\n    vita -= colpo\n    print(vita)', { casuali: [10, 10] });
+    expect(esito.ok).toBe(false);
+    if (!esito.ok) {
+      expect(esito.errore.riga).toBe(3);
+      expect(esito.errore.messaggio).toContain('Dopo l\'ultimo numero (10)');
+      expect(esito.errore.messaggio).toContain('controlla la condizione');
+    }
+  });
+
+  it('fuori da un while i messaggi restano quelli di prima', () => {
+    const esito = esegui('a = input()\nb = input()', { risposte: ['1'] });
+    if (!esito.ok) expect(esito.errore.messaggio).toContain('doveva fermarsi, invece chiede ancora.');
+    const r = esegui('import random\na = random.randint(1, 6)\nb = random.randint(1, 6)', { casuali: [3] });
+    if (!r.ok) expect(r.errore.messaggio).not.toContain('while');
+  });
+
+  it('il while a zero giri finisce in whileVuoti con la riga', () => {
+    const esito = esegui('n = 3\nwhile n == 0:\n    print(n)\n    n -= 1\nprint("fine")');
+    expect(esito.ok).toBe(true);
+    if (esito.ok) {
+      expect(esito.whileVuoti).toEqual([2]);
+      expect(esito.output).toEqual(['fine']);
+    }
+    const gira = esegui('n = 3\nwhile n > 0:\n    print(n)\n    n -= 1');
+    if (gira.ok) expect(gira.whileVuoti).toEqual([]);
+  });
+
+  it('la divisione dopo un\'espressione dice che non è ammessa, non che mancano i due punti', () => {
+    const e = errore('sanno = 300\nif sanno >= 200 / 2:\n    print("metà")');
+    expect(e.messaggio).toContain('La divisione non è ammessa');
+    expect(e.riga).toBe(2);
+    expect(errore('print(10 / 2)').messaggio).toContain('La divisione non è ammessa');
+  });
+
+  it('il % fuori dalle virgolette: il testo va fra virgolette, non «manca la parentesi»', () => {
+    const e = errore('carica = 50\nprint(f"{carica}"%)');
+    expect(e.messaggio).toContain('`%`');
+    expect(e.messaggio).toContain('fra virgolette');
+    expect(errore('carica = 50\nprint(carica%)').messaggio).toContain('`%`');
+  });
+
+  it("l'apostrofo dentro le virgolette singole: metti le doppie", () => {
+    const e = errore("print('Ce l'hai fatta, alla fine')");
+    expect(e.messaggio).toContain("L'apostrofo dentro il testo chiude le virgolette singole");
+    expect(out('print("Ce l\'hai fatta")')).toEqual(["Ce l'hai fatta"]);
+    expect(out("print('Ce l\\'hai fatta')")).toEqual(["Ce l'hai fatta"]);
+  });
+
+  it('la sottrazione con un testo rimanda a int() come la somma', () => {
+    const e = esegui('c = input("c")\ncarica = 50\ncarica -= c', { risposte: ['15'] });
+    if (!e.ok) expect(e.errore.messaggio).toContain('mettilo dentro `int()`');
+    const r = esegui('p = input("p")\nprint(p - 3)', { risposte: ['15'] });
+    if (!r.ok) expect(r.errore.messaggio).toContain('mettilo dentro `int()`');
+  });
+
+  it('il confronto con «1» fra virgolette dice di togliere le virgolette, non di mettere int()', () => {
+    const e = errore('minuti = 1\nif minuti == "1":\n    print("uno")');
+    expect(e.messaggio).toContain('«1» fra virgolette è un testo');
+    expect(e.messaggio).not.toContain('int()');
+    const senzaInt = esegui('m = input("m")\nif m == 1:\n    print("uno")', { risposte: ['1'] });
+    if (!senzaInt.ok) expect(senzaInt.errore.messaggio).toContain('mettilo dentro `int()`');
+  });
+});

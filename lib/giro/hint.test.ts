@@ -527,7 +527,7 @@ describe('la prova nascosta che cade: che cosa si dice (PERCORSO.md §23)', () =
     const esito = valutaRisposta(sconto, senzaElse);
     expect(esito.promosso).toBe(false);
     expect(esito.hint).toContain('rispondendo «2» stampa un\'altra cosa: 2 righe invece di 3');
-    expect(esito.hint).toContain('le prime 1 righe sono giuste, alla riga 2 stampi «Grazie!»');
+    expect(esito.hint).toContain('la prima riga è giusta, alla riga 2 stampi «Grazie!»');
     expect(esito.hint).not.toContain('`input()`');
     expect(esito.hint).not.toContain('Ti mancano');
   });
@@ -544,5 +544,85 @@ describe('la prova nascosta che cade: che cosa si dice (PERCORSO.md §23)', () =
 
   it('la soluzione passa tutte le prove', () => {
     expect(valutaRisposta(sconto, sconto.soluzione).promosso).toBe(true);
+  });
+});
+
+describe('gli hint sul while: la condizione e la riga che cambia la variabile, non range (revisione del 1° novembre 2026)', () => {
+  const timer: Esercizio = {
+    tipo: 'progetto',
+    terreno: 'pianura',
+    consegna: 'Il timer: 5 4 3 2 1',
+    outputAtteso: ['5', '4', '3', '2', '1'],
+    mostraOutput: true,
+    risposta: 'codice',
+    soluzione: 'minuti = 5\nwhile minuti > 0:\n    print(minuti)\n    minuti -= 1',
+  };
+  const conAvviso: Esercizio = {
+    ...timer,
+    outputAtteso: ['5', '4', '3', '2', '1', 'Pronto!'],
+    soluzione: `${timer.soluzione}\nprint("Pronto!")`,
+  };
+
+  it('il passo sbagliato parla di quanto cambia la variabile, non del terzo numero di range', () => {
+    const esito = valutaRisposta(timer, 'minuti = 5\nwhile minuti > 0:\n    print(minuti)\n    minuti -= 2');
+    expect(esito.hint).toContain('cambiano di 2 in 2');
+    expect(esito.hint).toContain('variabile a ogni giro');
+    expect(esito.hint).not.toContain('range');
+  });
+
+  it('una riga di troppo o di meno rimanda alla condizione del while', () => {
+    expect(valutaRisposta(timer, 'minuti = 5\nwhile minuti >= 0:\n    print(minuti)\n    minuti -= 1').hint).toContain('condizione del `while`');
+    expect(valutaRisposta(timer, 'minuti = 5\nwhile minuti > 1:\n    print(minuti)\n    minuti -= 1').hint).toContain('Una riga di meno');
+  });
+
+  it('il print dopo la riga che cambia la variabile: si parte dal numero sbagliato', () => {
+    const esito = valutaRisposta(timer, 'minuti = 5\nwhile minuti > 0:\n    minuti -= 1\n    print(minuti)');
+    expect(esito.hint).toContain('Parti da 4');
+    expect(esito.hint).toContain('prima o dopo la riga che cambia la variabile');
+  });
+
+  it('con un for gli hint di range restano quelli di prima', () => {
+    expect(valutaRisposta(timer, 'for i in range(5, 0, -2):\n    print(i)').hint).toContain('`range`');
+  });
+
+  it('il while che non gira mai (== al posto di !=) ha il suo hint, con la riga', () => {
+    const cassa: Esercizio = {
+      ...timer,
+      outputAtteso: ['Articolo: 2 €', 'Articolo: 3 €'],
+      prove: [{ risposte: ['2', '3', '0'], output: ['Articolo: 2 €', 'Articolo: 3 €'] }],
+      soluzione: 'prezzo = int(input("Prezzo? "))\nwhile prezzo != 0:\n    print(f"Articolo: {prezzo} €")\n    prezzo = int(input("Prezzo? "))',
+    };
+    const esito = valutaRisposta(cassa, 'prezzo = int(input("Prezzo? "))\nwhile prezzo == 0:\n    print(f"Articolo: {prezzo} €")\n    prezzo = int(input("Prezzo? "))');
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toContain('Il ciclo `while` alla riga 2 non gira nemmeno una volta');
+    expect(esito.hint).not.toContain('ci vuole un `print`');
+    expect(esito.riga).toBe(2);
+  });
+
+  it('manca la riga dopo il ciclo: non si dice che il ciclo gira poco', () => {
+    const esito = valutaRisposta(conAvviso, timer.soluzione);
+    expect(esito.hint).toContain('manca qualcosa in fondo, dopo il ciclo');
+    expect(esito.hint).not.toContain('troppe poche volte');
+    expect(esito.hint).not.toContain('Pronto!');
+  });
+
+  it('se invece mancano ripetizioni, il ciclo gira davvero troppo poco', () => {
+    const esito = valutaRisposta({ ...timer, soluzione: '', outputAtteso: ['Evviva', 'Evviva', 'Evviva'] }, 'print("Evviva")\nprint("Evviva")');
+    expect(esito.hint).toContain('volte');
+  });
+
+  it('una riga di troppo in mezzo (l\'else dimenticato) viene indicata, non scambiata per un problema di ordine', () => {
+    const ultimo: Esercizio = {
+      ...timer,
+      outputAtteso: ['Mancano 2 minuti', 'Manca 1 minuto', 'Pronto!'],
+      soluzione: 'minuti = 2\nwhile minuti > 0:\n    if minuti == 1:\n        print("Manca 1 minuto")\n    else:\n        print(f"Mancano {minuti} minuti")\n    minuti -= 1\nprint("Pronto!")',
+    };
+    const esito = valutaRisposta(ultimo, 'minuti = 2\nwhile minuti > 0:\n    if minuti == 1:\n        print("Manca 1 minuto")\n    print(f"Mancano {minuti} minuti")\n    minuti -= 1\nprint("Pronto!")');
+    expect(esito.hint).toContain('Stampi una riga di troppo: la riga 3, «Mancano 1 minuti», non ci doveva essere');
+  });
+
+  it('il codice iniziale con il commento, riconsegnato tale e quale, dice del commento', () => {
+    const guidata: Esercizio = { ...timer, codiceIniziale: 'minuti = 5\nwhile minuti > 0:\n    print(minuti)\n    # qui manca la riga' };
+    expect(valutaRisposta(guidata, guidata.codiceIniziale!).hint).toContain('Al posto del commento');
   });
 });

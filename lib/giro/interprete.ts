@@ -117,6 +117,8 @@ export type Esito =
       schermo: RigaSchermo[];
       /** I cicli `for` su `range` che non hanno girato nemmeno una volta. */
       cicliVuoti: CicloVuoto[];
+      /** Le righe dei `while` la cui condizione era già falsa al primo controllo: zero giri. */
+      whileVuoti: number[];
     }
   | {
       ok: false;
@@ -193,6 +195,9 @@ type Tok =
   | { t: 'fine' };
 
 const OPERATORI_DUE = ['+=', '-=', '*=', '==', '!=', '<=', '>='];
+
+/** La coda dei messaggi sui tipi: nove volte su dieci il testo è una `input()` senza `int()`. */
+const RICORDA_INT = 'Se il valore viene da `input()`, ricorda che è un testo: mettilo dentro `int()`';
 const OPERATORI_UNO = ['+', '-', '*', '(', ')', ',', ':', '=', ';', '[', ']', '{', '}', '.', '<', '>', '/', '%'];
 
 function isLettera(c: string): boolean {
@@ -220,11 +225,25 @@ function leggiTesto(src: string, i: number, apice: string, riga: number): { valo
       j += 2;
       continue;
     }
-    if (c === apice) return { valore, fine: j + 1 };
+    if (c === apice) {
+      errApostrofo(src, j, apice, riga);
+      return { valore, fine: j + 1 };
+    }
     valore += c;
     j++;
   }
   errVirgolette(src, apice, riga);
+}
+
+/**
+ * `'Ce l'hai fatta'`: l'apostrofo chiude le virgolette singole e subito dopo c'è una lettera.
+ * Senza questo l'errore era «virgolette mai chiuse» sul pezzo finale, e chi aggiungeva un apice
+ * in fondo leggeva «manca la parentesi».
+ */
+function errApostrofo(src: string, j: number, apice: string, riga: number): void {
+  if (apice === "'" && isLettera(src[j + 1] ?? '')) {
+    err('sintassi', "L'apostrofo dentro il testo chiude le virgolette singole: metti il testo fra virgolette doppie `\"...\"`", riga);
+  }
 }
 
 function tokenizza(src: string, riga: number): Tok[] {
@@ -323,7 +342,10 @@ function leggiTestoGrezzo(src: string, i: number, apice: string, riga: number): 
       j += 2;
       continue;
     }
-    if (c === apice) return { valore, fine: j + 1 };
+    if (c === apice) {
+      errApostrofo(src, j, apice, riga);
+      return { valore, fine: j + 1 };
+    }
     valore += c;
     j++;
   }
@@ -525,6 +547,12 @@ function parseEspressione(l: Lettore): Espr {
       const dx = parseTermine(l);
       sx = { k: 'bin', op: t.v as '+' | '-', sx, dx };
       continue;
+    }
+    if (t.t === 'op' && t.v === '/') {
+      err('nonAmmesso', 'La divisione non è ammessa in questo gioco: ci sono solo numeri interi. Scrivi direttamente il numero che ti serve', l.riga);
+    }
+    if (t.t === 'op' && t.v === '%') {
+      err('sintassi', 'Il simbolo `%` non si può usare qui: se fa parte di un testo, il testo va fra virgolette', l.riga);
     }
     return sx;
   }
@@ -1069,6 +1097,8 @@ class Macchina {
   readonly schermo: RigaSchermo[] = [];
   /** I `for` su `range` che non hanno fatto nemmeno un giro: quasi sempre un passo sbagliato (hint.ts). */
   readonly cicliVuoti: CicloVuoto[] = [];
+  /** I `while` che non hanno fatto nemmeno un giro: la condizione era falsa subito (`==` al posto di `!=`, hint.ts). */
+  readonly whileVuoti: number[] = [];
 
   constructor(
     private readonly maxIterazioni: number,
@@ -1088,12 +1118,19 @@ class Macchina {
     }
     if (this.prossimaRisposta >= this.risposte.length) {
       const ultima = this.risposte[this.risposte.length - 1];
+      const quante = `Il programma chiede più cose di quelle previste: le risposte di prova sono ${this.risposte.length} e questo è l'\`input()\` numero ${this.prossimaRisposta + 1}.`;
+      const rigaWhile = this.whileAperti[this.whileAperti.length - 1];
+      if (rigaWhile !== undefined && ultima !== undefined) {
+        // Dentro un while le risposte finiscono per due motivi: la condizione non diventa falsa
+        // con l'ultima risposta, oppure c'è una domanda di troppo. L'errore indica il ciclo.
+        err(
+          'limite',
+          `${quante} Dopo l'ultima risposta («${ultima}») il programma doveva fermarsi, invece il ciclo \`while\` alla riga ${rigaWhile} chiede ancora: o la sua condizione non diventa falsa con quella risposta, o c'è una \`input()\` di troppo`,
+          rigaWhile,
+        );
+      }
       const dopo = ultima === undefined ? '' : ` Dopo l'ultima risposta («${ultima}») il programma doveva fermarsi, invece chiede ancora.`;
-      err(
-        'limite',
-        `Il programma chiede più cose di quelle previste: le risposte di prova sono ${this.risposte.length} e questo è l'\`input()\` numero ${this.prossimaRisposta + 1}.${dopo}`,
-        riga,
-      );
+      err('limite', `${quante}${dopo}`, riga);
     }
     const risposta = this.risposte[this.prossimaRisposta++];
     this.interazioni.push({ domanda, risposta });
@@ -1116,11 +1153,17 @@ class Macchina {
       err('limite', `\`random.randint(${a}, ${b})\` non può dare niente: il primo numero deve essere il più piccolo`, riga);
     }
     if (this.prossimoCasuale >= this.casuali.length) {
-      err(
-        'limite',
-        `Il programma chiede più numeri casuali di quelli previsti: la prova ne ha ${this.casuali.length} e questo è il \`randint\` numero ${this.prossimoCasuale + 1}`,
-        riga,
-      );
+      const quanti = `Il programma chiede più numeri casuali di quelli previsti: la prova ne ha ${this.casuali.length} e questo è il \`randint\` numero ${this.prossimoCasuale + 1}`;
+      const rigaWhile = this.whileAperti[this.whileAperti.length - 1];
+      const ultimo = this.casuali[this.casuali.length - 1];
+      if (rigaWhile !== undefined && ultimo !== undefined) {
+        err(
+          'limite',
+          `${quanti}. Dopo l'ultimo numero (${ultimo}) il programma doveva fermarsi, invece il ciclo \`while\` alla riga ${rigaWhile} chiede un altro numero: controlla la condizione`,
+          rigaWhile,
+        );
+      }
+      err('limite', quanti, riga);
     }
     const n = this.casuali[this.prossimoCasuale++];
     if (n < a || n > b) {
@@ -1161,7 +1204,7 @@ class Macchina {
         this.ambiente.set(istr.nome, somma(precedente, valore, istr.riga));
       } else if (istr.op === '-=') {
         if (typeof precedente !== 'number' || typeof valore !== 'number') {
-          err('tipo', `\`${istr.nome} -= ...\` funziona solo fra numeri: la sottrazione non si fa con il testo`, istr.riga);
+          err('tipo', `\`${istr.nome} -= ...\` funziona solo fra numeri: la sottrazione non si fa con il testo. ${RICORDA_INT}`, istr.riga);
         }
         this.ambiente.set(istr.nome, precedente - valore);
       } else {
@@ -1193,8 +1236,10 @@ class Macchina {
    */
   private cicloWhile(istr: Istruzione & { k: 'while' }): void {
     this.whileAperti.push(istr.riga);
+    let giri = 0;
     try {
       while (this.condizione(istr.cond, istr.riga)) {
+        giri++;
         this.iterazioni++;
         if (this.iterazioni > this.maxIterazioni) {
           err('limite', `Il ciclo \`while\` non si ferma mai (ha già fatto ${this.maxIterazioni} giri): ${PERCHE_WHILE_INFINITO}`, istr.riga);
@@ -1204,6 +1249,7 @@ class Macchina {
     } finally {
       this.whileAperti.pop();
     }
+    if (giri === 0) this.whileVuoti.push(istr.riga);
   }
 
   /** Vero o falso di un confronto. Numeri con numeri, testo con testo: mischiarli è quasi sempre un `int()` dimenticato. */
@@ -1212,11 +1258,12 @@ class Macchina {
     const sx = this.valuta(e.sx, riga);
     const dx = this.valuta(e.dx, riga);
     if (typeof sx !== typeof dx) {
-      err(
-        'tipo',
-        'Stai confrontando un numero con un testo: non saranno mai uguali. Se il valore viene da `input()`, ricorda che è un testo: mettilo dentro `int()`',
-        riga,
-      );
+      // `minuti == "1"`: il numero è già un numero, sono le virgolette attorno a 1 a farne un testo.
+      const letterale = [e.sx, e.dx].find((x) => x.k === 'str' && /^\d+$/.test(x.v.trim()));
+      if (letterale && letterale.k === 'str') {
+        err('tipo', `«${letterale.v}» fra virgolette è un testo, non il numero ${letterale.v.trim()}: per confrontarlo con un numero togli le virgolette`, riga);
+      }
+      err('tipo', `Stai confrontando un numero con un testo: non saranno mai uguali. ${RICORDA_INT}`, riga);
     }
     switch (e.op) {
       case '==':
@@ -1354,7 +1401,7 @@ class Macchina {
         if (e.op === '+') return somma(sx, dx, riga);
         if (e.op === '-') {
           if (typeof sx !== 'number' || typeof dx !== 'number') {
-            err('tipo', 'La sottrazione funziona solo fra numeri', riga);
+            err('tipo', `La sottrazione funziona solo fra numeri. ${RICORDA_INT}`, riga);
           }
           return sx - dx;
         }
@@ -1648,6 +1695,7 @@ export function esegui(codice: string, opzioni: Opzioni = {}): Esito {
       interazioni: macchina.interazioni,
       schermo: macchina.schermo,
       cicliVuoti: macchina.cicliVuoti,
+      whileVuoti: macchina.whileVuoti,
     };
   } catch (e) {
     const schermo = macchina?.schermo ?? [];
