@@ -16,6 +16,13 @@ export function votoSeFinisce(consigli: number): number {
   return Math.max(VOTO_MINIMO_FINITO, VOTO_MASSIMO - COSTO_DOMANDA * Math.max(0, consigli));
 }
 
+/** La media dei voti dei compiti finiti, con un decimale; null se nessuno è finito. */
+export function mediaVoti(voci: Array<{ voto: number | null }>): number | null {
+  const voti = voci.map((v) => v.voto).filter((v): v is number => v !== null);
+  if (voti.length === 0) return null;
+  return Math.round((voti.reduce((s, v) => s + v, 0) / voti.length) * 10) / 10;
+}
+
 /** Il voto o la media come si scrivono in italiano: 9,5. */
 export function scriviVoto(voto: number): string {
   return String(voto).replace('.', ',');

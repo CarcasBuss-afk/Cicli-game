@@ -63,15 +63,9 @@ export function percorsoDi(lavori: Record<string, ProgressoCompito | undefined>,
   });
 }
 
-/** La media dei voti dei compiti finiti, con un decimale; null se nessuno è finito. */
-export function mediaVoti(voci: Array<{ voto: number | null }>): number | null {
-  const voti = voci.map((v) => v.voto).filter((v): v is number => v !== null);
-  if (voti.length === 0) return null;
-  return Math.round((voti.reduce((s, v) => s + v, 0) / voti.length) * 10) / 10;
-}
-
 /** Il voto "se finisci" mostrato all'allievo mentre lavora. */
 export { votoSeFinisce };
+export { mediaVoti } from './voto';
 
 /** Dominio ammesso per gli account degli allievi (OFFICINA_DOMINIO, anche più d'uno separati da virgola). */
 export function dominiAmmessi(valore: string | undefined): string[] {

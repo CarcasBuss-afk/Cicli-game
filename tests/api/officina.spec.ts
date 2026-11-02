@@ -369,6 +369,11 @@ async function digita(page: Page, codice: string) {
   }
 }
 
+/** Apre una card del percorso: all'ingresso sono tutte chiuse. */
+async function apriCard(page: Page, nomeClasse: string, titolo: string) {
+  await page.getByRole('region', { name: `Classe ${nomeClasse}` }).getByRole('button', { name: new RegExp(titolo) }).click();
+}
+
 async function accedi(page: Page, email: string) {
   await page.goto('/officina');
   await page.getByLabel('email di prova').fill(email);
@@ -377,7 +382,7 @@ async function accedi(page: Page, email: string) {
 
 test.describe("l'Officina nella pagina dell'allievo", () => {
   test("il docente ricomincia un compito da capo; l'allievo non può e non vede il pulsante", async ({ page, request }) => {
-    const { classeId, luca, fasi } = await scenario(request);
+    const { classeId, nomeClasse, luca, fasi } = await scenario(request);
     const r = await request.post('/api/officina/test-login', { data: { email: TEACHER_EMAIL, nome: 'Fabio' } });
     const d = (await r.json()) as { token: string; uid: string };
     const fabio: Utente = { token: await idToken(request, d.token), uid: d.uid, email: TEACHER_EMAIL };
@@ -392,6 +397,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     expect(rifiuto.stato).toBe(403);
     expect((await officina(request, luca, 'compito', { classeId, compitoId: 'cartello' })).corpo.fasi).toBe(1);
     await accedi(page, luca.email);
+    await apriCard(page, nomeClasse, 'Il ciclo for');
     await page.getByRole('link', { name: /Il cartello della festa/ }).click();
     await expect(page.getByRole('heading', { name: 'Il cartello della festa' })).toBeVisible();
     await expect(page.getByRole('button', { name: 'Ricomincia da capo' })).toHaveCount(0);
@@ -400,7 +406,11 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await page.goto('/officina');
     await page.getByRole('button', { name: 'esci' }).click();
     await accedi(page, TEACHER_EMAIL);
-    // Il docente di prova sta in più classi: si prende il link di questa.
+    // Il docente di prova sta in più classi: si prende il link di questa. La card riassume il compito finito.
+    const sezioneFor = page.getByRole('region', { name: `Classe ${nomeClasse}` }).getByRole('button', { name: /Il ciclo for/ });
+    await expect(sezioneFor).toContainText('1 di 12 svolti');
+    await expect(sezioneFor.getByLabel('voto della sezione')).toHaveText('10');
+    await apriCard(page, nomeClasse, 'Il ciclo for');
     await page.locator(`a[href="/officina/${classeId}/cartello"]`).click();
     await expect(page.getByText('Programma finito! Il tuo voto')).toBeVisible();
     page.once('dialog', (dialogo) => void dialogo.accept());
@@ -417,7 +427,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
   });
 
   test("il diario mostra le domande fra le righe attese, nella fase e nella scheda", async ({ page, request }) => {
-    const { classeId } = await scenario(request);
+    const { classeId, nomeClasse } = await scenario(request);
     const r = await request.post("/api/officina/test-login", { data: { email: TEACHER_EMAIL, nome: "Fabio" } });
     const d = (await r.json()) as { token: string; uid: string };
     const fabio: Utente = { token: await idToken(request, d.token), uid: d.uid, email: TEACHER_EMAIL };
@@ -426,6 +436,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await officina(request, fabio, "consegna", { classeId, compitoId: "diario", fase: 0, codice: fasi[0].soluzione });
 
     await accedi(page, TEACHER_EMAIL);
+    await apriCard(page, nomeClasse, "Il ciclo for");
     await page.locator(`a[href="/officina/${classeId}/diario"]`).click();
     await expect(page.getByText("Fase 2 di 5", { exact: true })).toBeVisible();
     await expect(page.getByText("Sullo schermo deve comparire")).toBeVisible();
@@ -445,11 +456,21 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await page.getByLabel('Per cominciare, dimmi in che classe sei:').selectOption(classeId);
     await page.getByRole('button', { name: 'Entra' }).click();
     await expect(page.getByText(`Classe ${nomeClasse}`)).toBeVisible();
+    // All'ingresso le card sono chiuse: dicono solo quanti compiti sono svolti e il voto.
     const percorso = page.getByRole('list', { name: `percorso di ${nomeClasse} · Il ciclo for` }).locator('li');
+    const cardFor = page.getByRole('button', { name: /Il ciclo for/ });
+    await expect(cardFor).toHaveAttribute('aria-expanded', 'false');
+    await expect(cardFor).toContainText('0 di 12 svolti');
+    await expect(cardFor.getByLabel('voto della sezione')).toHaveText('–');
+    await expect(page.getByRole('button', { name: /Il ciclo while/ })).toContainText('0 di 12 svolti');
+    await expect(percorso).toHaveCount(0);
+    await cardFor.click();
+    await expect(cardFor).toHaveAttribute('aria-expanded', 'true');
     await expect(percorso).toHaveCount(12);
     await expect(percorso.nth(0)).toContainText('Comincia');
     await expect(percorso.nth(1)).toContainText('si sblocca');
     await expect(percorso.nth(11)).toContainText('esame');
+    await apriCard(page, nomeClasse, 'Il ciclo while');
     await expect(page.getByRole('region', { name: 'Il ciclo while' })).toContainText('Il timer del forno');
     await expect(page.getByRole('region', { name: 'Il ciclo while' })).toContainText('si sblocca');
     await expect(page.getByLabel('media')).toHaveText('–');
@@ -458,6 +479,8 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await page.getByRole('button', { name: 'esci' }).click();
     await expect(page.getByRole('button', { name: 'Accedi con Google' })).toBeVisible();
     await accedi(page, luca.email);
+    await expect(cardFor).toHaveAttribute('aria-expanded', 'false'); // chi entra dopo le trova chiuse
+    await cardFor.click();
     await page.getByRole('link', { name: /Il cartello della festa/ }).click();
     await expect(page.getByText('Fase 1 di 5', { exact: true })).toBeVisible();
     await expect(page.getByLabel('voto')).toHaveText('10');
@@ -505,7 +528,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await expect(prova).toHaveCount(0);
     await page.getByRole('button', { name: 'Prova ▶' }).click();
     await expect(prova).toBeVisible();
-    await page.getByRole('link', { name: '← i miei compiti' }).click();
+    await page.getByRole('link', { name: '← i miei compiti' }).click(); // la card è rimasta aperta
     await page.getByRole('link', { name: /Il cartello della festa/ }).click();
     await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();
     await expect(prova).toHaveCount(0);
@@ -514,7 +537,8 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await expect(page.locator('.cm-content')).toContainText(fasi[0].soluzione.split('\n')[0]); // riparte dal codice della fase 1
     await expect(page.getByLabel('conversazione con il tutor').locator('li')).toHaveCount(1);
 
-    await page.getByRole('link', { name: '← i miei compiti' }).click();
+    await page.getByRole('link', { name: '← i miei compiti' }).click(); // dopo il ricaricamento le card ripartono chiuse
+    await apriCard(page, nomeClasse, 'Il ciclo for');
     await expect(page.getByRole('link', { name: /Il cartello della festa/ })).toContainText('Fase 2 di 5');
   });
 });

@@ -1,15 +1,23 @@
 'use client';
-/* L'Officina vista dall'allievo: il percorso dei compiti di realtà, uno sotto l'altro,
- * sbloccati uno alla volta, con la media dei voti. La prima volta si sceglie la classe. */
+/* L'Officina vista dall'allievo: una card per argomento con i compiti svolti e il voto, che
+ * cliccata si apre sul suo elenco; i compiti si sbloccano uno alla volta, attraverso le
+ * card. La prima volta si sceglie la classe. */
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { chiamaOfficina, messaggioErrore, type CompitoInElenco, type Percorso, type SezionePercorso } from '@/lib/officina/client';
-import { scriviVoto } from '@/lib/officina/voto';
+import { mediaVoti, scriviVoto } from '@/lib/officina/voto';
 import { AccessoAllievo } from './Accesso';
 import { useAllievo } from './useAllievo';
 
+/**
+ * Le card aperte: in memoria, così tornando da un compito si ritrova la card com'era, e
+ * ricaricando la pagina o uscendo si riparte con tutte chiuse (sullo stesso PC, dopo, ci
+ * può essere un altro allievo).
+ */
+const cardAperte = new Set<string>();
+
 export function Officina() {
-  const { stato, io, messaggio, accediGoogle, accediProva, esci, ricarica } = useAllievo();
+  const { stato, io, messaggio, accediGoogle, accediProva, esci: esciDalConto, ricarica } = useAllievo();
   const [percorsi, setPercorsi] = useState<Percorso[]>([]);
   const [errore, setErrore] = useState('');
 
@@ -26,6 +34,11 @@ export function Officina() {
   useEffect(() => {
     void carica();
   }, [carica]);
+
+  function esci() {
+    cardAperte.clear();
+    return esciDalConto();
+  }
 
   if (stato !== 'ok' || !io) {
     return <AccessoAllievo stato={stato} messaggio={messaggio} accediGoogle={accediGoogle} accediProva={accediProva} esci={esci} />;
@@ -49,7 +62,7 @@ export function Officina() {
         <ScegliClasse onScelta={ricarica} />
       ) : (
         percorsi.map((p) => (
-          <section key={p.classe.id} className="flex flex-col gap-3">
+          <section key={p.classe.id} aria-label={`Classe ${p.classe.nome}`} className="flex flex-col gap-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <h2 className="text-lg font-bold">
                 Classe {p.classe.nome}
@@ -71,7 +84,7 @@ export function Officina() {
               <SezioneDelPercorso key={s.id} sezione={s} compiti={p.compiti} classe={p.classe} />
             ))}
             <p className="text-sm text-(--color-testo-tenue)">
-              I compiti si sbloccano uno alla volta. Il voto è 10 meno mezzo punto per ogni domanda al tutor, mai sotto 5: puoi chiedere aiuto quanto vuoi. Nel patentino il tutor è spento.
+              I compiti si sbloccano uno alla volta. Il voto di ogni argomento è la media dei compiti finiti. Il voto di un compito è 10 meno mezzo punto per ogni domanda al tutor, mai sotto 5: puoi chiedere aiuto quanto vuoi. Nel patentino il tutor è spento.
             </p>
           </section>
         ))
@@ -87,34 +100,70 @@ export function Officina() {
 }
 
 /**
- * Un capitolo del percorso: il titolo, i suoi compiti numerati di seguito a quelli prima,
- * e il patentino quando l'esame in fondo è passato. Una sezione senza compiti dice che
- * arriveranno: l'allievo vede che dopo il for c'è un altro ciclo.
+ * Un argomento del percorso, come card: da chiusa dice il titolo, quanti compiti sono
+ * svolti e il voto; cliccata si apre sui compiti, numerati di seguito a quelli prima. Una
+ * sezione senza compiti dice che arriveranno: l'allievo vede che dopo il for c'è altro.
  */
 function SezioneDelPercorso({ sezione, compiti, classe }: { sezione: SezionePercorso; compiti: CompitoInElenco[]; classe: { id: string; nome: string } }) {
+  const chiave = `${classe.id}:${sezione.id}`;
+  const [aperta, setAperta] = useState(() => cardAperte.has(chiave));
   const miei = compiti.filter((k) => k.sezione === sezione.id);
   const esame = miei.find((k) => k.esame && k.stato === 'finito');
+  const svolti = miei.filter((k) => k.stato === 'finito').length;
+  const voto = mediaVoti(miei);
+  const idElenco = `compiti-${chiave}`;
+
+  function apriChiudi() {
+    if (aperta) cardAperte.delete(chiave);
+    else cardAperte.add(chiave);
+    setAperta(!aperta);
+  }
+
   return (
-    <section aria-label={sezione.titolo} className="flex flex-col gap-2">
-      <h3 className="mt-2 flex flex-wrap items-baseline justify-between gap-2 text-base font-bold text-(--color-testo-tenue)">
-        <span>{sezione.titolo}</span>
-        {esame && (
-          <span className="rounded-full border border-(--color-verde)/50 bg-(--color-verde)/10 px-3 py-0.5 text-sm text-(--color-verde)" aria-label="patentino">
-            🪪 Patentino preso · voto {esame.voto === null ? '' : scriviVoto(esame.voto)}
+    <section aria-label={sezione.titolo} className={`rounded-2xl border bg-(--color-fondo-card) ${aperta ? 'border-(--color-giallo)' : 'border-(--color-bordo) hover:border-(--color-giallo)'}`}>
+      <button type="button" onClick={apriChiudi} aria-expanded={aperta} aria-controls={idElenco} className="flex w-full flex-col gap-3 rounded-2xl p-4 text-left sm:p-5">
+        <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+          <span className="flex items-center gap-3 text-xl font-bold">
+            <span aria-hidden className={`text-(--color-giallo) transition-transform ${aperta ? 'rotate-90' : ''}`}>
+              ▶
+            </span>
+            {sezione.titolo}
           </span>
-        )}
-      </h3>
-      {miei.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-(--color-bordo) px-4 py-3 text-sm text-(--color-testo-tenue)">I compiti di questa sezione arrivano quando la classe ci arriva.</p>
-      ) : (
-        <ol aria-label={`percorso di ${classe.nome} · ${sezione.titolo}`} className="flex flex-col gap-2">
-          {miei.map((k) => (
-            <li key={k.id}>
-              <VoceCompito k={k} numero={compiti.indexOf(k) + 1} classeId={classe.id} />
-            </li>
+          <span className="flex items-baseline gap-2 text-(--color-testo-tenue)">
+            voto
+            <span className="font-mono text-2xl font-black text-(--color-giallo)" aria-label="voto della sezione">
+              {voto === null ? '–' : scriviVoto(voto)}
+            </span>
+          </span>
+        </span>
+        <span className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-sm text-(--color-testo-tenue)">
+          <span>
+            {svolti} di {miei.length} svolti
+          </span>
+          {esame && (
+            <span className="rounded-full border border-(--color-verde)/50 bg-(--color-verde)/10 px-3 py-0.5 text-(--color-verde)" aria-label="patentino">
+              🪪 Patentino preso · voto {esame.voto === null ? '' : scriviVoto(esame.voto)}
+            </span>
+          )}
+        </span>
+        <span aria-hidden className="block h-1.5 overflow-hidden rounded-full bg-black/40">
+          <span className="block h-full rounded-full bg-(--color-verde)" style={{ width: `${miei.length === 0 ? 0 : (svolti / miei.length) * 100}%` }} />
+        </span>
+      </button>
+      <div id={idElenco} hidden={!aperta} className="px-3 pb-3 sm:px-4 sm:pb-4">
+        {aperta &&
+          (miei.length === 0 ? (
+            <p className="rounded-xl border border-dashed border-(--color-bordo) px-4 py-3 text-sm text-(--color-testo-tenue)">I compiti di questa sezione arrivano quando la classe ci arriva.</p>
+          ) : (
+            <ol aria-label={`percorso di ${classe.nome} · ${sezione.titolo}`} className="flex flex-col gap-2">
+              {miei.map((k) => (
+                <li key={k.id}>
+                  <VoceCompito k={k} numero={compiti.indexOf(k) + 1} classeId={classe.id} />
+                </li>
+              ))}
+            </ol>
           ))}
-        </ol>
-      )}
+      </div>
     </section>
   );
 }
@@ -136,7 +185,7 @@ function VoceCompito({ k, numero, classeId }: { k: CompitoInElenco; numero: numb
     return <div className={`${classe} border-(--color-bordo) text-(--color-testo-tenue) opacity-60`}>{dentro}</div>;
   }
   return (
-    <Link href={`/officina/${classeId}/${k.id}`} className={`${classe} border-(--color-bordo) bg-(--color-fondo-card) hover:border-(--color-giallo)`}>
+    <Link href={`/officina/${classeId}/${k.id}`} className={`${classe} border-(--color-bordo) bg-black/20 hover:border-(--color-giallo)`}>
       {dentro}
     </Link>
   );
