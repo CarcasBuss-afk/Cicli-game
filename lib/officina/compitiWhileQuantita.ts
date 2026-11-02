@@ -62,10 +62,15 @@ function righeObiettivo(p: ParametriObiettivo, quota: number, fase: 1 | 2 | 3 | 
   return righe;
 }
 
-const REGOLA_OBIETTIVO =
-  "Il totale lo tiene una variabile che parte da 0 e cresce della quota a ogni giro di un ciclo `while` che gira finché il totale è sotto l'obiettivo. " +
-  'Il numero di settimane non si sa prima e non va scritto nel programma: non vale un `for` con `range`. Le settimane le conta una variabile che cresce di 1 a ogni giro, ' +
-  'e le righe dopo il ciclo usano le variabili, non numeri scritti a mano.';
+/** La regola cresce con le fasi: alla fase 1 non ci sono né il contatore né le righe dopo il ciclo, e il giudice non deve cercarli. */
+function regolaObiettivo(fase: number): string {
+  const base =
+    "Il totale lo tiene una variabile che parte da 0 e cresce della quota a ogni giro di un ciclo `while` che gira finché il totale è sotto l'obiettivo. " +
+    'Il numero di settimane non si sa prima e non va scritto nel programma: non vale un `for` con `range`.';
+  const conta = fase >= 2 ? ' Le settimane le conta una variabile che cresce di 1 a ogni giro.' : '';
+  const dopo = fase >= 3 ? " Le righe dopo il ciclo usano le variabili, non numeri scritti a mano (l'obiettivo è un dato e può comparire come numero)." : '';
+  return base + conta + dopo;
+}
 
 export function fasiObiettivo(seme: number): Esercizio[] {
   const p = parametriObiettivo(seme);
@@ -85,7 +90,7 @@ export function fasiObiettivo(seme: number): Esercizio[] {
         `\`${quota} €\`, \`${quota * 2} €\`… Il ciclo si ferma da solo quando ci sei.`,
       outputAtteso: righeObiettivo(p, quota, 1),
       soluzione: `totale = 0\nwhile totale < ${obiettivo}:\n    totale += ${quota}\n    print(f"{totale} €")`,
-      regola: REGOLA_OBIETTIVO,
+      regola: regolaObiettivo(1),
     },
     {
       ...b,
@@ -94,14 +99,14 @@ export function fasiObiettivo(seme: number): Esercizio[] {
         `la riga diventa \`Settimana 1: ${quota} €\`, \`Settimana 2: ${quota * 2} €\`…`,
       outputAtteso: righeObiettivo(p, quota, 2),
       soluzione: `totale = 0\nsettimane = 0\n${corpo(String(quota))}`,
-      regola: REGOLA_OBIETTIVO,
+      regola: regolaObiettivo(2),
     },
     {
       ...b,
       consegna: `**Fase 3 — la risposta.** Dopo il ciclo, una riga sola: \`Ce la fai in ${settimane} settimane\`. Il numero è nella variabile che conta: non scriverlo a mano.`,
       outputAtteso: righeObiettivo(p, quota, 3),
       soluzione: r3,
-      regola: REGOLA_OBIETTIVO,
+      regola: regolaObiettivo(3),
     },
     {
       ...b,
@@ -111,7 +116,7 @@ export function fasiObiettivo(seme: number): Esercizio[] {
       outputAtteso: righeObiettivo(p, quota, 4),
       prove: prove(4),
       soluzione: r4,
-      regola: REGOLA_OBIETTIVO + ' La quota arriva da `input()`: non va scritta nel programma.',
+      regola: regolaObiettivo(4) + ' La quota arriva da `input()`: non va scritta nel programma.',
     },
     {
       ...b,
@@ -121,7 +126,7 @@ export function fasiObiettivo(seme: number): Esercizio[] {
       outputAtteso: righeObiettivo(p, quota, 5),
       prove: prove(5),
       soluzione: `${r4}\nif totale > ${obiettivo}:\n    print(f"Ti avanzano {totale - ${obiettivo}} €")\nelse:\n    print("Giusto giusto, niente resto")`,
-      regola: REGOLA_OBIETTIVO + ' La quota arriva da `input()`. La riga del resto la sceglie un `if` fuori dal ciclo sul totale.',
+      regola: regolaObiettivo(5) + ' La quota arriva da `input()`. La riga del resto la sceglie un `if` fuori dal ciclo sul totale.',
     },
   ], noteObiettivo(p));
 }
@@ -177,9 +182,14 @@ function righeBatteria(p: ParametriBatteria, consumo: number, fase: 1 | 2 | 3 | 
   return righe;
 }
 
-const REGOLA_BATTERIA =
-  'La carica scende del consumo a ogni giro di un ciclo `while` che gira finché è sopra zero (`-=` oppure `carica = carica - consumo`): ' +
-  'le ore non si sanno prima e non vanno scritte nel programma (niente `for` con `range`); le conta una variabile che cresce di 1 a ogni giro.';
+function regolaBatteria(fase: number): string {
+  const base =
+    'La carica scende del consumo a ogni giro di un ciclo `while` che gira finché è sopra zero (`-=` oppure `carica = carica - consumo`): ' +
+    'le ore non si sanno prima e non vanno scritte nel programma (niente `for` con `range`).';
+  const conta = fase >= 2 ? ' Le ore le conta una variabile che cresce di 1 a ogni giro.' : '';
+  const dopo = fase >= 3 ? ' Il numero finale delle ore esce dalla variabile, non scritto a mano.' : '';
+  return base + conta + dopo;
+}
 
 export function fasiBatteria(seme: number): Esercizio[] {
   const p = parametriBatteria(seme);
@@ -198,21 +208,21 @@ export function fasiBatteria(seme: number): Esercizio[] {
         `finché c'è: il \`while\` gira **finché \`carica\` è sopra 0**, e dentro, dopo il \`print\`, la carica scende di ${consumo} (\`-=\`). È il salvadanaio al contrario.`,
       outputAtteso: righeBatteria(p, consumo, 1),
       soluzione: `carica = ${carica}\nwhile carica > 0:\n    print(f"{carica}%")\n    carica -= ${consumo}`,
-      regola: REGOLA_BATTERIA,
+      regola: regolaBatteria(1),
     },
     {
       ...b,
       consegna: `**Fase 2 — le ore.** Una variabile \`ore\` conta i giri: \`Ora 1: ${carica}%\`, \`Ora 2: ${carica - consumo}%\`… Parte da 0 e cresce di 1 a ogni giro, prima del \`print\`.`,
       outputAtteso: righeBatteria(p, consumo, 2),
       soluzione: corpo(String(consumo)),
-      regola: REGOLA_BATTERIA,
+      regola: regolaBatteria(2),
     },
     {
       ...b,
       consegna: `**Fase 3 — quanto dura.** Dopo il ciclo: \`Si scarica dopo ${ore} ore\`. Il numero è in \`ore\`.`,
       outputAtteso: righeBatteria(p, consumo, 3),
       soluzione: r3,
-      regola: REGOLA_BATTERIA,
+      regola: regolaBatteria(3),
     },
     {
       ...b,
@@ -222,7 +232,7 @@ export function fasiBatteria(seme: number): Esercizio[] {
       outputAtteso: righeBatteria(p, consumo, 4),
       prove: prove(4),
       soluzione: r4,
-      regola: REGOLA_BATTERIA + ' Il consumo arriva da `input()`: non va scritto nel programma.',
+      regola: regolaBatteria(4) + ' Il consumo arriva da `input()`: non va scritto nel programma.',
     },
     {
       ...b,
@@ -232,7 +242,7 @@ export function fasiBatteria(seme: number): Esercizio[] {
       outputAtteso: righeBatteria(p, consumo, 5),
       prove: prove(5),
       soluzione: r4.replace(`    print(f"Ora {ore}: {carica}%")`, `    print(f"Ora {ore}: {carica}%")\n    if carica <= ${SOGLIA_SCARICA}:\n        print("Carica il telefono!")`),
-      regola: REGOLA_BATTERIA + " Il consumo arriva da `input()`. L'avviso lo decide un `if` dentro il ciclo sulla carica.",
+      regola: regolaBatteria(5) + " Il consumo arriva da `input()`. L'avviso lo decide un `if` dentro il ciclo sulla carica.",
     },
   ], noteBatteria(p));
 }
@@ -290,9 +300,14 @@ function righePettegolezzo(p: ParametriPettegolezzo, inizio: number, fase: 1 | 2
   return righe;
 }
 
-const REGOLA_PETTEGOLEZZO =
-  'Quelli che lo sanno raddoppiano a ogni giro di un ciclo `while` che gira finché sono meno degli allievi della scuola (`*=` oppure `sanno = sanno * 2`): ' +
-  'le ore non si sanno prima e non vanno scritte nel programma (niente `for` con `range`); le conta una variabile che cresce di 1 a ogni giro.';
+function regolaPettegolezzo(fase: number): string {
+  const base =
+    'Quelli che lo sanno raddoppiano a ogni giro di un ciclo `while` che gira finché sono meno degli allievi della scuola (`*=` oppure `sanno = sanno * 2`): ' +
+    'le ore non si sanno prima e non vanno scritte nel programma (niente `for` con `range`).';
+  const conta = fase >= 2 ? ' Le ore le conta una variabile che cresce di 1 a ogni giro.' : '';
+  const dopo = fase >= 3 ? ' Il numero finale delle ore esce dalla variabile, non scritto a mano.' : '';
+  return base + conta + dopo;
+}
 
 export function fasiPettegolezzo(seme: number): Esercizio[] {
   const p = parametriPettegolezzo(seme);
@@ -311,21 +326,21 @@ export function fasiPettegolezzo(seme: number): Esercizio[] {
         `Il \`while\` gira finché \`sanno\` è meno di ${scuola} (tutta la scuola); dentro, \`sanno\` raddoppia (\`*=\`) e si stampa \`${inizio * 2} persone\`, \`${inizio * 4} persone\`…`,
       outputAtteso: righePettegolezzo(p, inizio, 1),
       soluzione: `sanno = ${inizio}\nwhile sanno < ${scuola}:\n    sanno *= 2\n    print(f"{sanno} persone")`,
-      regola: REGOLA_PETTEGOLEZZO,
+      regola: regolaPettegolezzo(1),
     },
     {
       ...b,
       consegna: `**Fase 2 — le ore.** Una variabile \`ore\` conta i giri: \`Ora 1: ${inizio * 2} persone\`, \`Ora 2: ${inizio * 4} persone\`…`,
       outputAtteso: righePettegolezzo(p, inizio, 2),
       soluzione: `sanno = ${inizio}\nore = 0\n${corpo}`,
-      regola: REGOLA_PETTEGOLEZZO,
+      regola: regolaPettegolezzo(2),
     },
     {
       ...b,
       consegna: `**Fase 3 — quando lo sanno tutti.** Dopo il ciclo: \`Tutta la scuola lo sa dopo ${ore} ore\`. Il numero è in \`ore\`.`,
       outputAtteso: righePettegolezzo(p, inizio, 3),
       soluzione: r3,
-      regola: REGOLA_PETTEGOLEZZO,
+      regola: regolaPettegolezzo(3),
     },
     {
       ...b,
@@ -335,7 +350,7 @@ export function fasiPettegolezzo(seme: number): Esercizio[] {
       outputAtteso: righePettegolezzo(p, inizio, 4),
       prove: prove(4),
       soluzione: r4,
-      regola: REGOLA_PETTEGOLEZZO + " Quanti lo sanno all'inizio arriva da `input()`: non va scritto nel programma.",
+      regola: regolaPettegolezzo(4) + " Quanti lo sanno all'inizio arriva da `input()`: non va scritto nel programma.",
     },
     {
       ...b,
@@ -343,7 +358,7 @@ export function fasiPettegolezzo(seme: number): Esercizio[] {
       outputAtteso: righePettegolezzo(p, inizio, 5),
       prove: prove(5),
       soluzione: r4.replace(`    print(f"Ora {ore}: {sanno} persone")`, `    print(f"Ora {ore}: {sanno} persone")\n    if sanno >= ${scuola / 2}:\n        print("Metà scuola lo sa!")`),
-      regola: REGOLA_PETTEGOLEZZO + " Quanti lo sanno all'inizio arriva da `input()`. La riga di metà scuola la decide un `if` dentro il ciclo.",
+      regola: regolaPettegolezzo(5) + " Quanti lo sanno all'inizio arriva da `input()`. La riga di metà scuola la decide un `if` dentro il ciclo.",
     },
   ], notePettegolezzo(p));
 }

@@ -55,7 +55,7 @@ function righeTimer(p: ParametriTimer, minuti: number, fase: 1 | 2 | 3 | 4 | 5):
 const REGOLA_TIMER =
   'Il conto alla rovescia lo fa un ciclo `while` che gira finché i minuti sono sopra zero: la variabile dei minuti parte prima del ciclo ' +
   'e dentro al ciclo scende di 1 a ogni giro. Non valgono i numeri scritti a mano uno per uno, né un `for` con `range`: qui si impara il `while`. ' +
-  'La riga finale è un `print` fuori dal ciclo, e va bene così.';
+  "L'avviso finale, quando la fase lo chiede, può stare in un `print` dopo il ciclo.";
 
 const REGOLA_TIMER_INPUT = REGOLA_TIMER + ' Il numero dei minuti arriva da `input()`: non va scritto nel programma.';
 

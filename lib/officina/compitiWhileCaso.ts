@@ -57,9 +57,16 @@ function righeIndovina(g: Partita, fase: 1 | 2 | 3 | 4 | 5): string[] {
   return righe;
 }
 
-const REGOLA_INDOVINA =
-  `Il numero segreto lo dà \`random.randint(1, ${MASSIMO_SEGRETO})\` e non va scritto nel programma. I tentativi arrivano da \`input()\`: uno prima del ciclo e uno in fondo al corpo ` +
-  'di un ciclo `while` che gira finché il numero non è quello giusto (non si sa quanti tentativi serviranno: non vale un `for`). I tentativi li conta una variabile.';
+/** La regola cresce con le fasi: alla 1 c'è solo il segreto da randint, il while arriva alla 2, il contatore alla 4. */
+function regolaIndovina(fase: number): string {
+  const base = `Il numero segreto lo dà \`random.randint(1, ${MASSIMO_SEGRETO})\` e non va scritto nel programma.`;
+  const ciclo =
+    fase >= 2
+      ? ' I tentativi arrivano da `input()`, uno per tentativo, dentro un ciclo `while` che gira finché il numero non è quello giusto (non si sa quanti tentativi serviranno: non vale un `for`).'
+      : '';
+  const conta = fase >= 4 ? ' I tentativi li conta una variabile che cresce di 1 a ogni giro.' : '';
+  return base + ciclo + conta;
+}
 
 export function fasiIndovina(seme: number): Esercizio[] {
   const p = parametriIndovina(seme);
@@ -67,7 +74,7 @@ export function fasiIndovina(seme: number): Esercizio[] {
   const b = { ...base, terreno: 'montagna' as const };
   const fase = (n: 1 | 2 | 3 | 4 | 5, consegna: string, soluzione: string, extra: Partial<Esercizio> = {}): Esercizio => {
     const prove: Prova[] = p.partite.map((g) => ({ risposte: n === 1 ? [] : g.tentativi.map(String), casuali: [g.segreto], output: righeIndovina(g, n) }));
-    return { ...b, consegna, outputAtteso: prove[0].output, prove, soluzione, regola: REGOLA_INDOVINA, ...extra };
+    return { ...b, consegna, outputAtteso: prove[0].output, prove, soluzione, regola: regolaIndovina(n), ...extra };
   };
   const testa = `import random\nsegreto = random.randint(1, ${MASSIMO_SEGRETO})`;
   const domanda = 'numero = int(input("Numero? "))';
@@ -109,7 +116,7 @@ export function fasiIndovina(seme: number): Esercizio[] {
       5,
       `**Fase 5 — il giudizio.** Dopo il ciclo, un \`if\`: se i tentativi sono al massimo 3 stampa \`Bravo, in pochi colpi!\`, altrimenti \`Ce l'hai fatta, alla fine\`.`,
       r5,
-      { regola: REGOLA_INDOVINA + ' Il giudizio lo decide un `if` fuori dal ciclo sui tentativi.' },
+      { regola: regolaIndovina(5) + ' Il giudizio lo decide un `if` fuori dal ciclo sui tentativi.' },
     ),
   ], noteIndovina(p));
 }
@@ -160,9 +167,12 @@ function righeDado(lanci: number[], fase: 1 | 2 | 3 | 4 | 5): string[] {
   return righe;
 }
 
-const REGOLA_DADO =
-  'Il dado lo tira `random.randint(1, 6)`: una volta prima del ciclo e di nuovo in fondo al corpo di un ciclo `while` che gira finché non esce 6. ' +
-  'Non si sa quanti lanci serviranno (non vale un `for`) e i numeri non vanno scritti nel programma; i lanci li conta una variabile.';
+function regolaDado(fase: number): string {
+  const base = 'Il dado lo tira `random.randint(1, 6)`: i numeri non vanno scritti nel programma.';
+  const ciclo = fase >= 2 ? ' A ogni lancio il numero viene da `randint`, dentro un ciclo `while` che gira finché non esce 6: non si sa quanti lanci serviranno (non vale un `for`).' : '';
+  const conta = fase >= 3 ? ' I lanci li conta una variabile che cresce di 1 a ogni giro.' : '';
+  return base + ciclo + conta;
+}
 
 export function fasiDado(seme: number): Esercizio[] {
   const p = parametriDado(seme);
@@ -170,7 +180,7 @@ export function fasiDado(seme: number): Esercizio[] {
   const b = { ...base, terreno: 'pianura' as const };
   const fase = (n: 1 | 2 | 3 | 4 | 5, consegna: string, soluzione: string, extra: Partial<Esercizio> = {}): Esercizio => {
     const prove: Prova[] = p.lanci.map((lanci) => ({ risposte: [], casuali: n === 1 ? [lanci[0]] : lanci, output: righeDado(lanci, n) }));
-    return { ...b, consegna, outputAtteso: prove[0].output, prove, soluzione, regola: REGOLA_DADO, ...extra };
+    return { ...b, consegna, outputAtteso: prove[0].output, prove, soluzione, regola: regolaDado(n), ...extra };
   };
   const tiro = 'dado = random.randint(1, 6)';
   const r1 = `import random\n${tiro}\nprint(f"Hai fatto {dado}")`;
@@ -198,7 +208,7 @@ export function fasiDado(seme: number): Esercizio[] {
       5,
       `**Fase 5 — fortuna.** Dopo il ciclo, un \`if\`: se i lanci sono più di 3 stampa \`Che sfortuna, quanto ci hai messo!\`, altrimenti \`Pochi lanci, bravo!\`.`,
       r5,
-      { regola: REGOLA_DADO + ' La riga finale la decide un `if` fuori dal ciclo sui lanci.' },
+      { regola: regolaDado(5) + ' La riga finale la decide un `if` fuori dal ciclo sui lanci.' },
     ),
   ], noteDado(p));
 }
@@ -277,9 +287,12 @@ function righeDuello(p: ParametriDuello, colpi: number[], fase: 1 | 2 | 3 | 4 | 
   return righe;
 }
 
-const REGOLA_DUELLO =
-  `I colpi li dà \`random.randint(${COLPO_MIN}, ${COLPO_MAX})\` dentro un ciclo \`while\` che gira finché la vita del drago è sopra zero; la vita scende del colpo (\`-=\`). ` +
-  'Non si sa quanti colpi serviranno (non vale un `for`) e i numeri non vanno scritti nel programma; i colpi li conta una variabile.';
+function regolaDuello(fase: number): string {
+  const base = `Il colpo lo dà \`random.randint(${COLPO_MIN}, ${COLPO_MAX})\` e la vita scende del colpo (\`-=\` oppure \`vita = vita - colpo\`): i numeri non vanno scritti nel programma.`;
+  const ciclo = fase >= 2 ? ' I colpi arrivano da `randint` dentro un ciclo `while` che gira finché la vita del drago è sopra zero: non si sa quanti colpi serviranno (non vale un `for`).' : '';
+  const conta = fase >= 3 ? ' I colpi li conta una variabile che cresce di 1 a ogni giro.' : '';
+  return base + ciclo + conta;
+}
 
 export function fasiDuello(seme: number): Esercizio[] {
   const p = parametriDuello(seme);
@@ -288,7 +301,7 @@ export function fasiDuello(seme: number): Esercizio[] {
   const b = { ...base, terreno: 'montagna' as const };
   const fase = (n: 1 | 2 | 3 | 4 | 5, consegna: string, soluzione: string, extra: Partial<Esercizio> = {}): Esercizio => {
     const prove: Prova[] = p.colpi.map((colpi) => ({ risposte: [], casuali: n === 1 ? colpi.slice(0, 1) : colpi, output: righeDuello(p, colpi, n) }));
-    return { ...b, consegna, outputAtteso: prove[0].output, prove, soluzione, regola: REGOLA_DUELLO, ...extra };
+    return { ...b, consegna, outputAtteso: prove[0].output, prove, soluzione, regola: regolaDuello(n), ...extra };
   };
   const tiro = `colpo = random.randint(${COLPO_MIN}, ${COLPO_MAX})`;
   const riga = `print(f"Colpo da {colpo}: a ${drago} restano {vita} punti")`;
@@ -321,7 +334,7 @@ export function fasiDuello(seme: number): Esercizio[] {
       5,
       `**Fase 5 — il colpo critico.** Dopo la riga del colpo, un altro \`if\`: se il colpo è almeno ${CRITICO} stampa \`Colpo critico!\`.`,
       r5,
-      { regola: REGOLA_DUELLO + ' La vita non va sotto zero e il colpo critico si segnala con `if` dentro il ciclo.' },
+      { regola: regolaDuello(5) + ' La vita non va sotto zero e il colpo critico si segnala con `if` dentro il ciclo.' },
     ),
   ], noteDuello(p));
 }

@@ -1061,3 +1061,44 @@ describe('i confini che le prove devono vedere (revisione del 1° novembre 2026)
     }
   });
 });
+
+describe('le regole del giudice crescono con le fasi anche nel while (revisione del 1° novembre 2026)', () => {
+  const senzaContatore = /conta una variabile|li conta|lo conta|le conta/;
+
+  it('alla fase 1 nessuna regola nomina un contatore che non esiste ancora', () => {
+    for (const id of ['obiettivo', 'batteria', 'pettegolezzo', 'parola', 'cassa', 'distributore', 'menu', 'indovina', 'dado', 'duello'] as CompitoId[]) {
+      const [prima] = generaCompito(id, 7);
+      expect(prima.regola, id).not.toMatch(senzaContatore);
+      expect(prima.regola, id).not.toMatch(/numero dei caffè|numero degli articoli/);
+    }
+  });
+
+  it('il contatore entra nella regola nella fase in cui la consegna lo chiede', () => {
+    expect(generaCompito('obiettivo', 7)[1].regola).toMatch(/settimane le conta/);
+    expect(generaCompito('batteria', 7)[1].regola).toMatch(/ore le conta/);
+    expect(generaCompito('parola', 7)[1].regola).toMatch(/tentativi li conta/);
+    expect(generaCompito('cassa', 7)[1].regola).toMatch(/totale lo tiene/);
+    expect(generaCompito('cassa', 7)[1].regola).not.toMatch(/articoli lo conta/);
+    expect(generaCompito('cassa', 7)[2].regola).toMatch(/articoli lo conta/);
+    expect(generaCompito('distributore', 7)[3].regola).toMatch(/monete le conta/);
+    expect(generaCompito('menu', 7)[3].regola).toMatch(/numero dei caffè/);
+    expect(generaCompito('indovina', 7)[3].regola).toMatch(/tentativi li conta/);
+    expect(generaCompito('dado', 7)[2].regola).toMatch(/lanci li conta/);
+    expect(generaCompito('duello', 7)[2].regola).toMatch(/colpi li conta/);
+  });
+
+  it('nei compiti con il caso la fase 1 non ha ciclo, e la regola non lo esige', () => {
+    for (const id of ['indovina', 'dado', 'duello'] as CompitoId[]) {
+      const fasi = generaCompito(id, 7);
+      expect(fasi[0].regola, id).not.toContain('`while`');
+      expect(fasi[0].regola, id).toContain('randint');
+      expect(fasi[1].regola, id).toContain('`while`');
+    }
+  });
+
+  it('le regole non fissano più dove sta la input(): la forma la dice la consegna', () => {
+    for (const id of ['parola', 'cassa', 'menu', 'indovina', 'dado', 'patentinoWhile'] as CompitoId[]) {
+      for (const f of generaCompito(id, 7)) expect(f.regola, id).not.toMatch(/in fondo al corpo/);
+    }
+  });
+});

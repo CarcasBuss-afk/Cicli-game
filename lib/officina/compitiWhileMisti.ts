@@ -64,16 +64,21 @@ function righeDistributore(p: ParametriDistributore, monete: number[], fase: 1 |
   return righe;
 }
 
-const REGOLA_DISTRIBUTORE =
-  'Le monete le legge un ciclo `while` con `input()` dentro che gira finché il versato è sotto il prezzo: non si sa prima quante monete arriveranno (non vale un `for`), ' +
-  'e i valori delle monete non vanno scritti nel programma. Il versato lo accumula una variabile che parte da 0; le monete le conta una variabile; le righe dopo il ciclo usano le variabili.';
+function regolaDistributore(fase: number): string {
+  const base =
+    'Le monete le legge un ciclo `while` con `input()` dentro che gira finché il versato è sotto il prezzo: non si sa prima quante monete arriveranno (non vale un `for`), ' +
+    'e i valori delle monete non vanno scritti nel programma. Il versato lo accumula una variabile che parte da 0.';
+  const dopo = fase >= 3 ? ' Le righe dopo il ciclo usano le variabili, non numeri scritti a mano (il prezzo è un dato e può comparire come numero).' : '';
+  const conta = fase >= 4 ? ' Le monete le conta una variabile che parte da 0 e cresce di 1 a ogni giro.' : '';
+  return base + dopo + conta;
+}
 
 export function fasiDistributore(seme: number): Esercizio[] {
   const p = parametriDistributore(seme);
   const { prezzo, nome } = p.snack;
   const [mostrate] = p.monete;
   const b = { ...base, terreno: 'pianura' as const };
-  const fase = (n: 1 | 2 | 3 | 4 | 5, consegna: string, soluzione: string, regola = REGOLA_DISTRIBUTORE): Esercizio => {
+  const fase = (n: 1 | 2 | 3 | 4 | 5, consegna: string, soluzione: string, regola = regolaDistributore(n)): Esercizio => {
     const prove: Prova[] = p.monete.map((monete) => ({ risposte: monete.map(String), output: righeDistributore(p, monete, n) }));
     return { ...b, consegna, outputAtteso: prove[0].output, prove, soluzione, regola };
   };
@@ -106,7 +111,7 @@ export function fasiDistributore(seme: number): Esercizio[] {
       5,
       `**Fase 5 — niente resto.** Al posto della riga del resto, un \`if\`: se il versato è esattamente ${prezzo} stampa \`Nessun resto\`, altrimenti la riga del resto di prima.`,
       r5,
-      REGOLA_DISTRIBUTORE + ' La riga del resto la sceglie un `if` fuori dal ciclo.',
+      regolaDistributore(5) + ' La riga del resto la sceglie un `if` fuori dal ciclo.',
     ),
   ], noteDistributore(p));
 }
@@ -189,10 +194,14 @@ function righeMenu(p: ParametriMenu, scelte: number[], fase: 1 | 2 | 3 | 4 | 5):
   return righe;
 }
 
-const REGOLA_MENU =
-  'Le scelte le legge un ciclo `while` con `input()` dentro, che si ferma allo 0 (la sentinella): la domanda sta prima del ciclo e si ripete in fondo al corpo, ' +
-  'e non si sa prima quante scelte arriveranno (non vale un `for`). Dentro al ciclo un `if`/`elif` decide il prodotto dal codice e fa crescere il totale del prezzo giusto: ' +
-  'non valgono scelte o totali scritti nel programma. Il totale e il numero dei caffè li tengono variabili che partono da 0.';
+function regolaMenu(fase: number): string {
+  const base =
+    'Le scelte le legge un ciclo `while` con `input()` dentro, che si ferma allo 0 (la sentinella): a ogni scelta il codice arriva da `input()`, ' +
+    'e non si sa prima quante scelte arriveranno (non vale un `for`). Dentro al ciclo un `if`/`elif` decide il prodotto dal codice e fa crescere il totale del prezzo giusto: ' +
+    'non valgono scelte o totali scritti nel programma. Il totale lo tiene una variabile che parte da 0.';
+  const caffe = fase >= 4 ? ' Il numero dei caffè lo tiene una variabile che parte da 0 e cresce solo nel ramo del caffè.' : '';
+  return base + caffe;
+}
 
 export function fasiMenu(seme: number): Esercizio[] {
   const p = parametriMenu(seme);
@@ -203,7 +212,7 @@ export function fasiMenu(seme: number): Esercizio[] {
       const scelte = scelteMenu(p, i, n);
       return { risposte: [...scelte.map(String), '0'], output: righeMenu(p, scelte, n) };
     });
-    return { ...b, consegna, outputAtteso: prove[0].output, prove, soluzione, regola: REGOLA_MENU, ...extra };
+    return { ...b, consegna, outputAtteso: prove[0].output, prove, soluzione, regola: regolaMenu(n), ...extra };
   };
   const domandaPrezzo = 'prezzo = int(input("Prezzo? "))';
   const cassa = `totale = 0\n${domandaPrezzo}\nwhile prezzo != 0:\n    print(f"Articolo: {prezzo} €")\n    totale += prezzo\n    ${domandaPrezzo}\nprint(f"Totale: {totale} €")`;
@@ -240,7 +249,7 @@ export function fasiMenu(seme: number): Esercizio[] {
       5,
       `**Fase 5 — l'offerta.** Dopo il totale, un \`if\`: se i caffè sono almeno 2 stampa \`Hai preso N caffè: il prossimo è gratis!\` con il numero dalla variabile; altrimenti niente.`,
       programma(rami4, true, true),
-      { regola: REGOLA_MENU + " L'offerta la decide un `if` fuori dal ciclo sul numero dei caffè." },
+      { regola: regolaMenu(5) + " L'offerta la decide un `if` fuori dal ciclo sul numero dei caffè." },
     ),
   ], noteMenu(p));
 }

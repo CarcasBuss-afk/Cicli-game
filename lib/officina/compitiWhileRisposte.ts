@@ -50,9 +50,14 @@ function righeParola(p: ParametriParola, sbagliate: string[], fase: 1 | 2 | 3 | 
   return righe;
 }
 
-const REGOLA_PAROLA =
-  'La domanda si ripete dentro un ciclo `while` che gira finché la risposta non è la parola giusta: la risposta arriva da `input()`, una domanda per tentativo ' +
-  '(una prima del ciclo e una in fondo al corpo), e il programma non sa prima quanti tentativi serviranno: non vale un `for`. I tentativi li conta una variabile che cresce di 1 a ogni giro.';
+/** La regola cresce con le fasi; dove sta la `input()` lo dice la consegna, non la regola: anche altre forme oneste passano. */
+function regolaParola(fase: number): string {
+  const base =
+    'La domanda si ripete dentro un ciclo `while` che gira finché la risposta non è la parola giusta: a ogni tentativo la risposta arriva da `input()`, ' +
+    'e il programma non sa prima quanti tentativi serviranno: non vale un `for`, né la parola giusta scritta nel programma come risposta.';
+  const conta = fase >= 2 ? ' I tentativi li conta una variabile che cresce di 1 a ogni giro, e il numero finale esce da quella variabile.' : '';
+  return base + conta;
+}
 
 export function fasiParola(seme: number): Esercizio[] {
   const p = parametriParola(seme);
@@ -61,7 +66,7 @@ export function fasiParola(seme: number): Esercizio[] {
   const prove = (fase: 1 | 2 | 3 | 4 | 5): Prova[] => tentativiParola(p).map((sb) => ({ risposte: [...sb, parola], output: righeParola(p, sb, fase) }));
   const domanda = `parola = input("Parola d'ordine? ")`;
   const [mostrate] = tentativiParola(p);
-  const fase = (n: 1 | 2 | 3 | 4 | 5, consegna: string, soluzione: string, regola = REGOLA_PAROLA): Esercizio => {
+  const fase = (n: 1 | 2 | 3 | 4 | 5, consegna: string, soluzione: string, regola = regolaParola(n)): Esercizio => {
     const pr = prove(n);
     return { ...b, consegna, outputAtteso: pr[0].output, prove: pr, soluzione, regola };
   };
@@ -98,7 +103,7 @@ export function fasiParola(seme: number): Esercizio[] {
       5,
       `**Fase 5 — il giudizio.** Dopo il ciclo, un \`if\` sui tentativi: se sono più di 2 stampa \`Troppi tentativi: impara la parola!\`, altrimenti niente.`,
       r5,
-      REGOLA_PAROLA + ' La riga finale la decide un `if` fuori dal ciclo sui tentativi.',
+      regolaParola(5) + ' La riga finale la decide un `if` fuori dal ciclo sui tentativi.',
     ),
   ], noteParola(p));
 }
@@ -151,10 +156,14 @@ function righeCassa(prezzi: number[], fase: 1 | 2 | 3 | 4 | 5): string[] {
   return righe;
 }
 
-const REGOLA_CASSA =
-  'Gli articoli li legge un ciclo `while` con `input()` dentro, che si ferma quando il prezzo è 0 (la sentinella): la domanda sta una volta prima del ciclo ' +
-  'e si ripete in fondo al corpo. Il programma non sa prima quanti articoli saranno: non vale un `for`, non valgono prezzi scritti nel programma. ' +
-  'Il totale e il numero degli articoli li tengono variabili che partono da 0 e crescono a ogni giro.';
+function regolaCassa(fase: number): string {
+  const base =
+    'Gli articoli li legge un ciclo `while` con `input()` dentro, che si ferma quando il prezzo è 0 (la sentinella): a ogni articolo il prezzo arriva da `input()`. ' +
+    'Il programma non sa prima quanti articoli saranno: non vale un `for`, non valgono prezzi scritti nel programma.';
+  const totale = fase >= 2 ? ' Il totale lo tiene una variabile che parte da 0 e cresce a ogni giro.' : '';
+  const articoli = fase >= 3 ? ' Il numero degli articoli lo conta una variabile che parte da 0 e cresce di 1 a ogni giro.' : '';
+  return base + totale + articoli;
+}
 
 export function fasiCassa(seme: number): Esercizio[] {
   const p = parametriCassa(seme);
@@ -167,7 +176,7 @@ export function fasiCassa(seme: number): Esercizio[] {
     }));
   const fase = (n: 1 | 2 | 3 | 4 | 5, consegna: string, soluzione: string, extra: Partial<Esercizio> = {}): Esercizio => {
     const pr = prove(n);
-    return { ...b, consegna, outputAtteso: pr[0].output, prove: pr, soluzione, regola: REGOLA_CASSA, ...extra };
+    return { ...b, consegna, outputAtteso: pr[0].output, prove: pr, soluzione, regola: regolaCassa(n), ...extra };
   };
   const domanda = 'prezzo = int(input("Prezzo? "))';
   const r1 = `${domanda}\nwhile prezzo != 0:\n    print(f"Articolo: {prezzo} €")\n    ${domanda}`;
@@ -202,7 +211,7 @@ export function fasiCassa(seme: number): Esercizio[] {
       `**Fase 5 — il resto.** Chiuso lo scontrino, chiedi quanto paga (con \`int()\`) e stampa \`Resto: ${pagatoCassa(mostrati) - tot} €\`. ` +
         `Risposte di prova: ${mostrati.map((x) => `**${x}**`).join(', ')}, **0**, poi **${pagatoCassa(mostrati)}**.`,
       r5,
-      { regola: REGOLA_CASSA + ' Quanto paga arriva da `input()` dopo il ciclo.' },
+      { regola: regolaCassa(5) + ' Quanto paga arriva da `input()` dopo il ciclo.' },
     ),
   ], noteCassa(p));
 }
