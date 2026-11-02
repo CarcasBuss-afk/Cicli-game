@@ -34,10 +34,13 @@ export default function Prova({ codice, fase, attivo }: Props) {
     [codice],
   );
 
-  useEffect(() => {
+  const azzera = useCallback(() => {
     setEsito(null);
     setRisposte([]);
-  }, [fase]);
+    setDigitato('');
+  }, []);
+
+  useEffect(() => azzera(), [fase, azzera]);
 
   useEffect(() => {
     if (!esito) return;
@@ -64,6 +67,11 @@ export default function Prova({ codice, fase, attivo }: Props) {
         >
           {esito ? 'Riprova ▶' : 'Prova ▶'}
         </button>
+        {esito && (
+          <button type="button" onClick={azzera} className="rounded-lg border border-(--color-bordo) px-3 py-2 font-bold hover:bg-white/5">
+            Azzera ✕
+          </button>
+        )}
         <span className="text-sm text-(--color-testo-tenue)">Gira qui, con le risposte che vuoi tu: non è una consegna e non conta niente.</span>
       </div>
       {esito && (

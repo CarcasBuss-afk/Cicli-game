@@ -2,6 +2,7 @@
  * fuori, i dati, e il prodotto finale per intero. Resta sopra l'editor per tutta la tappa:
  * è il bersaglio, e nel compito di realtà il bersaglio si vede. */
 import { useState } from 'react';
+import Schermo from '@/components/Schermo';
 import type { SchedaCompito } from '@/lib/officina/compiti';
 
 export default function SchedaCompito({ scheda, fase, fasi }: { scheda: SchedaCompito; fase: number; fasi: number }) {
@@ -37,12 +38,16 @@ export default function SchedaCompito({ scheda, fase, fasi }: { scheda: SchedaCo
               ))}
             </ul>
           </div>
-          <div>
-            <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Il programma finito stampa:</p>
-            <pre className="overflow-x-auto rounded-xl border border-(--color-bordo) bg-black/40 p-3 font-mono text-sm leading-snug">
-              {scheda.outputFinale.join('\n')}
-            </pre>
-          </div>
+          {scheda.schermoFinale ? (
+            <Schermo righe={scheda.schermoFinale} titolo="Il programma finito, sullo schermo:" classe="border-(--color-bordo) bg-black/40 p-3 text-sm leading-snug" />
+          ) : (
+            <div>
+              <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Il programma finito stampa:</p>
+              <pre className="overflow-x-auto rounded-xl border border-(--color-bordo) bg-black/40 p-3 font-mono text-sm leading-snug">
+                {scheda.outputFinale.join('\n')}
+              </pre>
+            </div>
+          )}
         </div>
       )}
     </section>

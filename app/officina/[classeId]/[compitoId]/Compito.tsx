@@ -121,6 +121,13 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
     }
   }, [invio, classeId, compitoId, carica]);
 
+  const azzeraEsito = () => {
+    setHint(null);
+    setRigaErrore(null);
+    setOutput(null);
+    setSchermo(null);
+  };
+
   const chiedi = useCallback(
     async (domanda: string) => {
       if (!c) return;
@@ -238,13 +245,21 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
             <Testo>{es.consegna}</Testo>
           </h2>
           {(es.risposte || es.casuali) && <RisposteDiProva risposte={es.risposte ?? []} casuali={es.casuali} />}
-          {es.outputAtteso && (
-            <div>
-              <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Deve stampare:</p>
-              <pre className="overflow-x-auto rounded-xl border border-(--color-verde)/40 bg-(--color-verde)/5 p-4 font-mono text-[1.05rem] text-(--color-verde)">
-                {es.outputAtteso.join('\n')}
-              </pre>
-            </div>
+          {es.schermoAtteso ? (
+            <Schermo
+              righe={es.schermoAtteso}
+              titolo="Sullo schermo deve comparire (in grigio le domande, in giallo le risposte di prova):"
+              classe="border-(--color-verde)/40 bg-(--color-verde)/5 p-4 text-[1.05rem] text-(--color-verde)"
+            />
+          ) : (
+            es.outputAtteso && (
+              <div>
+                <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Deve stampare:</p>
+                <pre className="overflow-x-auto rounded-xl border border-(--color-verde)/40 bg-(--color-verde)/5 p-4 font-mono text-[1.05rem] text-(--color-verde)">
+                  {es.outputAtteso.join('\n')}
+                </pre>
+              </div>
+            )
           )}
           <EditorPython
             key={`editor-${ripartenza}`}
@@ -257,7 +272,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
             attivo={!invio && !c.classeChiusa}
             rigaErrore={rigaErrore}
           />
-          <Prova key={`prova-${ripartenza}`} codice={() => codiceRef.current} fase={c.fasi} attivo={!c.classeChiusa} />
+          <Prova key={`prova-${compitoId}-${ripartenza}`} codice={() => codiceRef.current} fase={c.fasi} attivo={!c.classeChiusa} />
           <div className="flex flex-wrap items-center gap-3 border-t border-(--color-bordo) pt-4">
             <button
               onClick={() => void consegna()}
@@ -291,6 +306,12 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
           <span aria-hidden>💡 </span>
           <Testo>{hint}</Testo>
         </section>
+      )}
+
+      {(hint || (output && output.length > 0) || (schermo && schermo.length > 0)) && (
+        <button type="button" onClick={azzeraEsito} className="self-end rounded-lg border border-(--color-bordo) px-3 py-1 text-sm font-bold hover:bg-white/5">
+          Azzera l&apos;esito ✕
+        </button>
       )}
 
       {!c.esame && <TutorChat scambi={c.tutor} votoSeFinisci={c.votoSeFinisci} domandeRimaste={c.domandeRimaste} onChiedi={chiedi} attivo={!c.finito && !c.classeChiusa} />}

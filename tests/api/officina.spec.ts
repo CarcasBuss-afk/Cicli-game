@@ -416,6 +416,27 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     expect((await officina(request, luca, 'compito', { classeId, compitoId: 'cartello' })).corpo.fasi).toBe(1);
   });
 
+  test("il diario mostra le domande fra le righe attese, nella fase e nella scheda", async ({ page, request }) => {
+    const { classeId } = await scenario(request);
+    const r = await request.post("/api/officina/test-login", { data: { email: TEACHER_EMAIL, nome: "Fabio" } });
+    const d = (await r.json()) as { token: string; uid: string };
+    const fabio: Utente = { token: await idToken(request, d.token), uid: d.uid, email: TEACHER_EMAIL };
+    await officina(request, fabio, "entra", { classeId });
+    const fasi = await fasiDi(request, fabio.uid, "diario");
+    await officina(request, fabio, "consegna", { classeId, compitoId: "diario", fase: 0, codice: fasi[0].soluzione });
+
+    await accedi(page, TEACHER_EMAIL);
+    await page.locator(`a[href="/officina/${classeId}/diario"]`).click();
+    await expect(page.getByText("Fase 2 di 5", { exact: true })).toBeVisible();
+    await expect(page.getByText("Sullo schermo deve comparire")).toBeVisible();
+    const atteso = page.locator("pre").filter({ hasText: "Quante uscite?" }).first();
+    await expect(atteso).toContainText(/Km dell.uscita 1\? \d+/);
+    await expect(atteso).toContainText(/Uscita 1: \d+ km/);
+    await page.getByRole("button", { name: /fase 2 di 5/ }).click();
+    await expect(page.getByText("Il programma finito, sullo schermo:")).toBeVisible();
+    await page.screenshot({ path: process.env.SCREENSHOT_DIARIO ?? "test-results/diario.png", fullPage: true });
+  });
+
   test('sceglie la classe, vede il percorso, lavora, chiede al tutor, riprende da dove era', async ({ page, request }) => {
     const { classeId, nomeClasse, fasi, luca } = await scenario(request);
 
@@ -454,6 +475,11 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await expect(page.getByLabel('conversazione con il tutor').locator('li')).toHaveCount(1);
     await expect(page.getByLabel('voto')).toHaveText('9');
 
+    // L'esito della consegna sbagliata si può togliere.
+    await expect(page.getByText('Il tuo codice ha stampato:')).toBeVisible();
+    await page.getByRole('button', { name: "Azzera l'esito ✕" }).click();
+    await expect(page.getByText('Il tuo codice ha stampato:')).toHaveCount(0);
+
     // La Prova: il programma gira nel browser con le risposte che vuole lui. Non è una consegna.
     await digita(page, 'nome = input("Nome? ")\nprint(f"Ciao {nome}")');
     await page.getByRole('button', { name: 'Prova ▶' }).click();
@@ -465,12 +491,24 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await expect(prova).toContainText('fine del programma');
     await expect(page.getByRole('button', { name: 'Riprova ▶' })).toBeVisible();
     await expect(page.getByLabel('voto')).toHaveText('9');
+    // Si azzera a mano, e da sola passando alla fase dopo o a un altro compito.
+    await page.getByRole('button', { name: 'Azzera ✕' }).click();
+    await expect(prova).toHaveCount(0);
+    await page.getByRole('button', { name: 'Prova ▶' }).click();
+    await expect(prova).toBeVisible();
 
     await digita(page, fasi[0].soluzione);
     await page.getByRole('button', { name: 'Consegna ✔' }).click();
     // La festa: il cartello della fase superata (con i coriandoli), poi si passa alla fase dopo.
     await expect(page.getByRole('status', { name: 'fase superata' })).toContainText('Fase 1 superata!');
     await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();
+    await expect(prova).toHaveCount(0);
+    await page.getByRole('button', { name: 'Prova ▶' }).click();
+    await expect(prova).toBeVisible();
+    await page.getByRole('link', { name: '← i miei compiti' }).click();
+    await page.getByRole('link', { name: /Il cartello della festa/ }).click();
+    await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();
+    await expect(prova).toHaveCount(0);
     await page.reload();
     await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();
     await expect(page.locator('.cm-content')).toContainText(fasi[0].soluzione.split('\n')[0]); // riparte dal codice della fase 1

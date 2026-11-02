@@ -134,13 +134,13 @@ export function fasiDiario(seme: number): Esercizio[] {
   return conNote([
     fase(
       1,
-      `**Fase 1 — quante uscite.** Il diario chiede quante uscite hai fatto nel mese (con \`int()\`) e stampa una riga per ciascuna: ` +
+      `**Fase 1 — quante uscite.** Il diario chiede \`Quante uscite? \` (con \`int()\`) e stampa una riga per ciascuna: ` +
         `\`Uscita 1\`, \`Uscita 2\`… Il numero di giri è quello risposto. Risposta di prova: **${m.length}**.`,
       r1,
     ),
     fase(
       2,
-      `**Fase 2 — i km, uscita per uscita.** A ogni uscita il diario chiede i km di quella uscita: la domanda va **dentro** il ciclo, ` +
+      `**Fase 2 — i km, uscita per uscita.** A ogni uscita il diario chiede \`Km dell'uscita 1? \`, \`Km dell'uscita 2? \`…: la domanda va **dentro** il ciclo, ` +
         `così si ripete a ogni giro, e la risposta (con \`int()\`) finisce in una variabile. La riga diventa \`Uscita 1: ${m[0]} km\`. ` +
         `Risposte di prova: **${m.length}**, poi ${m.map((k) => `**${k}**`).join(', ')}.`,
       r2,

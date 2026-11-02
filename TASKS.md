@@ -95,4 +95,5 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 13f. Controllo a freddo del tutor nuovo sulle sei bozze ferme della prima settimana: sei risposte su sei centrate, 64-76 parole, mai codice (30 ottobre 2026).
 - [x] 13h. Revisione dei dodici compiti `while` con l'interprete vero: hint sul `while`, confini delle prove, patentino a 100%, regole del giudice per fase, consegne e note (1-2 novembre 2026).
 - [x] 13i. Il docente prova i compiti: tutti sbloccati anche a classe chiusa, e «Ricomincia da capo» per rifarli (2 novembre 2026).
+- [x] 13j. Le domande fra le righe attese (fase e scheda) in tutti i compiti con `input()`, scritte nella consegna del diario; «Azzera ✕» sulla Prova e sull'esito della consegna (2 novembre 2026).
 - [ ] 13g. Dopo la prima lezione con le novità: rileggere dal database conversazioni, bozze ferme, registro del giudice ed errori per fase; confrontare con la prima settimana.

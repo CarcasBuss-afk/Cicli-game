@@ -1102,3 +1102,36 @@ describe('le regole del giudice crescono con le fasi anche nel while (revisione 
     }
   });
 });
+
+describe('le domande sullo schermo atteso', () => {
+  it('fra le righe attese ci sono domande e risposte, senza cambiare quello che si confronta', () => {
+    for (const id of ELENCO_COMPITI) {
+      for (const seme of SEMI) {
+        for (const fase of generaCompito(id, seme)) {
+          const schermo = esercizioPerAllievo(fase).schermoAtteso;
+          if (!schermo) continue;
+          expect(schermo.flatMap((r) => (r.k === 'out' ? [r.v] : []))).toEqual(fase.outputAtteso);
+          const risposte = schermo.flatMap((r) => (r.k === 'in' ? [r.risposta] : []));
+          expect(risposte).toEqual(fase.prove![0].risposte.slice(0, risposte.length));
+        }
+      }
+    }
+  });
+
+  it('il diario mostra le domande nell\'ordine del terminale, e la scheda il programma finito', () => {
+    const fasi = generaCompito('diario', 3);
+    const risposte = fasi[1].prove![0].risposte;
+    const schermo = esercizioPerAllievo(fasi[1]).schermoAtteso!;
+    expect(schermo[0]).toEqual({ k: 'in', domanda: 'Quante uscite? ', risposta: risposte[0] });
+    expect(schermo[1]).toEqual({ k: 'in', domanda: "Km dell'uscita 1? ", risposta: risposte[1] });
+    expect(schermo[2]).toEqual({ k: 'out', v: `Uscita 1: ${risposte[1]} km` });
+    expect(fasi[0].consegna).toContain('Quante uscite? ');
+    expect(fasi[1].consegna).toContain("Km dell'uscita 1? ");
+    expect(schedaCompito('diario', 3).schermoFinale?.[0]).toMatchObject({ k: 'in', domanda: 'Quante uscite? ' });
+  });
+
+  it('senza domande non cambia niente', () => {
+    expect(esercizioPerAllievo(generaCompito('cartello', 3)[0]).schermoAtteso).toBeUndefined();
+    expect(schedaCompito('cartello', 3).schermoFinale).toBeUndefined();
+  });
+});

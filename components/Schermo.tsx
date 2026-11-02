@@ -3,11 +3,11 @@
  * Per i programmi senza input() è una lista di righe e basta. */
 import type { RigaSchermo } from '@/lib/giro/interprete';
 
-export default function Schermo({ righe, titolo, classe = '' }: { righe: RigaSchermo[]; titolo?: string; classe?: string }) {
+export default function Schermo({ righe, titolo, classe = 'border-(--color-bordo) bg-black/40 p-4 text-[1.05rem]' }: { righe: RigaSchermo[]; titolo?: string; classe?: string }) {
   return (
     <div>
       {titolo && <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">{titolo}</p>}
-      <pre className={`overflow-x-auto rounded-xl border border-(--color-bordo) bg-black/40 p-4 font-mono text-[1.05rem] ${classe}`}>
+      <pre className={`overflow-x-auto rounded-xl border font-mono ${classe}`}>
         {righe.map((r, i) =>
           r.k === 'out' ? (
             <div key={i}>{r.v || ' '}</div>

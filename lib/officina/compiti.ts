@@ -11,7 +11,8 @@
  *
  * Modulo puro: niente Firestore, niente Next.
  */
-import { REGOLE, conNote, generatore, type Esercizio, type Prova } from '../giro/esercizi';
+import { REGOLE, conNote, generatore, schermoAtteso, type Esercizio, type Prova } from '../giro/esercizi';
+import type { RigaSchermo } from '../giro/interprete';
 import { fasiPromozione, schedaPromozione } from './compitiCondizioni';
 import { fasiConteggio, fasiDiario, fasiRecord, schedaConteggio, schedaDiario, schedaRecord } from './compitiDiario';
 import { fasiCartello, fasiClassifica, fasiLancio, fasiScala, schedaCartello, schedaClassifica, schedaLancio, schedaScala } from './compitiIniziali';
@@ -62,6 +63,8 @@ export interface SchedaCompito {
   dati: string[];
   /** L'output finale per intero: in un compito di realtà il bersaglio si vede. */
   outputFinale: string[];
+  /** Se il programma fa domande: lo stesso bersaglio come sullo schermo, con domande e risposte. */
+  schermoFinale?: RigaSchermo[];
 }
 
 /** Il voto parte da qui e scende di uno a domanda al tutor. */
@@ -583,7 +586,9 @@ export function generaCompito(progetto: CompitoId, seme: number): Esercizio[] {
 
 /** La scheda del compito, ricalcolata dal seme della tappa ovunque serva. */
 export function schedaCompito(progetto: CompitoId, seme: number): SchedaCompito {
-  return PROGETTI[progetto].scheda(seme);
+  const scheda = PROGETTI[progetto].scheda(seme);
+  const schermoFinale = schermoAtteso(generaCompito(progetto, seme).at(-1)!);
+  return schermoFinale ? { ...scheda, schermoFinale } : scheda;
 }
 
 export function eCompito(valore: unknown): valore is CompitoId {

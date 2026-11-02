@@ -8,7 +8,7 @@
  * Il modulo è puro: niente Firestore, niente Next. La soluzione di riferimento di ogni
  * tappa resta sul server (vedi `esercizioPerAllievo`).
  */
-import { esegui, type Opzioni } from './interprete';
+import { esegui, type Opzioni, type RigaSchermo } from './interprete';
 
 export type TipoEsercizio =
   | 'ripeti-n' // stampa N volte la stessa frase
@@ -129,7 +129,20 @@ export type EsercizioPubblico = Omit<Esercizio, 'soluzione' | 'outputAtteso' | '
   risposte?: string[];
   /** I numeri che `randint()` dà nella prova mostrata, se il compito usa il caso. */
   casuali?: number[];
+  /** Con le `input()`: lo schermo atteso, con le domande e le risposte fra le righe stampate. */
+  schermoAtteso?: RigaSchermo[];
 };
+
+/**
+ * Lo schermo della soluzione di riferimento sulla prova mostrata: le domande fra le righe,
+ * come in un terminale. Solo se il programma fa domande: altrimenti basta l'output.
+ */
+export function schermoAtteso(tappa: Esercizio): RigaSchermo[] | undefined {
+  const prova = tappa.prove?.[0];
+  if (!prova || prova.risposte.length === 0) return undefined;
+  const { schermo } = esegui(tappa.soluzione, opzioniDiProva(prova));
+  return schermo?.some((r) => r.k === 'in') ? schermo : undefined;
+}
 
 export function esercizioPerAllievo(tappa: Esercizio): EsercizioPubblico {
   const { soluzione: _soluzione, nota: _nota, outputAtteso, prove, ...resto } = tappa;
@@ -139,6 +152,8 @@ export function esercizioPerAllievo(tappa: Esercizio): EsercizioPubblico {
   if (prove && prove.length > 0) {
     pubblico.risposte = prove[0].risposte;
     if (prove[0].casuali) pubblico.casuali = prove[0].casuali;
+    const schermo = tappa.mostraOutput ? schermoAtteso(tappa) : undefined;
+    if (schermo) pubblico.schermoAtteso = schermo;
   }
   return pubblico;
 }
