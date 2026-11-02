@@ -222,7 +222,7 @@ export function schedaDado(seme: number): SchedaCompito {
     committente:
       `Per cominciare ${p.gioco} serve un 6 al dado: si tira finché non esce. Il programma tira il dado con random.randint, stampa ogni lancio, ` +
       `conta quanti ne servono e dice se sei stato fortunato. Quante volte si tira non si sa: lo decide il dado.`,
-    prodotto: 'I lanci numerati, il 6 che fa partire, al lancio numero quanti, il giudizio. Il dado è randint, dentro il ciclo.',
+    prodotto: 'I lanci numerati, il 6 che fa partire, a che lancio sei partito, il giudizio. Il dado è randint, dentro il ciclo.',
     dati: [`Serve: il 6`, `Lanci di prova: ${mostrati.join(' · ')}`],
     outputFinale: righeDado(mostrati, 5),
   };
@@ -320,10 +320,10 @@ export function fasiDuello(seme: number): Esercizio[] {
     fase(
       2,
       `**Fase 2 — finché è in piedi.** Metti colpo, sottrazione e stampa dentro un \`while\` che gira finché \`vita\` è sopra 0: a ogni giro un colpo nuovo. ` +
-        `Fuori dal ciclo, \`${drago} è sconfitto!\`. Colpi di prova: ${mostrati.map((c) => `**${c}**`).join(', ')}. (L'ultima riga va sotto zero: lo sistemiamo alla fase 4.)`,
+        `Fuori dal ciclo, \`${drago} è sconfitto!\`. Colpi di prova: ${mostrati.map((c) => `**${c}**`).join(', ')}. (Nell'ultima riga la vita viene negativa: **per ora lasciala così**, la sistemiamo alla fase 4.)`,
       r2,
     ),
-    fase(3, `**Fase 3 — quanti colpi.** Una variabile conta i colpi, uno per giro. Dopo la sconfitta stampa \`Sconfitto in ${mostrati.length} colpi\`.`, r3),
+    fase(3, `**Fase 3 — quanti colpi.** Una variabile \`colpi\` parte da **0** (qui il primo colpo sta già dentro il ciclo) e cresce di 1 a ogni giro. Dopo la sconfitta stampa \`Sconfitto in ${mostrati.length} colpi\`.`, r3),
     fase(
       4,
       `**Fase 4 — mai sotto zero.** I punti vita non possono essere negativi. Dentro il ciclo, dopo la sottrazione e prima del \`print\`, un \`if\`: se \`vita\` è minore di 0, ` +
@@ -363,7 +363,7 @@ function noteIndovina(p: ParametriIndovina): string[] {
     'Fase guidata: import random e randint sono già scritti, serve una riga sola con la f-string e {segreto}. ' +
       `Errori tipici: ${mostrata.segreto} scritto a mano (cade sulle prove nascoste dove il segreto è 1 e ${MASSIMO_SEGRETO}), la f dimenticata (stampa le graffe), la riga del randint cancellata o riscritta con un numero fisso.`,
     'Togliere il print del segreto; numero = int(input(...)) prima del ciclo e di nuovo in fondo al corpo; while numero != segreto; fuori la f-string con {segreto}. ' +
-      `Errori tipici: il print del segreto lasciato (una riga di troppo in cima), il confronto con ${mostrata.segreto} scritto al posto della variabile segreto, la seconda input dimenticata (non si ferma), int dimenticato (un testo non è mai uguale a un numero: non si ferma), == al posto di !=.`,
+      `Errori tipici: il print del segreto lasciato (una riga di troppo in cima), il confronto con ${mostrata.segreto} scritto al posto della variabile segreto, la seconda input dimenticata (non si ferma), int dimenticato (errore al while: stai confrontando un numero con un testo), == al posto di !=.`,
     'Un if/else dentro il ciclo al posto di No, riprova, prima della nuova input: se numero < segreto stampa Più alto, altrimenti Più basso. ' +
       "Errori tipici: < e > scambiati (Più alto quando deve dire Più basso: pensare a chi gioca, che deve salire), l'if dopo la nuova input (giudica il numero dopo), il rientro dei print (due livelli), l'accento di «Più».",
     'tentativi = 1 prima del ciclo, tentativi += 1 dentro, la f-string finale con {segreto} e {tentativi}. ' +
@@ -394,7 +394,7 @@ function noteDuello(p: ParametriDuello): string[] {
   const [mostrati] = p.colpi;
   return [
     `import random, vita = ${vita}, colpo = random.randint(${COLPO_MIN}, ${COLPO_MAX}), vita -= colpo, poi la f-string con {colpo} e {vita}. ` +
-      `Errori tipici: il print prima della sottrazione (restano ${vita}), ${mostrati[0]} o ${vita - mostrati[0]} scritti a mano (cadono sulle prove nascoste con colpi da 15 e da 10), il nome ${drago} fra graffe (non è una variabile), randint(1, ${COLPO_MAX}).`,
+      `Errori tipici: il print prima della sottrazione (restano ${vita}), ${mostrati[0]} o ${vita - mostrati[0]} scritti a mano (cadono sulle prove nascoste con colpi da 15 e da 10), il nome ${drago} fra graffe (non è una variabile), randint(1, ${COLPO_MAX}) (limiti più larghi passano l'interprete, li vede il giudice).`,
     `vita = ${vita} resta fuori; tiro, sottrazione e print vanno con il rientro dentro while vita > 0. Qui il randint sta dentro il ciclo e non c'è un tiro prima: la condizione guarda vita. ` +
       `Errori tipici: il tiro lasciato fuori dal ciclo (stesso colpo a ogni giro: la vita scende sempre di ${mostrati[0]}), >= 0, il print della sconfitta con il rientro. L'ultimo numero negativo in questa fase è giusto: si sistema alla fase 4.`,
     'colpi = 0 prima del ciclo, colpi += 1 dentro, il print dopo la sconfitta con {colpi}. ' +

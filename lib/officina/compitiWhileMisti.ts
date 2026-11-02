@@ -14,11 +14,11 @@ const somma = (n: number[]) => n.reduce((a, b) => a + b, 0);
 /* ------------------------------------------------------------------- 7. il distributore */
 
 const SNACK = [
-  { nome: 'le patatine', prezzo: 120 },
-  { nome: 'la merendina', prezzo: 80 },
-  { nome: 'il succo', prezzo: 100 },
-  { nome: 'i cracker', prezzo: 150 },
-  { nome: 'il cioccolato', prezzo: 180 },
+  { nome: 'le patatine', verbo: 'costano', prezzo: 120 },
+  { nome: 'la merendina', verbo: 'costa', prezzo: 80 },
+  { nome: 'il succo', verbo: 'costa', prezzo: 100 },
+  { nome: 'i cracker', verbo: 'costano', prezzo: 150 },
+  { nome: 'il cioccolato', verbo: 'costa', prezzo: 180 },
 ] as const;
 
 interface ParametriDistributore {
@@ -46,6 +46,8 @@ function parametriDistributore(seme: number): ParametriDistributore {
   // La sequenza mostrata: forse una da 20 all'inizio, poi monete da 50 e da 1 € finché bastano (al massimo 5).
   const mostrata: number[] = rnd() < 0.5 ? [20] : [];
   while (somma(mostrata) < snack.prezzo) mostrata.push(rnd() < 0.5 ? 50 : 100);
+  // Con una moneta sola l'esempio non mostrerebbe la ripetizione: almeno due.
+  if (mostrata.length === 1) mostrata.unshift(50);
   return { snack, monete: [mostrata, [200], moneteGiuste(snack.prezzo)] };
 }
 
@@ -91,7 +93,7 @@ export function fasiDistributore(seme: number): Esercizio[] {
   return conNote([
     fase(
       1,
-      `**Fase 1 — finché basta.** ${nome[0].toUpperCase() + nome.slice(1)} costa ${prezzo} centesimi. Il distributore chiede una moneta alla volta (con \`input()\` e \`int()\` **dentro** il ciclo) ` +
+      `**Fase 1 — finché basta.** ${nome[0].toUpperCase() + nome.slice(1)} ${p.snack.verbo} ${prezzo} centesimi. Il distributore chiede una moneta alla volta (con \`input()\` e \`int()\` **dentro** il ciclo) ` +
         `e la aggiunge a \`versato\`, che parte da 0; dopo ogni moneta stampa \`Versati X centesimi\`. Il \`while\` gira finché \`versato\` è sotto ${prezzo}: ` +
         `quante monete servono dipende da quali arrivano. Monete di prova: ${mostrate.map((m) => `**${m}**`).join(', ')}.`,
       r1,
@@ -123,7 +125,7 @@ export function schedaDistributore(seme: number): SchedaCompito {
     id: 'distributore',
     titolo: 'Il distributore',
     committente:
-      `Il distributore automatico della scuola: ${p.snack.nome} costa ${p.snack.prezzo} centesimi, si inseriscono monete una alla volta finché i soldi bastano, ` +
+      `Il distributore automatico della scuola: ${p.snack.nome} ${p.snack.verbo} ${p.snack.prezzo} centesimi, si inseriscono monete una alla volta finché i soldi bastano, ` +
       `poi esce il prodotto con il resto. Quante monete servono non si sa: dipende da quali arrivano. Il programma le legge finché non basta.`,
     prodotto: 'Il display del distributore: il versato dopo ogni moneta, il prodotto, quante monete, il resto (o «Nessun resto»). Le monete le chiede con input().',
     dati: [`Prezzo: ${p.snack.prezzo} centesimi`, `Monete di prova: ${mostrate.join(' · ')}`],
@@ -229,11 +231,11 @@ export function fasiMenu(seme: number): Esercizio[] {
       1,
       `**Fase 1 — il codice al posto del prezzo.** La cassa riparte da quella del bar, già scritta. Ora il barista digita il **codice** del prodotto: ` +
         `**1** è il caffè (${CAFFE} €), **2** il cornetto (${cornetto} €), **0** chiude. Dentro il ciclo un \`if\`/\`elif\` sul codice stampa \`Caffè: ${CAFFE} €\` oppure \`Cornetto: ${cornetto} €\` ` +
-        `e fa crescere il totale del prezzo giusto. Chiama la variabile \`scelta\`. Scelte di prova: ${scelteMenu(p, 0, 1).map((s) => `**${s}**`).join(', ')}, poi **0**.`,
+        `e fa crescere il totale del prezzo giusto. La variabile si chiama \`scelta\` al posto di \`prezzo\`, e la riga \`Articolo: …\` non serve più. Scelte di prova: ${scelteMenu(p, 0, 1).map((s) => `**${s}**`).join(', ')}, poi **0**.`,
       programma(rami2),
       { codiceIniziale: cassa },
     ),
-    fase(2, `**Fase 2 — il panino.** Un terzo prodotto: codice **3**, il panino, ${panino} €. Un altro \`elif\`.`, programma(rami3)),
+    fase(2, `**Fase 2 — il panino.** Un terzo prodotto, codice **3**: un altro \`elif\` che stampa \`Panino: ${panino} €\` e aggiunge ${panino} al totale.`, programma(rami3)),
     fase(
       3,
       `**Fase 3 — codice sconosciuto.** Se il codice non è 1, 2 o 3 (e non è 0), la cassa stampa \`Codice sconosciuto\` e non aggiunge niente: un \`else\` in fondo. ` +
@@ -292,13 +294,13 @@ function noteMenu(p: ParametriMenu): string[] {
   const { cornetto, panino } = p;
   return [
     'Riparte dalla cassa: la variabile diventa scelta, la condizione scelta != 0, dentro if scelta == 1 / elif scelta == 2 con il print e totale += del prezzo giusto; le due domande (prima e in fondo) restano. ' +
-      `Errori tipici: la vecchia riga Articolo: {prezzo} lasciata, totale += scelta (somma il codice, non il prezzo), prezzo e scelta mescolati fra le due domande, il print del ramo con un livello solo di rientro, il prezzo del cornetto ${cornetto} scritto nel caffè.`,
+      `Errori tipici: la vecchia riga Articolo: {prezzo} lasciata, totale += scelta (somma il codice, non il prezzo: se il cornetto costa 2 € qui passa, e cade alla fase 2), prezzo e scelta mescolati fra le due domande, il print del ramo con un livello solo di rientro${cornetto === CAFFE ? '' : `, il prezzo del cornetto ${cornetto} scritto nel caffè`}.`,
     `Un elif scelta == 3 con il print Panino: ${panino} € e totale += ${panino}. ` +
       `Errori tipici: il prezzo del cornetto ${cornetto} copiato nel panino, i due punti dopo la condizione dimenticati, l'elif allineato male (deve stare sotto l'if, con lo stesso rientro).`,
     'Un else in fondo alla catena: il print Codice sconosciuto, senza aggiungere niente al totale. ' +
-      'Errori tipici: else con una condizione dietro, un elif scelta == 0 che prende la sentinella (la riga esce anche allo 0), un += nel ramo dello sconosciuto, l\'else allineato con il while.',
+      'Errori tipici: else con una condizione dietro, un elif scelta == 0 al posto dell\'else (i codici sbagliati non stampano niente: lo 0 non entra mai nel ciclo, lo ferma il while), un += nel ramo dello sconosciuto, l\'else allineato con il while.',
     'caffe = 0 prima del ciclo, caffe += 1 solo nel ramo del codice 1 (due livelli di rientro), il print Caffè venduti: prima del totale. ' +
-      'Errori tipici: il += in tutti i rami o fuori dall\'if (conta tutte le scelte), il += con un livello solo di rientro (vale per ogni giro), il numero scritto a mano, l\'ordine dei due print finali.',
+      'Errori tipici: il += in tutti i rami o fuori dall\'if (conta tutte le scelte), il += con un rientro solo (fra if ed elif rompe la catena: errore di sintassi sull\'elif; dopo la catena conta ogni scelta), il numero scritto a mano, l\'ordine dei due print finali.',
     'Un if dopo il print del totale, senza else: se caffe >= 2 stampa la f-string con {caffe}. ' +
       'Errori tipici: > al posto di >= (la prova mostrata ha esattamente due caffè e deve stamparla), l\'if dentro il ciclo, il numero dei caffè scritto a mano, il punto esclamativo e i due punti nel testo.',
   ];

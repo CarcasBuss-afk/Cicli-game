@@ -95,7 +95,7 @@ export function fasiObiettivo(seme: number): Esercizio[] {
     {
       ...b,
       consegna:
-        `**Fase 2 — contare le settimane.** Il ciclo non ha una variabile che conta: creala tu. \`settimane\` parte da 0 prima del ciclo e cresce di 1 a ogni giro; ` +
+        `**Fase 2 — contare le settimane.** Il ciclo non ha una variabile che conta: creala tu. \`settimane\` parte da 0 prima del ciclo e cresce di 1 a ogni giro, prima del \`print\`; ` +
         `la riga diventa \`Settimana 1: ${quota} €\`, \`Settimana 2: ${quota * 2} €\`…`,
       outputAtteso: righeObiettivo(p, quota, 2),
       soluzione: `totale = 0\nsettimane = 0\n${corpo(String(quota))}`,
@@ -122,7 +122,7 @@ export function fasiObiettivo(seme: number): Esercizio[] {
       ...b,
       consegna:
         `**Fase 5 — il resto.** Con alcune quote si supera l'obiettivo. Dopo il ciclo, un \`if\`: se \`totale\` è più grande di ${obiettivo} stampa ` +
-        `\`Ti avanzano X €\` (la differenza), altrimenti \`Giusto giusto, niente resto\`. Con la quota di prova ${quota} si arriva giusti.`,
+        `\`Ti avanzano 5 €\` se ne avanzano 5 (il numero è \`totale - ${obiettivo}\`, calcolato dal programma), altrimenti \`Giusto giusto, niente resto\`. Con la quota di prova ${quota} si arriva giusti.`,
       outputAtteso: righeObiettivo(p, quota, 5),
       prove: prove(5),
       soluzione: `${r4}\nif totale > ${obiettivo}:\n    print(f"Ti avanzano {totale - ${obiettivo}} €")\nelse:\n    print("Giusto giusto, niente resto")`,
@@ -323,14 +323,14 @@ export function fasiPettegolezzo(seme: number): Esercizio[] {
       ...b,
       consegna:
         `**Fase 1 — raddoppia.** All'inizio lo sanno ${inizio} persone; ogni ora ognuno lo dice a un'altra, quindi **raddoppiano**: ${inizio * 2}, ${inizio * 4}, ${inizio * 8}… ` +
-        `Il \`while\` gira finché \`sanno\` è meno di ${scuola} (tutta la scuola); dentro, \`sanno\` raddoppia (\`*=\`) e si stampa \`${inizio * 2} persone\`, \`${inizio * 4} persone\`…`,
+        `Il \`while\` gira finché \`sanno\` è meno di ${scuola} (tutta la scuola); dentro, \`sanno\` raddoppia (\`*=\`) e si stampa \`${inizio * 2} persone\`, \`${inizio * 4} persone\`… L'ultima riga supera ${scuola}, ed è giusto: il ciclo controlla prima di raddoppiare, non dopo.`,
       outputAtteso: righePettegolezzo(p, inizio, 1),
       soluzione: `sanno = ${inizio}\nwhile sanno < ${scuola}:\n    sanno *= 2\n    print(f"{sanno} persone")`,
       regola: regolaPettegolezzo(1),
     },
     {
       ...b,
-      consegna: `**Fase 2 — le ore.** Una variabile \`ore\` conta i giri: \`Ora 1: ${inizio * 2} persone\`, \`Ora 2: ${inizio * 4} persone\`…`,
+      consegna: `**Fase 2 — le ore.** Una variabile \`ore\` conta i giri: \`Ora 1: ${inizio * 2} persone\`, \`Ora 2: ${inizio * 4} persone\`… Parte da 0 e cresce di 1 a ogni giro, prima del \`print\`.`,
       outputAtteso: righePettegolezzo(p, inizio, 2),
       soluzione: `sanno = ${inizio}\nore = 0\n${corpo}`,
       regola: regolaPettegolezzo(2),
@@ -354,7 +354,7 @@ export function fasiPettegolezzo(seme: number): Esercizio[] {
     },
     {
       ...b,
-      consegna: `**Fase 5 — metà scuola.** Dentro il ciclo, dopo la riga dell'ora, un \`if\`: se \`sanno\` è almeno ${scuola / 2} (metà scuola) stampa \`Metà scuola lo sa!\`.`,
+      consegna: `**Fase 5 — metà scuola.** Dentro il ciclo, dopo la riga dell'ora, un \`if\`: se \`sanno\` è almeno ${scuola / 2} (metà scuola) stampa \`Metà scuola lo sa!\`. La riga compare in tutte le ore da lì in poi.`,
       outputAtteso: righePettegolezzo(p, inizio, 5),
       prove: prove(5),
       soluzione: r4.replace(`    print(f"Ora {ore}: {sanno} persone")`, `    print(f"Ora {ore}: {sanno} persone")\n    if sanno >= ${scuola / 2}:\n        print("Metà scuola lo sa!")`),
@@ -402,7 +402,7 @@ function noteBatteria(p: ParametriBatteria): string[] {
   const [n1, n2] = consumiNascosti(p);
   return [
     `carica = ${carica} prima del ciclo, while carica > 0, dentro prima il print e poi carica -= ${consumo}. ` +
-      `Errori tipici: l'ordine invertito (la prima riga è ${carica - consumo}%), >= 0 (stampa anche sotto zero), il % fuori dalle virgolette, += al posto di -= (la carica sale: ciclo infinito, l'hint lo dice).`,
+      `Errori tipici: l'ordine invertito (la prima riga è ${carica - consumo}%), >= 0 (stampa 0% solo se la carica arriva a zero esatto; se non ci arriva passa, e non è un errore da inseguire), il % fuori dalle virgolette, += al posto di -= (la carica sale: ciclo infinito, l'hint lo dice).`,
     'ore = 0 prima del ciclo, ore += 1 dentro prima del print, e la f-string Ora {ore}: {carica}%. ' +
       'Errori tipici: ore += 1 dopo il print (parte da Ora 0), ore = 0 dentro il ciclo (resta 1), le graffe scambiate.',
     'La f-string con {ore} dopo il ciclo, senza rientro. ' +
@@ -419,14 +419,14 @@ function notePettegolezzo(p: ParametriPettegolezzo): string[] {
   const [n1, n2] = iniziNascosti(p);
   return [
     `sanno = ${inizio} prima del ciclo, while sanno < ${scuola}, dentro prima sanno *= 2 e poi il print. ` +
-      `Errori tipici: il print prima del raddoppio (la prima riga è ${inizio} persone), += 2 o sanno + 2 al posto di *= 2 (cresce piano: troppe righe), <= al posto di <, sanno = sanno * 2 va bene.`,
+      `Errori tipici: il print prima del raddoppio (la prima riga è ${inizio} persone), += 2 o sanno + 2 al posto di *= 2 (cresce piano: troppe righe). sanno = sanno * 2 va bene. <= al posto di < qui non si vede, perché non si arriva mai al numero esatto degli allievi: cade solo sulle prove nascoste dalla fase 4.`,
     'ore = 0 prima del ciclo, ore += 1 dentro, e la f-string Ora {ore}: {sanno} persone. ' +
       'Errori tipici: ore += 1 dopo il print (Ora 0), le due variabili scambiate nelle graffe, ore = 0 dentro il ciclo.',
     'La f-string con {ore} dopo il ciclo, senza rientro. ' +
       'Errori tipici: il numero delle ore scritto a mano (il giudice boccia, alla fase 4 cade), il print con il rientro.',
     `sanno = int(input(...)) al posto di sanno = ${inizio}, prima del ciclo. ` +
-      `Errori tipici: ${inizio} lasciato scritto (cade sulle prove nascoste con ${n1} e ${n2} persone all'inizio), int dimenticato (il *= 2 su un testo lo ripete invece di raddoppiare), la domanda dentro il ciclo.`,
+      `Errori tipici: ${inizio} lasciato scritto (cade sulle prove nascoste con ${n1} e ${n2} persone all'inizio), int dimenticato (errore al while: il confronto fra un testo e un numero non si può fare), la domanda dentro il ciclo.`,
     `Un if dentro il ciclo, dopo il print dell'ora: se sanno >= ${scuola / 2} stampa Metà scuola lo sa!. ` +
-      `Errori tipici: > al posto di >= (se sanno è esattamente ${scuola / 2} la riga manca), l'if fuori dal ciclo (una riga sola alla fine), l'if prima del raddoppio (guarda l'ora prima), la soglia scritta come ${scuola} / 2 va bene.`,
+      `Errori tipici: > al posto di >= (cade sulla prova nascosta che arriva a ${scuola / 2} esatto), l'if fuori dal ciclo (una riga sola alla fine), l'if prima del raddoppio (guarda l'ora prima), la soglia scritta come ${scuola} / 2: la divisione non è ammessa, va scritta come numero, ${scuola / 2}.`,
   ];
 }

@@ -71,7 +71,7 @@ export function fasiTimer(seme: number): Esercizio[] {
       consegna:
         `**Fase 1 — la riga che manca.** Il \`while\` ripete finché la sua condizione è vera: qui finché \`minuti > 0\`. ` +
         `Il codice è quasi pronto, ma dentro il ciclo manca la riga che fa **scendere** i minuti di 1 a ogni giro: senza quella ` +
-        `\`minuti\` resta ${minuti} per sempre e il ciclo non si ferma mai (prova a eseguirlo senza il commento, e leggi che cosa dice). ` +
+        `\`minuti\` resta ${minuti} per sempre e il ciclo non si ferma mai (toglilo, premi **Prova ▶** e leggi che cosa dice). ` +
         `Scrivi quella riga al posto del commento: deve stampare ${minuti}, ${minuti - 1}… fino a 1.`,
       outputAtteso: righeTimer(p, minuti, 1),
       codiceIniziale: `minuti = ${minuti}\nwhile minuti > 0:\n    print(minuti)\n    # qui manca la riga che fa scendere i minuti di 1`,

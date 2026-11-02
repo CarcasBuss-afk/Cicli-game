@@ -194,7 +194,7 @@ export function fasiCassa(seme: number): Esercizio[] {
       1,
       `**Fase 1 — la sentinella.** La cassa chiede un prezzo alla volta e si ferma quando il barista digita **0**. Il codice è quasi pronto: la prima domanda ` +
         `sta prima del ciclo, il \`while\` gira finché il prezzo è diverso da 0 e stampa l'articolo. Manca la riga che **richiede il prezzo** in fondo al corpo: ` +
-        `senza, \`prezzo\` resta quello e il ciclo non si ferma mai. Scrivila al posto del commento. Risposte di prova: ${mostrati.map((x) => `**${x}**`).join(', ')}, poi **0**.`,
+        `senza, \`prezzo\` resta quello e il ciclo non si ferma mai. Cancella il commento e scrivi la riga al suo posto. Risposte di prova: ${mostrati.map((x) => `**${x}**`).join(', ')}, poi **0**.`,
       r1,
       { codiceIniziale: `${domanda}\nwhile prezzo != 0:\n    print(f"Articolo: {prezzo} €")\n    # qui manca la riga che chiede il prezzo dell'articolo dopo` },
     ),
@@ -238,7 +238,7 @@ function noteParola(p: ParametriParola): string[] {
   const [mostrate] = tentativiParola(p);
   return [
     `Due input nella stessa variabile parola: una prima del ciclo e una in fondo al corpo; while parola != "${parola}"; Porta aperta! fuori dal ciclo. ` +
-      "Errori tipici: la seconda input dimenticata (il ciclo non si ferma: l'hint dice che dopo l'ultima risposta doveva fermarsi), == al posto di != (non entra mai nel ciclo), int() intorno all'input (la risposta è un testo), " +
+      "Errori tipici: la seconda input dimenticata (il ciclo non si ferma mai: lo dice l'hint, con la riga del while), == al posto di != (non entra mai nel ciclo), int() intorno all'input (la risposta è un testo), " +
       `${parola} senza virgolette o fra graffe, la seconda domanda in una variabile diversa (parola non cambia).`,
     'tentativi = 1 prima del ciclo (il primo tentativo lo fa la domanda fuori), tentativi += 1 dentro, e la f-string finale con {tentativi}. ' +
       `Errori tipici: parte da 0 (uno in meno: con la prova mostrata deve dire ${mostrate.length + 1}), il numero scritto a mano, il += 1 fuori dal ciclo.`,
@@ -256,7 +256,7 @@ function noteCassa(p: ParametriCassa): string[] {
   const tot = somma(mostrati);
   return [
     'Fase guidata: manca prezzo = int(input("Prezzo? ")) in fondo al corpo, con il rientro, nella stessa variabile prezzo. ' +
-      'Errori tipici: la riga senza rientro (fuori dal ciclo: non si ferma), senza int (il confronto != 0 con un testo è sempre vero: non si ferma), una variabile nuova (prezzo non cambia), la riga messa prima del print (salta il primo articolo).',
+      'Errori tipici: la riga senza rientro (fuori dal ciclo: non si ferma), senza int (errore al while: stai confrontando un numero con un testo), la riga scritta dopo il # (resta un commento, e il ciclo non si ferma), una variabile nuova (prezzo non cambia), la riga messa prima del print (salta il primo articolo).',
     'totale = 0 prima della prima domanda, totale += prezzo dentro il ciclo prima della nuova domanda, il print del totale fuori. ' +
       `Errori tipici: il += dopo la nuova domanda (somma il prezzo dopo, e alla fine lo 0), il print del totale con il rientro, ${tot} scritto a mano (il giudice boccia e le prove nascoste cadono).`,
     'articoli = 0 prima, articoli += 1 dentro, il print Articoli: prima di quello del totale. ' +
