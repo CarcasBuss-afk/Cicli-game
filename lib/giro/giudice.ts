@@ -1,7 +1,7 @@
 /* Il Giudice: il controllo anti-furbo sul codice promosso (PERCORSO.md §13).
  *
  * Il micro-interprete controlla l'output; se è giusto, prima di passare al chilometro o
- * alla fase dopo il giudice (Haiku) guarda il codice e la regola della tappa a parole:
+ * alla fase dopo il giudice (Sonnet) guarda il codice e la regola della tappa a parole:
  * «le righe le stampa un ciclo, non la mano». Niente conti sulle righe del corpo, che
  * bocciavano chi scriveva bene con una variabile d'appoggio: decide un lettore, con
  * davanti anche i fatti misurati dall'interprete (quanti for, quanti print, quanti giri).

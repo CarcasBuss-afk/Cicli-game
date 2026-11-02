@@ -53,7 +53,7 @@ export async function chiediTutor(contesto: ContestoConsiglio, storia: Scambio[]
         // Il tetto comprende anche il ragionamento: la risposta vera sta in 150 parole.
         max_tokens: 4000,
         // Ragiona prima di scrivere: confrontare gli output e trovare la prima riga che non torna
-        // è un lavoro di diagnosi, di getto veniva vago. (`disabled` serve solo a Haiku nel giudice.)
+        // è un lavoro di diagnosi, di getto veniva vago. (Il giudice invece lo tiene spento: `disabled`.)
         thinking: { type: 'adaptive' },
         system: PROMPT_TUTOR,
         messages: messaggi,

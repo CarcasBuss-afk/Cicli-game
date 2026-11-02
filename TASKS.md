@@ -83,7 +83,7 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 12h. Il tutor più chiaro (PERCORSO.md §20): thinking adattivo, regola e prova nascosta nel contesto, prompt con l'ordine dove · perché · che cosa.
 - [x] 12c. Il motore per i `while` (PERCORSO.md §22): `while`, `-=`/`*=`, `random.randint` dalle prove (`Prova.casuali`), i tetti come hint del ciclo infinito, i fatti nuovi per il giudice, i suggerimenti dell'editor.
 - [x] 12i. I dodici compiti della sezione «Il ciclo while» (PERCORSO.md §22), nell'ordine della progressione: timer del forno (fase 1 guidata) · salvadanaio della bici · parola d'ordine · batteria · cassa del bar (fase 1 guidata) · pettegolezzo · distributore · cassa con il menu · indovina il numero (fase 1 guidata con `randint`) · dado · duello · patentino dei cicli `while`. File `compitiWhile*.ts` e `compitiPatentinoWhile.ts`; test mirati in `compiti.test.ts`.
-- [ ] 12j. Provare i compiti `while` in classe e rivedere consegne e regole su quello che si vede (i testi non sono stati ancora letti da Fabio).
+- [ ] 12j. Provare i compiti `while` in classe e rivedere consegne e regole su quello che si vede (i testi non sono stati ancora letti da Fabio; la revisione automatica del 1-2 novembre è in 13h, e il docente ora li può aprire e rifare tutti, 13i).
 
 ## Task 13 — Dopo la prima settimana in classe (PERCORSO.md §23)
 
@@ -94,4 +94,5 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 13e. Le note per il tutor anche sugli undici compiti della sezione `while` (30 ottobre 2026). Decisione di Fabio: niente esempio di sintassi su un caso estraneo, resta «mai codice».
 - [x] 13f. Controllo a freddo del tutor nuovo sulle sei bozze ferme della prima settimana: sei risposte su sei centrate, 64-76 parole, mai codice (30 ottobre 2026).
 - [x] 13h. Revisione dei dodici compiti `while` con l'interprete vero: hint sul `while`, confini delle prove, patentino a 100%, regole del giudice per fase, consegne e note (1-2 novembre 2026).
+- [x] 13i. Il docente prova i compiti: tutti sbloccati anche a classe chiusa, e «Ricomincia da capo» per rifarli (2 novembre 2026).
 - [ ] 13g. Dopo la prima lezione con le novità: rileggere dal database conversazioni, bozze ferme, registro del giudice ed errori per fase; confrontare con la prima settimana.
