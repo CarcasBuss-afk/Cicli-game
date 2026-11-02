@@ -93,7 +93,7 @@ export function fasiDistributore(seme: number): Esercizio[] {
   return conNote([
     fase(
       1,
-      `**Fase 1 — finché basta.** ${nome[0].toUpperCase() + nome.slice(1)} ${p.snack.verbo} ${prezzo} centesimi. Il distributore chiede una moneta alla volta (con \`input()\` e \`int()\` **dentro** il ciclo) ` +
+      `**Fase 1 — finché basta.** ${nome[0].toUpperCase() + nome.slice(1)} ${p.snack.verbo} ${prezzo} centesimi. Il distributore chiede \`Moneta? \` una moneta alla volta (con \`input()\` e \`int()\` **dentro** il ciclo) ` +
         `e la aggiunge a \`versato\`, che parte da 0; dopo ogni moneta stampa \`Versati X centesimi\`. Il \`while\` gira finché \`versato\` è sotto ${prezzo}: ` +
         `quante monete servono dipende da quali arrivano. Monete di prova: ${mostrate.map((m) => `**${m}**`).join(', ')}.`,
       r1,
@@ -231,7 +231,7 @@ export function fasiMenu(seme: number): Esercizio[] {
       1,
       `**Fase 1 — il codice al posto del prezzo.** La cassa riparte da quella del bar, già scritta. Ora il barista digita il **codice** del prodotto: ` +
         `**1** è il caffè (${CAFFE} €), **2** il cornetto (${cornetto} €), **0** chiude. Dentro il ciclo un \`if\`/\`elif\` sul codice stampa \`Caffè: ${CAFFE} €\` oppure \`Cornetto: ${cornetto} €\` ` +
-        `e fa crescere il totale del prezzo giusto. La variabile si chiama \`scelta\` al posto di \`prezzo\`, e la riga \`Articolo: …\` non serve più. Scelte di prova: ${scelteMenu(p, 0, 1).map((s) => `**${s}**`).join(', ')}, poi **0**.`,
+        `e fa crescere il totale del prezzo giusto. La variabile si chiama \`scelta\` al posto di \`prezzo\`, la domanda diventa \`Scelta? \`, e la riga \`Articolo: …\` non serve più. Scelte di prova: ${scelteMenu(p, 0, 1).map((s) => `**${s}**`).join(', ')}, poi **0**.`,
       programma(rami2),
       { codiceIniziale: cassa },
     ),

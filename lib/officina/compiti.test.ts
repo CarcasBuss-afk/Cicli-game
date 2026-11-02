@@ -1132,6 +1132,27 @@ describe('le domande sullo schermo atteso', () => {
     expect(schedaCompito('diario', 3).schermoFinale?.[0]).toMatchObject({ k: 'in', domanda: 'Quante uscite? ' });
   });
 
+  it('ogni domanda nuova di una fase è scritta nella consegna, o è già nel codice da cui si riparte', () => {
+    for (const id of ELENCO_COMPITI) {
+      for (const seme of SEMI.slice(0, 10)) {
+        const viste = new Set<string>();
+        for (const fase of generaCompito(id, seme)) {
+          const schermo = esercizioPerAllievo(fase).schermoAtteso ?? [];
+          for (const riga of schermo) {
+            if (riga.k !== 'in') continue;
+            const domanda = riga.domanda.trim();
+            const stampo = domanda.replace(/\d+/g, '#');
+            if (viste.has(stampo)) continue;
+            viste.add(stampo);
+            const nellaConsegna = fase.consegna.includes(domanda.replace(/\d+/, '1'));
+            const nelCodice = (fase.codiceIniziale ?? '').includes(domanda.replace(/\d+/, '{i}'));
+            expect(nellaConsegna || nelCodice, `${id}: «${domanda}»`).toBe(true);
+          }
+        }
+      }
+    }
+  });
+
   it('senza domande non cambia niente', () => {
     expect(esercizioPerAllievo(generaCompito('cartello', 3)[0]).schermoAtteso).toBeUndefined();
     expect(schedaCompito('cartello', 3).schermoFinale).toBeUndefined();

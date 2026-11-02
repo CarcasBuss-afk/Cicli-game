@@ -116,7 +116,7 @@ export function fasiPatentino(seme: number): Esercizio[] {
     ),
     conInput(
       3,
-      `**Fase 3 — il tempo di ogni giro.** A ogni giro il programma chiede il tempo (con \`int()\`) a chi tiene il tabellone: la domanda va dentro il ciclo. ` +
+      `**Fase 3 — il tempo di ogni giro.** A ogni giro il programma chiede \`Tempo del giro 1? \`, \`Tempo del giro 2? \`… (con \`int()\`) a chi tiene il tabellone: la domanda va dentro il ciclo. ` +
         `La riga diventa \`Giro 1: ${lunghezza} km in ${tempi[0]} min\`. Risposte di prova: ${tempi.map((t) => `**${t}**`).join(', ')}.`,
       r3,
     ),

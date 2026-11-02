@@ -97,7 +97,7 @@ export function fasiIndovina(seme: number): Esercizio[] {
     ),
     fase(
       2,
-      `**Fase 2 — finché non indovini.** Togli la stampa del segreto (altrimenti non è un gioco). Chiedi un numero con \`input()\` e \`int()\` prima del ciclo; ` +
+      `**Fase 2 — finché non indovini.** Togli la stampa del segreto (altrimenti non è un gioco). Chiedi \`Numero? \` con \`input()\` e \`int()\` prima del ciclo; ` +
         `il \`while\` gira finché \`numero\` è diverso da \`segreto\`: dentro stampa \`No, riprova\` e richiede il numero. Fuori, \`Indovinato: era ${mostrata.segreto}!\` (con la variabile). ` +
         `Tentativi di prova: ${tentativi.map((t) => `**${t}**`).join(', ')} (il segreto è ${mostrata.segreto}).`,
       r2,

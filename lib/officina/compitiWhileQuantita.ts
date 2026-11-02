@@ -111,7 +111,7 @@ export function fasiObiettivo(seme: number): Esercizio[] {
     {
       ...b,
       consegna:
-        `**Fase 4 — quanto metti via lo decidi tu.** La quota la chiede il programma con \`input()\` (e \`int()\`) prima del ciclo, al posto del ${quota} scritto. ` +
+        `**Fase 4 — quanto metti via lo decidi tu.** La quota la chiede il programma con \`Quanto metti via a settimana? \`, usando \`input()\` (e \`int()\`) prima del ciclo, al posto del ${quota} scritto. ` +
         `L'obiettivo resta ${obiettivo} €. Risposta di prova: **${quota}**, ma con una quota diversa le settimane cambiano, e il programma deve funzionare lo stesso.`,
       outputAtteso: righeObiettivo(p, quota, 4),
       prove: prove(4),
@@ -227,7 +227,7 @@ export function fasiBatteria(seme: number): Esercizio[] {
     {
       ...b,
       consegna:
-        `**Fase 4 — il consumo lo dice l'utente.** Chiedi il consumo all'ora con \`input()\` e \`int()\` prima del ciclo, al posto del ${consumo}. ` +
+        `**Fase 4 — il consumo lo dice l'utente.** Chiedi \`Quanto consuma all'ora? \` con \`input()\` e \`int()\` prima del ciclo, al posto del ${consumo}. ` +
         `Risposta di prova: **${consumo}**; con un consumo diverso le ore cambiano, e il programma deve funzionare lo stesso.`,
       outputAtteso: righeBatteria(p, consumo, 4),
       prove: prove(4),
@@ -345,7 +345,7 @@ export function fasiPettegolezzo(seme: number): Esercizio[] {
     {
       ...b,
       consegna:
-        `**Fase 4 — quanti all'inizio.** Chiedi con \`input()\` e \`int()\` quanti lo sanno all'inizio, al posto del ${inizio}. Risposta di prova: **${inizio}**; ` +
+        `**Fase 4 — quanti all'inizio.** Chiedi \`Quanti lo sanno all'inizio? \` con \`input()\` e \`int()\`, al posto del ${inizio}. Risposta di prova: **${inizio}**; ` +
         `se all'inizio sono di più le ore sono di meno, e il programma deve funzionare lo stesso.`,
       outputAtteso: righePettegolezzo(p, inizio, 4),
       prove: prove(4),

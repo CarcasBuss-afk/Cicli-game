@@ -99,7 +99,7 @@ export function fasiTimer(seme: number): Esercizio[] {
     {
       ...b,
       consegna:
-        `**Fase 4 — i minuti li dice il cuoco.** Non sempre sono ${minuti}: chiedili con \`input()\` (e \`int()\`) **prima** del ciclo, ` +
+        `**Fase 4 — i minuti li dice il cuoco.** Non sempre sono ${minuti}: chiedi \`Quanti minuti? \` con \`input()\` (e \`int()\`) **prima** del ciclo, ` +
         `al posto del numero scritto. Il \`while\` non cambia: non gli serve sapere quante volte girerà. ` +
         `Il programma viene provato rispondendo **${minuti}**, ma deve funzionare con qualunque numero.`,
       outputAtteso: righeTimer(p, minuti, 4),

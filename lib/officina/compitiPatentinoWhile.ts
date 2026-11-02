@@ -103,7 +103,7 @@ export function fasiPatentinoWhile(seme: number): Esercizio[] {
     ),
     fase(
       2,
-      `**Fase 2 — i clienti.** Poi arrivano i clienti: per ognuno il programma chiede i km fatti (con \`int()\`) e stampa \`Cliente: ${giornata[0]} km\`. ` +
+      `**Fase 2 — i clienti.** Poi arrivano i clienti: per ognuno il programma chiede \`Km del cliente? \` (con \`int()\`) e stampa \`Cliente: ${giornata[0]} km\`. ` +
         `Quando non ce ne sono più si risponde **0** e il ciclo si ferma. Risposte di prova: ${giornata.map((k) => `**${k}**`).join(', ')}, poi **0**.`,
       r2,
     ),

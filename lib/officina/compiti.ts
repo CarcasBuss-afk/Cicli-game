@@ -404,13 +404,13 @@ function fasiScontrino(seme: number): Esercizio[] {
   return conNote([
     fase(
       1,
-      `**Fase 1 — il cliente.** Lo scontrino comincia con il nome del cliente. Chiedilo con \`input()\`, mettilo in una ` +
+      `**Fase 1 — il cliente.** Lo scontrino comincia con il nome del cliente. Chiedilo con \`input()\` e la domanda \`Come ti chiami? \`, mettilo in una ` +
         `variabile e stampa \`Scontrino di ${a.nome}\`. Il programma viene provato rispondendo **${a.nome}**, ma deve funzionare con qualunque nome.`,
       r1,
     ),
     fase(
       2,
-      `**Fase 2 — quanti panini.** Chiedi quanti panini vuole e stampa \`Panini: ${a.panini}\`. La risposta di \`input()\` è un testo: ` +
+      `**Fase 2 — quanti panini.** Chiedi \`Quanti panini? \` e stampa \`Panini: ${a.panini}\`. La risposta di \`input()\` è un testo: ` +
         `per usarla come numero mettila dentro \`int()\`. Risposte di prova: **${a.nome}**, poi **${a.panini}**.`,
       r2,
     ),
@@ -428,7 +428,7 @@ function fasiScontrino(seme: number): Esercizio[] {
     ),
     fase(
       5,
-      `**Fase 5 — il resto.** Chiedi quanto paga (con \`int()\`) e stampa l'ultima riga: ` +
+      `**Fase 5 — il resto.** Chiedi \`Quanto paghi? \` (con \`int()\`) e stampa l'ultima riga: ` +
         `\`Hai dato ${a.dato} €, resto ${a.dato - a.panini * p.prezzo} €. Grazie ${a.nome}!\`. Risposte di prova: **${a.nome}**, **${a.panini}**, **${a.dato}**.`,
       r5,
     ),

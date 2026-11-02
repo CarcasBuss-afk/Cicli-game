@@ -77,7 +77,7 @@ export function fasiParola(seme: number): Esercizio[] {
   return conNote([
     fase(
       1,
-      `**Fase 1 — richiedi finché non è giusta.** La parola d'ordine è \`${parola}\`. Chiedila con \`input()\` **prima** del ciclo; poi un \`while\` gira ` +
+      `**Fase 1 — richiedi finché non è giusta.** La parola d'ordine è \`${parola}\`. Chiedila con \`input()\` e la domanda \`Parola d'ordine? \` **prima** del ciclo; poi un \`while\` gira ` +
         `finché la risposta è **diversa** da \`${parola}\`: dentro stampa \`Sbagliata, riprova\` e **richiede** la parola, in fondo al corpo. ` +
         `Quando esce dal ciclo stampa \`Porta aperta!\`. Risposte di prova: ${mostrate.map((s) => `**${s}**`).join(', ')}, poi **${parola}**.`,
       `${domanda}\nwhile parola != "${parola}":\n    print("Sbagliata, riprova")\n    ${domanda}\nprint("Porta aperta!")`,
@@ -208,7 +208,7 @@ export function fasiCassa(seme: number): Esercizio[] {
     ),
     fase(
       5,
-      `**Fase 5 — il resto.** Chiuso lo scontrino, chiedi quanto paga (con \`int()\`) e stampa \`Resto: ${pagatoCassa(mostrati) - tot} €\`. ` +
+      `**Fase 5 — il resto.** Chiuso lo scontrino, chiedi \`Quanto paga? \` (con \`int()\`) e stampa \`Resto: ${pagatoCassa(mostrati) - tot} €\`. ` +
         `Risposte di prova: ${mostrati.map((x) => `**${x}**`).join(', ')}, **0**, poi **${pagatoCassa(mostrati)}**.`,
       r5,
       { regola: regolaCassa(5) + ' Quanto paga arriva da `input()` dopo il ciclo.' },
