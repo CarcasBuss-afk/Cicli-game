@@ -172,7 +172,7 @@ test.describe("l'Officina", () => {
     expect(ancora.scheda).toEqual(a.scheda);
   });
 
-  test('fase per fase: bozza salvata, tutor che costa fino a 5, voto a fine, media, compito dopo sbloccato', async ({ request }) => {
+  test('fase per fase: bozza salvata, tutor che costa mezzo punto, voto a fine, media, compito dopo sbloccato', async ({ request }) => {
     const { classeId, luca, fasi } = await scenario(request);
     const dati = { classeId, compitoId: 'cartello' };
 
@@ -182,13 +182,13 @@ test.describe("l'Officina", () => {
     const riaperto = (await officina(request, luca, 'compito', dati)).corpo;
     expect(riaperto.esercizio.codiceIniziale).toBe('for i in range(3):\n    print(i)');
 
-    // Sette domande: il voto scende fino a 5 e poi si ferma, ma il tutor risponde ancora.
+    // Sette domande: il voto scende di mezzo punto a domanda.
     const lunga = 'Non capisco: ' + 'perché il ciclo non stampa le settimane? '.repeat(30);
     for (let i = 1; i <= 7; i++) {
       const t = await officina(request, luca, 'tutor', { ...dati, domanda: i === 1 ? lunga : 'ancora', codice: '' });
       expect(t.stato, JSON.stringify(t.corpo)).toBe(200);
       expect(t.corpo.risposta).toBeTruthy();
-      expect(t.corpo).toMatchObject({ consigli: i, votoSeFinisci: Math.max(5, 10 - i) });
+      expect(t.corpo).toMatchObject({ consigli: i, votoSeFinisci: 10 - i / 2 });
     }
     const conTutor = (await officina(request, luca, 'compito', dati)).corpo;
     expect(conTutor.tutor).toHaveLength(7);
@@ -196,7 +196,7 @@ test.describe("l'Officina", () => {
 
     const giusta = await officina(request, luca, 'consegna', { ...dati, fase: 0, codice: fasi[0].soluzione });
     expect(giusta.corpo.promosso, JSON.stringify(giusta.corpo)).toBe(true);
-    expect(giusta.corpo).toMatchObject({ fasi: 1, finito: false, voto: null, votoSeFinisci: 5 });
+    expect(giusta.corpo).toMatchObject({ fasi: 1, finito: false, voto: null, votoSeFinisci: 6.5 });
     expect(giusta.corpo.esercizio.codiceIniziale).toBe(fasi[0].soluzione);
     const fuori = await officina(request, luca, 'consegna', { ...dati, fase: 0, codice: fasi[0].soluzione });
     expect(fuori.stato).toBe(409);
@@ -205,11 +205,11 @@ test.describe("l'Officina", () => {
     for (let k = 1; k < 5; k++) {
       const r = await officina(request, luca, 'consegna', { ...dati, fase: k, codice: fasi[k].soluzione });
       expect(r.corpo.promosso, `fase ${k + 1}: ${JSON.stringify(r.corpo)}`).toBe(true);
-      if (k === 4) expect(r.corpo).toMatchObject({ finito: true, voto: 5 });
+      if (k === 4) expect(r.corpo).toMatchObject({ finito: true, voto: 6.5 });
     }
     const p = (await officina(request, luca, 'compiti', { classeId })).corpo;
-    expect(p.media).toBe(5);
-    expect(p.compiti[0]).toMatchObject({ stato: 'finito', voto: 5, consigli: 7 });
+    expect(p.media).toBe(6.5);
+    expect(p.compiti[0]).toMatchObject({ stato: 'finito', voto: 6.5, consigli: 7 });
     expect(p.compiti[1].stato).toBe('da-cominciare');
     expect(p.compiti[2].stato).toBe('bloccato');
     const dopo = await officina(request, luca, 'tutor', { ...dati, domanda: 'e ora?', codice: '' });
@@ -219,7 +219,7 @@ test.describe("l'Officina", () => {
     // Il secondo compito, senza domande: la media sale.
     await finisci(request, luca, classeId, 'classifica');
     const p2 = (await officina(request, luca, 'compiti', { classeId })).corpo;
-    expect(p2.media).toBe(7.5);
+    expect(p2.media).toBe(8.3);
     expect(p2.compiti[2].stato).toBe('da-cominciare');
   });
 
@@ -267,7 +267,7 @@ test.describe("l'Officina", () => {
     expect(diTroppo.corpo.error).toBe('DOMANDE_FINITE');
     expect((await officina(request, luca, 'compito', dati)).corpo).toMatchObject({ consigli: 30, domandeRimaste: 0 });
 
-    // Si va avanti lo stesso, e il compito finito vale 5 come con cinque domande.
+    // Si va avanti lo stesso, e il compito finito vale 5 come con dieci domande.
     for (let k = 0; k < 5; k++) {
       const r = await officina(request, luca, 'consegna', { ...dati, fase: k, codice: fasi[k].soluzione });
       expect(r.corpo.promosso, `fase ${k + 1}: ${JSON.stringify(r.corpo)}`).toBe(true);
@@ -470,10 +470,10 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await expect(page.getByRole('group', { name: 'domande rapide' }).getByRole('button')).toHaveCount(3);
     await page.getByRole('button', { name: 'Non capisco la consegna' }).click();
     await expect(page.getByLabel('domanda al tutor')).toHaveValue('Non capisco la consegna');
-    await expect(page.getByText('il voto passa da 10 a 9')).toBeVisible();
+    await expect(page.getByText('il voto passa da 10 a 9,5')).toBeVisible();
     await page.getByRole('button', { name: /Sì, manda/ }).click();
     await expect(page.getByLabel('conversazione con il tutor').locator('li')).toHaveCount(1);
-    await expect(page.getByLabel('voto')).toHaveText('9');
+    await expect(page.getByLabel('voto')).toHaveText('9,5');
 
     // L'esito della consegna sbagliata si può togliere.
     await expect(page.getByText('Il tuo codice ha stampato:')).toBeVisible();
@@ -490,7 +490,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await expect(prova).toContainText('Ciao Luca');
     await expect(prova).toContainText('fine del programma');
     await expect(page.getByRole('button', { name: 'Riprova ▶' })).toBeVisible();
-    await expect(page.getByLabel('voto')).toHaveText('9');
+    await expect(page.getByLabel('voto')).toHaveText('9,5');
     // Si azzera a mano, e da sola passando alla fase dopo o a un altro compito.
     await page.getByRole('button', { name: 'Azzera ✕' }).click();
     await expect(prova).toHaveCount(0);

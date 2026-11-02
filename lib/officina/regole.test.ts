@@ -11,9 +11,9 @@ describe('il seme per allievo', () => {
 });
 
 describe('il voto del compito', () => {
-  it('solo a compito finito: 10 meno le domande, mai sotto 5', () => {
+  it('solo a compito finito: 10 meno mezzo punto a domanda, mai sotto 5', () => {
     expect(votoLavoro({ fasi: 5, consigli: 0 })).toBe(10);
-    expect(votoLavoro({ fasi: 5, consigli: 7 })).toBe(5);
+    expect(votoLavoro({ fasi: 5, consigli: 7 })).toBe(6.5);
     expect(votoLavoro({ fasi: 5, consigli: 30 })).toBe(5);
     expect(votoLavoro({ fasi: 3, consigli: 1 })).toBeNull();
   });
@@ -26,7 +26,7 @@ describe('il percorso', () => {
 
     expect(percorsoDi({}, 5, true).every((v) => v.stato === 'da-cominciare')).toBe(true);
     const aMeta = percorsoDi({ [PERCORSO[0]]: { fasi: 5, consigli: 2 }, [PERCORSO[1]]: { fasi: 2, consigli: 0 } });
-    expect(aMeta[0]).toMatchObject({ stato: 'finito', voto: 8 });
+    expect(aMeta[0]).toMatchObject({ stato: 'finito', voto: 9 });
     expect(aMeta[1]).toMatchObject({ stato: 'in-corso', fasi: 2, voto: null });
     expect(aMeta[2].stato).toBe('bloccato');
   });

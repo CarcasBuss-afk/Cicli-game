@@ -67,11 +67,6 @@ export interface SchedaCompito {
   schermoFinale?: RigaSchermo[];
 }
 
-/** Il voto parte da qui e scende di uno a domanda al tutor. */
-export const VOTO_MASSIMO = 10;
-/** Sotto questo non si scende: le domande servono a imparare, non a bocciare. */
-export const VOTO_MINIMO_FINITO = 5;
-
 /* -------------------------------------------------------------- il salvadanaio */
 
 /** Quote settimanali possibili: tonde, così i totali si controllano a mente. */
@@ -595,13 +590,4 @@ export function eCompito(valore: unknown): valore is CompitoId {
   return typeof valore === 'string' && valore in PROGETTI;
 }
 
-/* ----------------------------------------------------------------------- voto */
-
-/**
- * Il voto che l'allievo vede mentre lavora: quello che prende se arriva in fondo, 10 meno
- * un punto a domanda, pavimento 5. È il numero che gli si mostra prima di chiedere un
- * consiglio («costa 1 punto: voto attuale 9»).
- */
-export function votoSeFinisce(consigli: number): number {
-  return Math.max(VOTO_MINIMO_FINITO, VOTO_MASSIMO - Math.max(0, consigli));
-}
+export { votoSeFinisce } from './voto';

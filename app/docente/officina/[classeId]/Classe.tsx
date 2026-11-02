@@ -8,6 +8,7 @@ import { collection, doc, onSnapshot, type Timestamp } from 'firebase/firestore'
 import { getClientDb } from '@/lib/firebaseClient';
 import { FASI_PER_COMPITO, type VoceCompito } from '@/lib/officina/regole';
 import { csvClasse, SEZIONI_PERCORSO, tabellaClasse, TITOLI_PERCORSO, type AllievoVisto, type LavoroVisto } from '@/lib/officina/tabella';
+import { scriviVoto } from '@/lib/officina/voto';
 import { Accesso } from '../../Accesso';
 import { chiamaDocente } from '../../api';
 import { useDocente } from '../../useDocente';
@@ -203,7 +204,7 @@ export function Classe({ classeId }: { classeId: string }) {
                     </button>
                   </td>
                 ))}
-                <td className="px-3 py-2 font-mono text-lg font-black text-(--color-giallo)">{r.media ?? '–'}</td>
+                <td className="px-3 py-2 font-mono text-lg font-black text-(--color-giallo)">{r.media === null ? '–' : scriviVoto(r.media)}</td>
                 <td className="px-3 py-2 text-right">
                   <button
                     onClick={() => {
@@ -236,7 +237,7 @@ function Cella({ v }: { v: VoceCompito }) {
         {v.fasi}/{FASI_PER_COMPITO}
       </span>
       {v.consigli > 0 && <span className="text-sm text-(--color-giallo)">🧑‍🏫 {v.consigli}</span>}
-      {v.voto !== null && <span className="font-mono text-lg font-black text-(--color-giallo)">{v.voto}</span>}
+      {v.voto !== null && <span className="font-mono text-lg font-black text-(--color-giallo)">{scriviVoto(v.voto)}</span>}
     </span>
   );
 }

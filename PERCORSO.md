@@ -408,7 +408,7 @@ vede quante gliene restano sotto le dieci; a zero il pannello lo dice e si va av
 **La porta d'ingresso** (`/`, 22 ottobre 2026): allievi e docente scelgono l'attività da una
 pagina sola, Giro o Officina; l'ingresso del Giro è passato a `/giro`.
 
-**Voto.** Solo a compito finito: 10 − domande al tutor, **mai sotto 5**; arrivati a 5 gli
+**Voto.** Solo a compito finito: 10 − mezzo punto a domanda al tutor (era un punto fino al 2 novembre 2026), **mai sotto 5**; arrivati a 5 gli
 aiuti restano possibili. Un compito in corso non ha voto e non pesa sulla media. L'allievo
 vede la **media dei voti** dei compiti finiti.
 
@@ -571,7 +571,7 @@ Il record e il conteggio **ripartono dal diario già scritto** (`codiceIniziale`
 
 **Il patentino** (`patentino`, `lib/officina/compitiPatentino.ts`) è un compito nella forma, un esame nel modo:
 - **cinque fasi, cinque idee** del percorso, in uno scenario nuovo (il tabellone della gara sociale: N giri di un circuito da L km): ripetere · la variabile in un calcolo (`i * L`) · `input()` dentro il ciclo (il tempo di ogni giro) · l'accumulatore (il tempo totale) · la variabile che ricorda il migliore (il giro più veloce, da un numero grande con `<`);
-- **tutor spento** (`esame: true` nella scheda; l'API risponde `TUTOR_SPENTO`): restano gli hint automatici e gli errori non costano niente. Il voto resta la regola di sempre, 10 meno le domande: senza domande è 10 a chi finisce. Il patentino è un «ce l'ho fatta», non una scala di voti;
+- **tutor spento** (`esame: true` nella scheda; l'API risponde `TUTOR_SPENTO`): restano gli hint automatici e gli errori non costano niente. Il voto resta la regola di sempre, 10 meno mezzo punto a domanda: senza domande è 10 a chi finisce. Il patentino è un «ce l'ho fatta», non una scala di voti;
 - tre gare di prova con gli **stessi giri** (il numero è nel codice) e tempi diversi, col giro più veloce in mezzo, per primo e per ultimo: i tempi scritti a mano cadono sulle gare nascoste, le righe a mano le ferma la regola;
 - chi lo passa vede **«🪪 Patentino preso · voto N»** accanto al titolo della sezione, e «Patentino preso» sul compito. Nella tabella del docente è una colonna come le altre.
 

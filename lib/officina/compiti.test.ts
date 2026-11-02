@@ -167,9 +167,11 @@ describe("la tabella d'allenamento", () => {
 });
 
 describe('il voto', () => {
-  it('mentre lavora, l\'allievo vede il voto che prende se finisce: 10 meno le domande, mai sotto 5', () => {
+  it('mentre lavora, l\'allievo vede il voto che prende se finisce: 10 meno mezzo punto a domanda, mai sotto 5', () => {
     expect(votoSeFinisce(0)).toBe(10);
-    expect(votoSeFinisce(3)).toBe(7);
+    expect(votoSeFinisce(1)).toBe(9.5);
+    expect(votoSeFinisce(3)).toBe(8.5);
+    expect(votoSeFinisce(10)).toBe(5);
     expect(votoSeFinisce(30)).toBe(5);
   });
 

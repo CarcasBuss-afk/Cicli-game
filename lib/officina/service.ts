@@ -291,7 +291,7 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
 const domandeRimaste = (consigli: number) => Math.max(0, MAX_DOMANDE_TUTOR - consigli);
 
 /**
- * Una domanda al tutor: costa un punto (fino al pavimento, poi è gratis ma si conta),
+ * Una domanda al tutor: costa mezzo punto (fino al pavimento, poi è gratis ma si conta),
  * fino al tetto di MAX_DOMANDE_TUTOR per compito.
  */
 export async function tutor(body: Record<string, unknown>, utente: Utente) {

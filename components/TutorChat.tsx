@@ -1,11 +1,12 @@
 'use client';
 
-/* Il tutor dell'Officina: una conversazione sul compito. Ogni domanda costa un punto e
+/* Il tutor dell'Officina: una conversazione sul compito. Ogni domanda costa mezzo punto e
  * l'allievo lo vede prima di mandarla; la domanda può essere lunga quanto vuole. */
 import { useState } from 'react';
 import Testo from '@/components/Testo';
 import { messaggioErrore, type Scambio } from '@/lib/officina/client';
 import { DOMANDE_RAPIDE } from '@/lib/officina/tutorPrompt';
+import { COSTO_DOMANDA, scriviVoto, VOTO_MINIMO_FINITO } from '@/lib/officina/voto';
 
 interface Props {
   scambi: Scambio[];
@@ -46,7 +47,7 @@ export default function TutorChat({ scambi, votoSeFinisci, domandeRimaste, onChi
         <div>
           <p className="font-bold">🧑‍🏫 Il tutor</p>
           <p className="text-sm text-(--color-testo-tenue)">
-            Spiega e ti dice dove guardare, mai il codice. Ogni domanda costa 1 punto.
+            Spiega e ti dice dove guardare, mai il codice. Ogni domanda costa mezzo punto.
             {domandeRimaste > 0 && domandeRimaste <= AVVISO_RIMASTE && (
               <span className="ml-1 text-(--color-giallo)" aria-label="domande rimaste">
                 Te ne {domandeRimaste === 1 ? 'resta una' : `restano ${domandeRimaste}`} su questo compito.
@@ -57,7 +58,7 @@ export default function TutorChat({ scambi, votoSeFinisci, domandeRimaste, onChi
         <p className="text-right">
           <span className="block text-sm text-(--color-testo-tenue)">Voto se arrivi in fondo</span>
           <span className="font-mono text-3xl font-black text-(--color-giallo)" aria-label="voto">
-            {votoSeFinisci}
+            {scriviVoto(votoSeFinisci)}
           </span>
         </p>
       </div>
@@ -122,7 +123,7 @@ export default function TutorChat({ scambi, votoSeFinisci, domandeRimaste, onChi
           ) : (
             <div className="flex flex-wrap items-center gap-3 rounded-xl border border-(--color-giallo)/40 bg-(--color-giallo)/5 p-3">
               <p className="font-bold">
-                Costa 1 punto: il voto passa da {votoSeFinisci} a {Math.max(5, votoSeFinisci - 1)}.
+                Costa mezzo punto: il voto passa da {scriviVoto(votoSeFinisci)} a {scriviVoto(Math.max(VOTO_MINIMO_FINITO, votoSeFinisci - COSTO_DOMANDA))}.
               </p>
               <button
                 type="button"
@@ -130,7 +131,7 @@ export default function TutorChat({ scambi, votoSeFinisci, domandeRimaste, onChi
                 disabled={attesa}
                 className="rounded-lg bg-(--color-giallo) px-4 py-2 font-bold text-black hover:brightness-110 disabled:opacity-50"
               >
-                {attesa ? 'Il tutor ci pensa…' : 'Sì, manda (−1 punto)'}
+                {attesa ? 'Il tutor ci pensa…' : 'Sì, manda (−0,5)'}
               </button>
               <button type="button" onClick={() => setConferma(false)} disabled={attesa} className="text-(--color-testo-tenue) underline">
                 Annulla

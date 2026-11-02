@@ -3,6 +3,7 @@
  * girano nel browser del docente sui dati che arrivano da Firestore in tempo reale. */
 import { schedaCompito, SEZIONI } from './compiti';
 import { mediaVoti, PERCORSO, percorsoDi, type VoceCompito } from './regole';
+import { scriviVoto } from './voto';
 
 export type LavoroVisto = {
   fasi: number;
@@ -47,7 +48,7 @@ export function csvClasse(righe: RigaTabella[]): string {
   const pulisci = (v: string) => (/[;"\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
   const testa = ['Nome', 'Email', ...TITOLI_PERCORSO.flatMap((c) => [`${c.titolo} · fasi`, `${c.titolo} · domande`, `${c.titolo} · voto`]), 'Media'];
   const corpo = righe.map((r) =>
-    [pulisci(r.nome), r.email, ...r.voci.flatMap((v) => [v.fasi, v.consigli, v.voto ?? '']), r.media ?? ''].join(';'),
+    [pulisci(r.nome), r.email, ...r.voci.flatMap((v) => [v.fasi, v.consigli, v.voto === null ? '' : scriviVoto(v.voto)]), r.media === null ? '' : scriviVoto(r.media)].join(';'),
   );
   return [testa.join(';'), ...corpo].join('\n') + '\n';
 }

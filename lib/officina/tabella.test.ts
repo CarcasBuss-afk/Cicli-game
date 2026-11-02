@@ -27,14 +27,14 @@ describe('la tabella della classe', () => {
   it('allievi in ordine, una voce per compito del percorso, con la media', () => {
     expect(righe.map((r) => r.nome)).toEqual(['Anna', 'Marco', 'Zoe']);
     expect(righe[0].voci).toHaveLength(PERCORSO.length);
-    expect(righe[0].media).toBe(8.5); // 10 e 7
-    expect(righe[1].media).toBe(8); // solo il primo è finito
+    expect(righe[0].media).toBe(9.3); // 10 e 8,5
+    expect(righe[1].media).toBe(9); // solo il primo è finito
     expect(righe[2].media).toBeNull();
   });
 
   it('gli stati: finito, in corso, bloccato, da cominciare', () => {
     const [anna, marco, zoe] = righe;
-    expect(marco.voci[0]).toMatchObject({ stato: 'finito', voto: 8 });
+    expect(marco.voci[0]).toMatchObject({ stato: 'finito', voto: 9 });
     expect(marco.voci[1]).toMatchObject({ stato: 'in-corso', fasi: 2, voto: null });
     expect(anna.voci[2]?.stato ?? 'da-cominciare').toBe('da-cominciare');
     expect(zoe.voci[0].stato).toBe('da-cominciare');
@@ -46,7 +46,7 @@ describe('la tabella della classe', () => {
     const [testa, anna] = csv.trim().split('\n');
     expect(testa.startsWith(`Nome;Email;${TITOLI_PERCORSO[0].titolo} · fasi;${TITOLI_PERCORSO[0].titolo} · domande;${TITOLI_PERCORSO[0].titolo} · voto;`)).toBe(true);
     expect(testa.endsWith(';Media')).toBe(true);
-    expect(anna.startsWith('Anna;anna@scuola.it;5;0;10;5;3;7;')).toBe(true);
-    expect(anna.endsWith(';8.5')).toBe(true);
+    expect(anna.startsWith('Anna;anna@scuola.it;5;0;10;5;3;8,5;')).toBe(true);
+    expect(anna.endsWith(';9,3')).toBe(true);
   });
 });

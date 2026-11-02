@@ -2,7 +2,7 @@
  *
  * Non è una gara: ogni allievo percorre da solo, al suo ritmo, lo stesso elenco di compiti
  * (i progetti nell'ordine didattico), uno sbloccato alla volta: il successivo si apre
- * quando il precedente è finito. Il voto c'è solo a compito finito: 10 meno un punto a
+ * quando il precedente è finito. Il voto c'è solo a compito finito: 10 meno mezzo punto a
  * domanda al tutor, mai sotto 5; gli aiuti restano possibili anche a 5.
  *
  * Modulo puro: niente Firestore, niente Next.

@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { chiamaOfficina, messaggioErrore, type CompitoInElenco, type Percorso, type SezionePercorso } from '@/lib/officina/client';
+import { scriviVoto } from '@/lib/officina/voto';
 import { AccessoAllievo } from './Accesso';
 import { useAllievo } from './useAllievo';
 
@@ -57,7 +58,7 @@ export function Officina() {
               <p className="text-(--color-testo-tenue)">
                 Media dei voti{' '}
                 <span className="font-mono text-2xl font-black text-(--color-giallo)" aria-label="media">
-                  {p.media ?? '–'}
+                  {p.media === null ? '–' : scriviVoto(p.media)}
                 </span>
               </p>
             </div>
@@ -70,7 +71,7 @@ export function Officina() {
               <SezioneDelPercorso key={s.id} sezione={s} compiti={p.compiti} classe={p.classe} />
             ))}
             <p className="text-sm text-(--color-testo-tenue)">
-              I compiti si sbloccano uno alla volta. Il voto è 10 meno le domande al tutor, mai sotto 5: puoi chiedere aiuto quanto vuoi. Nel patentino il tutor è spento.
+              I compiti si sbloccano uno alla volta. Il voto è 10 meno mezzo punto per ogni domanda al tutor, mai sotto 5: puoi chiedere aiuto quanto vuoi. Nel patentino il tutor è spento.
             </p>
           </section>
         ))
@@ -99,7 +100,7 @@ function SezioneDelPercorso({ sezione, compiti, classe }: { sezione: SezionePerc
         <span>{sezione.titolo}</span>
         {esame && (
           <span className="rounded-full border border-(--color-verde)/50 bg-(--color-verde)/10 px-3 py-0.5 text-sm text-(--color-verde)" aria-label="patentino">
-            🪪 Patentino preso · voto {esame.voto}
+            🪪 Patentino preso · voto {esame.voto === null ? '' : scriviVoto(esame.voto)}
           </span>
         )}
       </h3>
@@ -146,7 +147,7 @@ function Stato({ k }: { k: CompitoInElenco }) {
     case 'finito':
       return (
         <span className="text-(--color-verde)">
-          {k.esame ? 'Patentino preso' : 'Finito'} · voto <b className="font-mono text-lg">{k.voto}</b>
+          {k.esame ? 'Patentino preso' : 'Finito'} · voto <b className="font-mono text-lg">{k.voto === null ? '' : scriviVoto(k.voto)}</b>
         </span>
       );
     case 'in-corso':

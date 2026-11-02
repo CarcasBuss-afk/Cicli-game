@@ -14,6 +14,7 @@ import TutorChat from '@/components/TutorChat';
 import type { RigaSchermo } from '@/lib/giro/interprete';
 import { suonoErrore, suonoTappa, suonoTraguardo } from '@/lib/giro/suoni';
 import { chiamaOfficina, ErroreOfficina, messaggioErrore, type CompitoAperto, type RispostaConsegna, type RispostaTutor } from '@/lib/officina/client';
+import { scriviVoto } from '@/lib/officina/voto';
 import { AccessoAllievo } from '../../Accesso';
 import { useAllievo } from '../../useAllievo';
 
@@ -220,7 +221,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
       {c.finito && (
         <section ref={finitoRef} className="scroll-mt-4 rounded-2xl border border-(--color-giallo)/50 bg-(--color-giallo)/10 p-5 text-center">
           <p className="text-sm text-(--color-testo-tenue)">{c.esame ? '🪪 Patentino preso! Il tuo voto' : 'Programma finito! Il tuo voto'}</p>
-          <p className="font-mono text-6xl font-black text-(--color-giallo)">{c.voto}</p>
+          <p className="font-mono text-6xl font-black text-(--color-giallo)">{c.voto === null ? '' : scriviVoto(c.voto)}</p>
           <p className="text-(--color-testo-tenue)">
             {c.fasi} {c.fasi === 1 ? 'fase' : 'fasi'} su {c.fasiTotali}
             {!c.esame && ` · ${c.consigli} ${c.consigli === 1 ? 'domanda' : 'domande'} al tutor`}
@@ -333,7 +334,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
 
       <footer className="mt-auto pt-4 text-center text-sm text-(--color-testo-tenue)">
         Gli errori non costano niente e il lavoro resta salvato: puoi chiudere e riprendere quando vuoi.
-        {!c.esame && ' Solo le domande al tutor costano un punto.'}
+        {!c.esame && ' Solo le domande al tutor costano mezzo punto.'}
       </footer>
     </main>
   );
