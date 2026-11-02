@@ -93,4 +93,5 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 13d. Il giudice su Sonnet con il verdetto corto, i controlli sul testo prima del giudice, il registro dei giudizi per il docente.
 - [x] 13e. Le note per il tutor anche sugli undici compiti della sezione `while` (30 ottobre 2026). Decisione di Fabio: niente esempio di sintassi su un caso estraneo, resta «mai codice».
 - [x] 13f. Controllo a freddo del tutor nuovo sulle sei bozze ferme della prima settimana: sei risposte su sei centrate, 64-76 parole, mai codice (30 ottobre 2026).
+- [x] 13h. Revisione dei dodici compiti `while` con l'interprete vero: hint sul `while`, confini delle prove, patentino a 100%, regole del giudice per fase, consegne e note (1-2 novembre 2026).
 - [ ] 13g. Dopo la prima lezione con le novità: rileggere dal database conversazioni, bozze ferme, registro del giudice ed errori per fase; confrontare con la prima settimana.

@@ -121,8 +121,8 @@ export function fasiObiettivo(seme: number): Esercizio[] {
     {
       ...b,
       consegna:
-        `**Fase 5 — il resto.** Con alcune quote si supera l'obiettivo. Dopo il ciclo, un \`if\`: se \`totale\` è più grande di ${obiettivo} stampa ` +
-        `\`Ti avanzano 5 €\` se ne avanzano 5 (il numero è \`totale - ${obiettivo}\`, calcolato dal programma), altrimenti \`Giusto giusto, niente resto\`. Con la quota di prova ${quota} si arriva giusti.`,
+        `**Fase 5 — il resto.** Con alcune quote si supera l'obiettivo. Dopo il ciclo, un \`if\`: se \`totale\` è più grande di ${obiettivo} stampa quanto avanza, per esempio ` +
+        `\`Ti avanzano 5 €\` (il numero è \`totale - ${obiettivo}\`, calcolato dal programma), altrimenti \`Giusto giusto, niente resto\`. Con la quota di prova ${quota} si arriva giusti.`,
       outputAtteso: righeObiettivo(p, quota, 5),
       prove: prove(5),
       soluzione: `${r4}\nif totale > ${obiettivo}:\n    print(f"Ti avanzano {totale - ${obiettivo}} €")\nelse:\n    print("Giusto giusto, niente resto")`,
