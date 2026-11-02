@@ -6,11 +6,12 @@
  * presa apposta per l'Officina (PERCORSO.md §12), non vale per il Giro. */
 import 'server-only';
 import { getAuth } from 'firebase-admin/auth';
-import { getAdminApp } from '@/lib/firebaseAdmin';
+import { getAdminApp, teacherEmails } from '@/lib/firebaseAdmin';
 import { ApiError } from '@/lib/giro/http';
 import { dominiAmmessi, emailAmmessa } from './regole';
 
-export type Utente = { uid: string; email: string; nome: string };
+/** `docente`: l'email sta in TEACHER_EMAILS. Il prof prova i compiti: per lui niente blocchi (PERCORSO.md §23). */
+export type Utente = { uid: string; email: string; nome: string; docente: boolean };
 
 export async function verificaAllievo(request: Request): Promise<Utente> {
   const intestazione = request.headers.get('authorization') ?? '';
@@ -31,7 +32,7 @@ export async function verificaAllievo(request: Request): Promise<Utente> {
     throw new ApiError(403, 'DOMINIO_NON_AMMESSO', `Entra con l'account della scuola (@${domini.join(' o @')}), non con ${email}`);
   }
   const nome = (typeof decoded.name === 'string' && decoded.name.trim()) || email.split('@')[0];
-  return { uid: decoded.uid, email, nome };
+  return { uid: decoded.uid, email, nome, docente: teacherEmails().includes(email) };
 }
 
 export type AzioneAllievo = (body: Record<string, unknown>, utente: Utente) => Promise<unknown>;

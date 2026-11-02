@@ -46,7 +46,7 @@ export async function io(_body: Record<string, unknown>, utente: Utente) {
   const classi = await Promise.all(
     (app?.classi ?? []).map(async (id) => {
       const c = (await classiRef().doc(id).get()).data() as ClasseDoc | undefined;
-      return c ? { id, nome: c.nome, chiusa: c.chiusa } : null;
+      return c ? { id, nome: c.nome, chiusa: c.chiusa && !utente.docente } : null;
     }),
   );
   return { uid: utente.uid, email: utente.email, nome: utente.nome, classi: classi.filter((c) => c !== null) };
@@ -122,9 +122,9 @@ function fasiDi(progetto: CompitoId, uid: string): Esercizio[] {
 }
 
 /** Il compito richiesto, se è nel percorso e sbloccato per questo allievo. */
-function compitoAperto(allievo: AllievoOfficinaDoc, compitoId: string) {
+function compitoAperto(allievo: AllievoOfficinaDoc, compitoId: string, docente: boolean) {
   if (!eCompito(compitoId)) throw new ApiError(404, 'COMPITO_NON_TROVATO', 'Compito inesistente');
-  const voce = percorsoDi(allievo.lavori ?? {}).find((v) => v.id === compitoId);
+  const voce = percorsoDi(allievo.lavori ?? {}, FASI_PER_COMPITO, docente).find((v) => v.id === compitoId);
   if (!voce) throw new ApiError(404, 'COMPITO_NON_TROVATO', 'Compito inesistente');
   if (voce.stato === 'bloccato') throw new ApiError(403, 'BLOCCATO', 'Questo compito si sblocca quando finisci il precedente');
   return { progetto: compitoId, voce, lavoro: allievo.lavori?.[compitoId] ?? lavoroVuoto() };
@@ -135,9 +135,9 @@ function compitoAperto(allievo: AllievoOfficinaDoc, compitoId: string) {
 /** Il percorso dell'allievo: tutti i compiti con lo stato, le sezioni in cui stanno, e la media. */
 export async function compiti(body: Record<string, unknown>, utente: Utente) {
   const ctx = await contesto(body, utente);
-  const voci = percorsoDi(ctx.allievo.lavori ?? {});
+  const voci = percorsoDi(ctx.allievo.lavori ?? {}, FASI_PER_COMPITO, utente.docente);
   return {
-    classe: { id: ctx.classeId, nome: ctx.classe.nome, chiusa: ctx.classe.chiusa },
+    classe: { id: ctx.classeId, nome: ctx.classe.nome, chiusa: ctx.classe.chiusa && !utente.docente },
     compiti: voci.map((v) => ({
       ...v,
       fasiTotali: FASI_PER_COMPITO,
@@ -154,7 +154,7 @@ export async function compiti(body: Record<string, unknown>, utente: Utente) {
 /** Il compito aperto: scheda, fase da fare, codice da cui ripartire, conversazione col tutor. */
 export async function compito(body: Record<string, unknown>, utente: Utente) {
   const ctx = await contesto(body, utente);
-  const { progetto, voce, lavoro } = compitoAperto(ctx.allievo, testo(body.compitoId, 64));
+  const { progetto, voce, lavoro } = compitoAperto(ctx.allievo, testo(body.compitoId, 64), utente.docente);
   const fasi = fasiDi(progetto, utente.uid);
   const finito = voce.stato === 'finito';
   const esercizio = !finito ? fasi[lavoro.fasi] : undefined;
@@ -163,7 +163,7 @@ export async function compito(body: Record<string, unknown>, utente: Utente) {
   const daCui = lavoro.bozza || (lavoro.fasi > 0 ? lavoro.codice?.[String(lavoro.fasi - 1)] : '') || esercizio?.codiceIniziale || '';
   return {
     id: progetto,
-    classeChiusa: ctx.classe.chiusa,
+    classeChiusa: ctx.classe.chiusa && !utente.docente,
     esame: eEsame(progetto),
     fasi: lavoro.fasi,
     fasiTotali: FASI_PER_COMPITO,
@@ -187,17 +187,17 @@ function intero(v: unknown): number {
 }
 
 /** Controlli comuni a consegna e tutor: classe aperta, compito sbloccato e non finito. */
-function lavoroInCorso(ctx: Contesto, body: Record<string, unknown>, uid: string) {
-  if (ctx.classe.chiusa) throw new ApiError(403, 'CLASSE_CHIUSA', "L'Officina è chiusa: il prof la riapre alla prossima lezione");
-  const { progetto, voce, lavoro } = compitoAperto(ctx.allievo, testo(body.compitoId, 64));
+function lavoroInCorso(ctx: Contesto, body: Record<string, unknown>, { uid, docente }: Utente) {
+  if (ctx.classe.chiusa && !docente) throw new ApiError(403, 'CLASSE_CHIUSA', "L'Officina è chiusa: il prof la riapre alla prossima lezione");
+  const { progetto, voce, lavoro } = compitoAperto(ctx.allievo, testo(body.compitoId, 64), docente);
   if (voce.stato === 'finito') throw new ApiError(403, 'FINITO', 'Hai già finito questo compito!');
   const fasi = fasiDi(progetto, uid);
   return { progetto, lavoro, fasi, esercizio: fasi[lavoro.fasi] };
 }
 
 /** La fase che l'allievo sta consegnando: i controlli, uguali nei due tempi della consegna. */
-function faseInConsegna(ctx: Contesto, body: Record<string, unknown>, uid: string) {
-  const aperto = lavoroInCorso(ctx, body, uid);
+function faseInConsegna(ctx: Contesto, body: Record<string, unknown>, utente: Utente) {
+  const aperto = lavoroInCorso(ctx, body, utente);
   const f = intero(body.fase);
   if (f !== aperto.lavoro.fasi) {
     throw new ApiError(409, 'FASE_SBAGLIATA', `Stai consegnando la fase ${f + 1} ma sei alla fase ${aperto.lavoro.fasi + 1}: ricarica la pagina`);
@@ -217,12 +217,12 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
   limita(utente);
   const codice = typeof body.codice === 'string' ? body.codice.slice(0, 6000) : '';
 
-  const prima = faseInConsegna(await contesto(body, utente), body, utente.uid);
+  const prima = faseInConsegna(await contesto(body, utente), body, utente);
   const valutazione = await verificaConsegna(prima.esercizio, codice);
 
   return getDb().runTransaction(async (tx) => {
     const ctx = await contesto(body, utente, tx);
-    const { progetto, lavoro, fasi, f } = faseInConsegna(ctx, body, utente.uid);
+    const { progetto, lavoro, fasi, f } = faseInConsegna(ctx, body, utente);
     const salva = (dati: Partial<LavoroDoc>) =>
       tx.set(ctx.allievoRef, { lavori: { [progetto]: { ...lavoro, ...dati, ultimoAt: Timestamp.now() } } }, { merge: true });
     // Il registro del giudice: ogni verdetto (anche il guasto) resta, il docente lo legge.
@@ -286,7 +286,7 @@ export async function tutor(body: Record<string, unknown>, utente: Utente) {
   const codice = typeof body.codice === 'string' ? body.codice.slice(0, 6000) : '';
 
   const ctx = await contesto(body, utente);
-  const { progetto, lavoro, esercizio } = lavoroInCorso(ctx, body, utente.uid);
+  const { progetto, lavoro, esercizio } = lavoroInCorso(ctx, body, utente);
   if (eEsame(progetto)) {
     throw new ApiError(403, 'TUTOR_SPENTO', 'Nel patentino il tutor è spento: è un esame, ce la fai da solo. Gli hint automatici restano');
   }

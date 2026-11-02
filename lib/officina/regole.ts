@@ -51,12 +51,13 @@ export function votoLavoro(l: ProgressoCompito, fasiTotali = FASI_PER_COMPITO): 
  * Il percorso di un allievo: ogni compito con il suo stato. Il primo è sempre aperto; ogni
  * altro si sblocca quando il precedente è finito.
  */
-export function percorsoDi(lavori: Record<string, ProgressoCompito | undefined>, fasiTotali = FASI_PER_COMPITO): VoceCompito[] {
+/** Con `tuttiAperti` niente è bloccato: è il docente che prova i compiti. */
+export function percorsoDi(lavori: Record<string, ProgressoCompito | undefined>, fasiTotali = FASI_PER_COMPITO, tuttiAperti = false): VoceCompito[] {
   let precedenteFinito = true;
   return PERCORSO.map((id) => {
     const l = lavori[id] ?? { fasi: 0, consigli: 0 };
     const finito = l.fasi >= fasiTotali;
-    const stato: StatoCompito = finito ? 'finito' : !precedenteFinito ? 'bloccato' : l.fasi > 0 ? 'in-corso' : 'da-cominciare';
+    const stato: StatoCompito = finito ? 'finito' : !precedenteFinito && !tuttiAperti ? 'bloccato' : l.fasi > 0 ? 'in-corso' : 'da-cominciare';
     precedenteFinito = finito;
     return { id, stato, fasi: l.fasi, consigli: l.consigli, voto: finito ? votoSeFinisce(l.consigli) : null };
   });

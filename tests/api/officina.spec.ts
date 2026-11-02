@@ -73,6 +73,30 @@ async function finisci(request: APIRequestContext, u: Utente, classeId: string, 
 }
 
 test.describe("l'Officina", () => {
+  test('il docente prova i compiti: tutti sbloccati, anche a classe chiusa', async ({ request }) => {
+    const { fabio, classeId, luca } = await scenario(request);
+    const r = await request.post('/api/officina/test-login', { data: { email: TEACHER_EMAIL, nome: 'Fabio' } });
+    const d = (await r.json()) as { token: string; uid: string };
+    const prof2: Utente = { token: await idToken(request, d.token), uid: d.uid, email: TEACHER_EMAIL };
+    expect((await officina(request, prof2, 'entra', { classeId })).stato).toBe(200);
+
+    const elenco = await officina(request, prof2, 'compiti', { classeId });
+    expect(elenco.corpo.compiti.some((c: { stato: string }) => c.stato === 'bloccato')).toBe(false);
+
+    expect((await prof(request, fabio, 'chiudiClasse', { classeId })).stato).toBe(200);
+    const aperto = await officina(request, prof2, 'compito', { classeId, compitoId: 'duello' });
+    expect(aperto.stato).toBe(200);
+    expect(aperto.corpo.classeChiusa).toBe(false);
+    const fasi = await fasiDi(request, prof2.uid, 'duello');
+    const c = await officina(request, prof2, 'consegna', { classeId, compitoId: 'duello', fase: 0, codice: fasi[0].soluzione });
+    expect(c.corpo.promosso, JSON.stringify(c.corpo)).toBe(true);
+
+    // Per l'allievo non cambia niente.
+    expect((await officina(request, luca, 'compito', { classeId, compitoId: 'duello' })).corpo.error).toBe('BLOCCATO');
+    const fasiLuca = await fasiDi(request, luca.uid, 'cartello');
+    expect((await officina(request, luca, 'consegna', { classeId, compitoId: 'cartello', fase: 0, codice: fasiLuca[0].soluzione })).corpo.error).toBe('CLASSE_CHIUSA');
+  });
+
   test('la classe si sceglie da un elenco; il percorso è sbloccato un compito alla volta', async ({ request }) => {
     const { classeId, nomeClasse, luca } = await scenario(request);
     const io = (await officina(request, luca, 'io')).corpo;

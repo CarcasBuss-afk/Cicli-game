@@ -24,6 +24,7 @@ describe('il percorso', () => {
     const vuoto = percorsoDi({});
     expect(vuoto.map((v) => v.stato)).toEqual(['da-cominciare', ...PERCORSO.slice(1).map(() => 'bloccato')]);
 
+    expect(percorsoDi({}, 5, true).every((v) => v.stato === 'da-cominciare')).toBe(true);
     const aMeta = percorsoDi({ [PERCORSO[0]]: { fasi: 5, consigli: 2 }, [PERCORSO[1]]: { fasi: 2, consigli: 0 } });
     expect(aMeta[0]).toMatchObject({ stato: 'finito', voto: 8 });
     expect(aMeta[1]).toMatchObject({ stato: 'in-corso', fasi: 2, voto: null });
