@@ -30,6 +30,8 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
   /** La festa della fase appena superata: quale fase, e se con quella il compito è finito. */
   const [festa, setFesta] = useState<{ fase: number; finito: boolean } | null>(null);
   const [scoppio, setScoppio] = useState(0);
+  /** Cresce a ogni «ricomincia»: editor e prova ripartono vuoti anche se la fase resta la stessa. */
+  const [ripartenza, setRipartenza] = useState(0);
   const codiceRef = useRef('');
   const cardRef = useRef<HTMLElement>(null);
   const finitoRef = useRef<HTMLElement>(null);
@@ -99,6 +101,25 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
       setInvio(false);
     }
   }, [c, invio, classeId, compitoId, carica]);
+
+  const ricomincia = useCallback(async () => {
+    if (invio || !window.confirm('Ricominciare il compito da capo? Fasi, bozza, errori e tutor di questo compito si cancellano.')) return;
+    setInvio(true);
+    try {
+      await chiamaOfficina('ricomincia', { classeId, compitoId });
+      codiceRef.current = '';
+      setHint(null);
+      setRigaErrore(null);
+      setOutput(null);
+      setSchermo(null);
+      setRipartenza((n) => n + 1);
+      await carica();
+    } catch (e) {
+      setErrore(messaggioErrore(e));
+    } finally {
+      setInvio(false);
+    }
+  }, [invio, classeId, compitoId, carica]);
 
   const chiedi = useCallback(
     async (domanda: string) => {
@@ -226,6 +247,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
             </div>
           )}
           <EditorPython
+            key={`editor-${ripartenza}`}
             valoreIniziale={es.codiceIniziale ?? ''}
             tappa={c.fasi}
             onChange={(v) => {
@@ -235,7 +257,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
             attivo={!invio && !c.classeChiusa}
             rigaErrore={rigaErrore}
           />
-          <Prova codice={() => codiceRef.current} fase={c.fasi} attivo={!c.classeChiusa} />
+          <Prova key={`prova-${ripartenza}`} codice={() => codiceRef.current} fase={c.fasi} attivo={!c.classeChiusa} />
           <div className="flex flex-wrap items-center gap-3 border-t border-(--color-bordo) pt-4">
             <button
               onClick={() => void consegna()}
@@ -276,6 +298,15 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
       {errore && (
         <section role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-200">
           {errore}
+        </section>
+      )}
+
+      {c.docente && (
+        <section aria-label="strumenti del docente" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-dashed border-(--color-bordo) p-3">
+          <span className="text-sm text-(--color-testo-tenue)">Solo per te, docente: riporta questo compito a zero per riprovarlo.</span>
+          <button onClick={() => void ricomincia()} disabled={invio} className="rounded-lg border border-(--color-bordo) px-3 py-1.5 font-bold hover:bg-white/5 disabled:opacity-40">
+            Ricomincia da capo
+          </button>
         </section>
       )}
 

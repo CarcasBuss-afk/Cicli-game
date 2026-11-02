@@ -70,6 +70,8 @@ export type Percorso = { classe: { id: string; nome: string; chiusa: boolean }; 
 export type Scambio = { fase: number; domanda: string; risposta: string };
 
 export type CompitoAperto = {
+  /** Il docente che prova il compito: può ricominciarlo da capo. */
+  docente: boolean;
   id: string;
   /** Fine lezione: si guarda ma non si consegna né si chiede, finché il prof non riapre. */
   classeChiusa: boolean;

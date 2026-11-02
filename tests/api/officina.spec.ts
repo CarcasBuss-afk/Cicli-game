@@ -376,6 +376,46 @@ async function accedi(page: Page, email: string) {
 }
 
 test.describe("l'Officina nella pagina dell'allievo", () => {
+  test("il docente ricomincia un compito da capo; l'allievo non può e non vede il pulsante", async ({ page, request }) => {
+    const { classeId, luca, fasi } = await scenario(request);
+    const r = await request.post('/api/officina/test-login', { data: { email: TEACHER_EMAIL, nome: 'Fabio' } });
+    const d = (await r.json()) as { token: string; uid: string };
+    const fabio: Utente = { token: await idToken(request, d.token), uid: d.uid, email: TEACHER_EMAIL };
+    await officina(request, fabio, 'entra', { classeId });
+    const sue = await fasiDi(request, fabio.uid, 'cartello');
+    for (let k = 0; k < 5; k++) await officina(request, fabio, 'consegna', { classeId, compitoId: 'cartello', fase: k, codice: sue[k].soluzione });
+    expect((await officina(request, fabio, 'compito', { classeId, compitoId: 'cartello' })).corpo.finito).toBe(true);
+
+    // L'allievo: niente azione, niente pulsante.
+    await officina(request, luca, 'consegna', { classeId, compitoId: 'cartello', fase: 0, codice: fasi[0].soluzione });
+    const rifiuto = await officina(request, luca, 'ricomincia', { classeId, compitoId: 'cartello' });
+    expect(rifiuto.stato).toBe(403);
+    expect((await officina(request, luca, 'compito', { classeId, compitoId: 'cartello' })).corpo.fasi).toBe(1);
+    await accedi(page, luca.email);
+    await page.getByRole('link', { name: /Il cartello della festa/ }).click();
+    await expect(page.getByRole('heading', { name: 'Il cartello della festa' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Ricomincia da capo' })).toHaveCount(0);
+
+    // Il docente, dalla pagina: il compito finito torna alla fase 1, con l'editor vuoto.
+    await page.goto('/officina');
+    await page.getByRole('button', { name: 'esci' }).click();
+    await accedi(page, TEACHER_EMAIL);
+    // Il docente di prova sta in più classi: si prende il link di questa.
+    await page.locator(`a[href="/officina/${classeId}/cartello"]`).click();
+    await expect(page.getByText('Programma finito! Il tuo voto')).toBeVisible();
+    page.once('dialog', (dialogo) => void dialogo.accept());
+    await page.getByRole('button', { name: 'Ricomincia da capo' }).click();
+    await expect(page.getByRole('button', { name: 'Consegna ✔' })).toBeVisible();
+    await expect(page.getByText('Programma finito! Il tuo voto')).toHaveCount(0);
+    await expect(page.locator('.cm-content')).not.toContainText('print');
+
+    const dopo = await officina(request, fabio, 'compito', { classeId, compitoId: 'cartello' });
+    expect(dopo.corpo).toMatchObject({ fasi: 0, finito: false, errori: 0, consigli: 0, tutor: [], voto: null });
+    // E si può rifare davvero.
+    expect((await officina(request, fabio, 'consegna', { classeId, compitoId: 'cartello', fase: 0, codice: sue[0].soluzione })).corpo.promosso).toBe(true);
+    expect((await officina(request, luca, 'compito', { classeId, compitoId: 'cartello' })).corpo.fasi).toBe(1);
+  });
+
   test('sceglie la classe, vede il percorso, lavora, chiede al tutor, riprende da dove era', async ({ page, request }) => {
     const { classeId, nomeClasse, fasi, luca } = await scenario(request);
 

@@ -164,6 +164,7 @@ export async function compito(body: Record<string, unknown>, utente: Utente) {
   return {
     id: progetto,
     classeChiusa: ctx.classe.chiusa && !utente.docente,
+    docente: utente.docente,
     esame: eEsame(progetto),
     fasi: lavoro.fasi,
     fasiTotali: FASI_PER_COMPITO,
@@ -178,6 +179,19 @@ export async function compito(body: Record<string, unknown>, utente: Utente) {
     tutor: (lavoro.tutor ?? []).map((s) => ({ fase: s.fase + 1, domanda: s.domanda, risposta: s.risposta })),
     errori: lavoro.errori,
   };
+}
+
+/**
+ * Solo per il docente che prova i compiti: riporta il compito a zero (fasi, bozza, errori,
+ * conversazione, voto), così lo rifà da capo. Agli allievi questa strada è chiusa.
+ */
+export async function ricomincia(body: Record<string, unknown>, utente: Utente) {
+  if (!utente.docente) throw new ApiError(403, 'FORBIDDEN', 'Ricominciare un compito è riservato al docente');
+  const ctx = await contesto(body, utente);
+  const { progetto } = compitoAperto(ctx.allievo, testo(body.compitoId, 64), true);
+  // update, non set con merge: il lavoro va sostituito per intero, non fuso con quello di prima.
+  await ctx.allievoRef.update({ [`lavori.${progetto}`]: lavoroVuoto() });
+  return { ok: true };
 }
 
 /* ----------------------------------------------------------------- consegna */
