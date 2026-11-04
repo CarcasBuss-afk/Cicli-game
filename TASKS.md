@@ -98,4 +98,5 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 13j. Le domande fra le righe attese (fase e scheda) in tutti i compiti con `input()`, scritte nelle consegne; «Azzera ✕» sulla Prova e sull'esito della consegna (2 novembre 2026).
 - [x] 13k. Ogni domanda al tutor costa mezzo punto invece di uno, su tutti i compiti; pavimento 5 invariato, voti e medie scritti con la virgola, anche nel CSV (2 novembre 2026).
 - [x] 13l. L'Officina dell'allievo a card per argomento: chiuse all'ingresso, con compiti svolti e voto medio, si aprono con un clic (2 novembre 2026).
+- [x] 13m. La sezione `while` si apre senza i `for`: il primo compito di ogni sezione è sempre aperto, dentro la sezione uno alla volta (4 novembre 2026).
 - [ ] 13g. Dopo la prima lezione con le novità: rileggere dal database conversazioni, bozze ferme, registro del giudice ed errori per fase; confrontare con la prima settimana.

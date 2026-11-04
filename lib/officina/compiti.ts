@@ -562,7 +562,7 @@ export const SEZIONI: Sezione[] = [
   },
 ];
 
-/** Tutti i compiti nell'ordine in cui si sbloccano: sezione dopo sezione. */
+/** Tutti i compiti del percorso, sezione dopo sezione. Lo sblocco è dentro la sezione: `percorsoDi`. */
 export const ELENCO_COMPITI: CompitoId[] = SEZIONI.flatMap((s) => s.compiti);
 
 export function sezioneDi(id: CompitoId): Sezione {

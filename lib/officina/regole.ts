@@ -1,13 +1,14 @@
 /* L'Officina: le regole pure dei compiti di realtà (PERCORSO.md §12).
  *
  * Non è una gara: ogni allievo percorre da solo, al suo ritmo, lo stesso elenco di compiti
- * (i progetti nell'ordine didattico), uno sbloccato alla volta: il successivo si apre
- * quando il precedente è finito. Il voto c'è solo a compito finito: 10 meno mezzo punto a
+ * (i progetti nell'ordine didattico), uno sbloccato alla volta dentro ogni sezione: il
+ * successivo si apre quando il precedente è finito, e il primo di ogni sezione è sempre
+ * aperto. Il voto c'è solo a compito finito: 10 meno mezzo punto a
  * domanda al tutor, mai sotto 5; gli aiuti restano possibili anche a 5.
  *
  * Modulo puro: niente Firestore, niente Next.
  */
-import { ELENCO_COMPITI, votoSeFinisce, type CompitoId } from './compiti';
+import { ELENCO_COMPITI, SEZIONI, votoSeFinisce, type CompitoId } from './compiti';
 
 /** Le fasi di un compito: i progetti ne hanno cinque. */
 export const FASI_PER_COMPITO = 5;
@@ -48,16 +49,19 @@ export function votoLavoro(l: ProgressoCompito, fasiTotali = FASI_PER_COMPITO): 
 }
 
 /**
- * Il percorso di un allievo: ogni compito con il suo stato. Il primo è sempre aperto; ogni
- * altro si sblocca quando il precedente è finito.
+ * Il percorso di un allievo: ogni compito con il suo stato. Il primo di ogni sezione è
+ * sempre aperto (il `while` non aspetta il patentino dei `for`); ogni altro si sblocca
+ * quando il precedente è finito. Con `tuttiAperti` niente è bloccato: è il docente che
+ * prova i compiti.
  */
-/** Con `tuttiAperti` niente è bloccato: è il docente che prova i compiti. */
 export function percorsoDi(lavori: Record<string, ProgressoCompito | undefined>, fasiTotali = FASI_PER_COMPITO, tuttiAperti = false): VoceCompito[] {
+  const primiDiSezione = new Set(SEZIONI.map((s) => s.compiti[0]));
   let precedenteFinito = true;
   return PERCORSO.map((id) => {
     const l = lavori[id] ?? { fasi: 0, consigli: 0 };
     const finito = l.fasi >= fasiTotali;
-    const stato: StatoCompito = finito ? 'finito' : !precedenteFinito && !tuttiAperti ? 'bloccato' : l.fasi > 0 ? 'in-corso' : 'da-cominciare';
+    const aperto = precedenteFinito || primiDiSezione.has(id) || tuttiAperti;
+    const stato: StatoCompito = finito ? 'finito' : !aperto ? 'bloccato' : l.fasi > 0 ? 'in-corso' : 'da-cominciare';
     precedenteFinito = finito;
     return { id, stato, fasi: l.fasi, consigli: l.consigli, voto: finito ? votoSeFinisce(l.consigli) : null };
   });

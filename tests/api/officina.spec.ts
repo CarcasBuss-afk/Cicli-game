@@ -120,7 +120,7 @@ test.describe("l'Officina", () => {
       ['record', 'bloccato'],
       ['conteggio', 'bloccato'],
       ['patentino', 'bloccato'],
-      ['timer', 'bloccato'],
+      ['timer', 'da-cominciare'],
       ['obiettivo', 'bloccato'],
       ['parola', 'bloccato'],
       ['batteria', 'bloccato'],
@@ -144,6 +144,9 @@ test.describe("l'Officina", () => {
     const bloccato = await officina(request, luca, 'compito', { classeId, compitoId: 'classifica' });
     expect(bloccato.stato).toBe(403);
     expect(bloccato.corpo.error).toBe('BLOCCATO');
+    // Il while non aspetta i for: il suo primo compito si apre subito, il secondo no.
+    expect((await officina(request, luca, 'compito', { classeId, compitoId: 'timer' })).stato).toBe(200);
+    expect((await officina(request, luca, 'compito', { classeId, compitoId: 'obiettivo' })).corpo.error).toBe('BLOCCATO');
     const inesistente = await officina(request, luca, 'compito', { classeId, compitoId: 'quiz' });
     expect(inesistente.stato).toBe(404);
 
@@ -473,6 +476,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await apriCard(page, nomeClasse, 'Il ciclo while');
     await expect(page.getByRole('region', { name: 'Il ciclo while' })).toContainText('Il timer del forno');
     await expect(page.getByRole('region', { name: 'Il ciclo while' })).toContainText('si sblocca');
+    await expect(page.getByRole('region', { name: 'Il ciclo while' })).toContainText('Comincia');
     await expect(page.getByLabel('media')).toHaveText('–');
 
     // Luca, che era già dentro, apre il compito.

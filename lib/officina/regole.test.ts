@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SEZIONI } from './compiti';
 import { dominiAmmessi, emailAmmessa, mediaVoti, PERCORSO, percorsoDi, semeDa, votoLavoro } from './regole';
 
 describe('il seme per allievo', () => {
@@ -20,9 +21,11 @@ describe('il voto del compito', () => {
 });
 
 describe('il percorso', () => {
-  it('il primo compito è aperto, gli altri si sbloccano uno alla volta', () => {
+  it('il primo compito di ogni sezione è aperto, gli altri si sbloccano uno alla volta', () => {
     const vuoto = percorsoDi({});
-    expect(vuoto.map((v) => v.stato)).toEqual(['da-cominciare', ...PERCORSO.slice(1).map(() => 'bloccato')]);
+    const primi = SEZIONI.map((s) => s.compiti[0]);
+    expect(vuoto.filter((v) => v.stato === 'da-cominciare').map((v) => v.id)).toEqual(primi);
+    expect(vuoto.filter((v) => !primi.includes(v.id)).every((v) => v.stato === 'bloccato')).toBe(true);
 
     expect(percorsoDi({}, 5, true).every((v) => v.stato === 'da-cominciare')).toBe(true);
     const aMeta = percorsoDi({ [PERCORSO[0]]: { fasi: 5, consigli: 2 }, [PERCORSO[1]]: { fasi: 2, consigli: 0 } });
@@ -34,6 +37,21 @@ describe('il percorso', () => {
   it('un compito finito sblocca il seguente anche se quello dopo ancora è vuoto', () => {
     const p = percorsoDi({ [PERCORSO[0]]: { fasi: 5, consigli: 0 } });
     expect(p[1].stato).toBe('da-cominciare');
+  });
+
+  it('il while si apre senza i for, e dentro la sezione resta uno alla volta', () => {
+    const [timer, secondo, terzo] = SEZIONI[1].compiti;
+    const stato = (p: ReturnType<typeof percorsoDi>, id: string) => p.find((v) => v.id === id)?.stato;
+
+    const senzaFor = percorsoDi({});
+    expect(stato(senzaFor, timer)).toBe('da-cominciare');
+    expect(stato(senzaFor, secondo)).toBe('bloccato');
+
+    const timerFinito = percorsoDi({ [timer]: { fasi: 5, consigli: 0 } });
+    expect(stato(timerFinito, secondo)).toBe('da-cominciare');
+    expect(stato(timerFinito, terzo)).toBe('bloccato');
+    // I for restano in ordine anche per chi è andato avanti sul while.
+    expect(stato(timerFinito, PERCORSO[1])).toBe('bloccato');
   });
 });
 
