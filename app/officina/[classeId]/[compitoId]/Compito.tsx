@@ -237,6 +237,8 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
 
       <SchedaCompito key={compitoId} scheda={c.scheda} fase={Math.min(fase, c.fasiTotali)} fasi={c.fasiTotali} />
 
+      <IlTuoCodice codice={c.codice} finito={c.finito} />
+
       {es && (
         <section
           ref={cardRef}
@@ -337,6 +339,30 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
         {!c.esame && ' Solo le domande al tutor costano mezzo punto.'}
       </footer>
     </main>
+  );
+}
+
+/**
+ * Il codice promosso, fase per fase, da rileggere: a compito finito è aperto sull'ultima
+ * fase (il programma intero); mentre si lavora sta richiuso, per non spingere giù l'editor.
+ */
+function IlTuoCodice({ codice, finito }: { codice: Record<string, string>; finito: boolean }) {
+  const fasi = Object.entries(codice).sort((a, b) => Number(a[0]) - Number(b[0]));
+  if (fasi.length === 0) return null;
+  return (
+    <section aria-label="il tuo codice" className="rounded-2xl border border-(--color-bordo) bg-(--color-fondo-card) p-4 sm:p-5">
+      <details open={finito}>
+        <summary className="cursor-pointer text-lg font-bold">{finito ? 'Il tuo codice' : 'Il tuo codice delle fasi superate'}</summary>
+        <div className="mt-3 flex flex-col gap-2">
+          {fasi.map(([k, testo], i) => (
+            <details key={k} open={i === fasi.length - 1}>
+              <summary className="cursor-pointer font-bold text-(--color-testo-tenue)">Fase {Number(k) + 1}</summary>
+              <pre className="mt-1 overflow-x-auto rounded-xl border border-(--color-bordo) bg-black/40 p-4 font-mono text-[1.05rem]">{testo}</pre>
+            </details>
+          ))}
+        </div>
+      </details>
+    </section>
   );
 }
 

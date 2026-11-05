@@ -408,6 +408,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     // Il docente, dalla pagina: il compito finito torna alla fase 1, con l'editor vuoto.
     await page.goto('/officina');
     await page.getByRole('button', { name: 'esci' }).click();
+    await expect(page.getByRole('button', { name: 'Accedi con Google' })).toBeVisible(); // l'uscita è finita: ricaricare prima la annullerebbe
     await accedi(page, TEACHER_EMAIL);
     // Il docente di prova sta in più classi: si prende il link di questa. La card riassume il compito finito.
     const sezioneFor = page.getByRole('region', { name: `Classe ${nomeClasse}` }).getByRole('button', { name: /Il ciclo for/ });
@@ -429,6 +430,33 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     expect((await officina(request, luca, 'compito', { classeId, compitoId: 'cartello' })).corpo.fasi).toBe(1);
   });
 
+  test('il compito finito si riapre e mostra il codice scritto, anche a Officina chiusa', async ({ page, request }) => {
+    const { fabio, classeId, nomeClasse, luca, fasi } = await scenario(request);
+    await officina(request, luca, 'consegna', { classeId, compitoId: 'cartello', fase: 0, codice: fasi[0].soluzione });
+
+    // Mentre lavora il codice delle fasi superate c'è, ma richiuso: non spinge giù l'editor.
+    await accedi(page, luca.email);
+    await apriCard(page, nomeClasse, 'Il ciclo for');
+    await page.getByRole('link', { name: /Il cartello della festa/ }).click();
+    const codice = page.getByRole('region', { name: 'il tuo codice' });
+    await expect(codice.getByText('Il tuo codice delle fasi superate')).toBeVisible();
+    await expect(codice.locator('pre').first()).toBeHidden();
+
+    for (let k = 1; k < 5; k++) await officina(request, luca, 'consegna', { classeId, compitoId: 'cartello', fase: k, codice: fasi[k].soluzione });
+    expect((await prof(request, fabio, 'chiudiClasse', { classeId })).stato).toBe(200);
+
+    // A compito finito si apre sull'ultima fase; le altre si aprono con un clic.
+    await page.reload();
+    await expect(page.getByText('Programma finito! Il tuo voto')).toBeVisible();
+    await expect(codice.locator('pre')).toHaveCount(5);
+    await expect(codice.locator('pre').last()).toBeVisible();
+    await expect(codice.locator('pre').last()).toContainText(fasi[4].soluzione.split('\n')[0]);
+    await expect(codice.locator('pre').first()).toBeHidden();
+    await codice.getByText('Fase 1', { exact: true }).click();
+    await expect(codice.locator('pre').first()).toBeVisible();
+    await expect(codice.locator('pre').first()).toContainText(fasi[0].soluzione.split('\n')[0]);
+  });
+
   test("il diario mostra le domande fra le righe attese, nella fase e nella scheda", async ({ page, request }) => {
     const { classeId, nomeClasse } = await scenario(request);
     const r = await request.post("/api/officina/test-login", { data: { email: TEACHER_EMAIL, nome: "Fabio" } });
@@ -443,7 +471,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await page.locator(`a[href="/officina/${classeId}/diario"]`).click();
     await expect(page.getByText("Fase 2 di 5", { exact: true })).toBeVisible();
     await expect(page.getByText("Sullo schermo deve comparire")).toBeVisible();
-    const atteso = page.locator("pre").filter({ hasText: "Quante uscite?" }).first();
+    const atteso = page.locator("div").filter({ has: page.getByText("Sullo schermo deve comparire") }).last().locator("pre");
     await expect(atteso).toContainText(/Km dell.uscita 1\? \d+/);
     await expect(atteso).toContainText(/Uscita 1: \d+ km/);
     await page.getByRole("button", { name: /fase 2 di 5/ }).click();
