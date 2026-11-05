@@ -88,6 +88,8 @@ export type CompitoAperto = {
   scheda: SchedaCompito;
   esercizio: EsercizioPubblico | null;
   codice: Record<string, string>;
+  /** Le consegne delle fasi già superate, nell'ordine: quelle da fare non arrivano mai. */
+  consegne: string[];
   tutor: Scambio[];
   errori: number;
 };

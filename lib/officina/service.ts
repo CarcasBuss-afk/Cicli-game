@@ -176,6 +176,8 @@ export async function compito(body: Record<string, unknown>, utente: Utente) {
     scheda: schedaCompito(progetto, semeDi(utente.uid, progetto)),
     esercizio: esercizio ? { ...esercizioPerAllievo(esercizio), codiceIniziale: daCui || undefined } : null,
     codice: lavoro.codice ?? {},
+    // Solo le fasi già superate: quelle da fare restano nascoste.
+    consegne: fasi.slice(0, lavoro.fasi).map((f) => f.consegna),
     tutor: (lavoro.tutor ?? []).map((s) => ({ fase: s.fase + 1, domanda: s.domanda, risposta: s.risposta })),
     errori: lavoro.errori,
   };

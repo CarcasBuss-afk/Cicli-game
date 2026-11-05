@@ -6,7 +6,7 @@ import { expect, test, type APIRequestContext, type Page } from '@playwright/tes
 import { AUTH_EMULATOR_HOST, TEACHER_EMAIL } from './ambiente';
 import { ELENCO_COMPITI } from '../../lib/officina/compiti';
 
-type Esercizio = { tipo: string; soluzione: string; outputAtteso: string[] };
+type Esercizio = { tipo: string; consegna: string; soluzione: string; outputAtteso: string[] };
 
 /** Scambia un custom token con un ID token sull'emulatore Authentication. */
 async function idToken(request: APIRequestContext, customToken: string): Promise<string> {
@@ -154,6 +154,7 @@ test.describe("l'Officina", () => {
     expect(c.scheda.titolo).toBe('Il cartello della festa');
     expect(c.esercizio.tipo).toBe('progetto');
     expect(c.esercizio.codiceIniziale).toBeUndefined();
+    expect(c.consegne).toEqual([]); // niente consegne delle fasi da fare
     expect(JSON.stringify(c)).not.toContain('soluzione');
     // Entrare due volte non duplica niente.
     await officina(request, luca, 'entra', { classeId });
@@ -433,6 +434,8 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
   test('il compito finito si riapre e mostra il codice scritto, anche a Officina chiusa', async ({ page, request }) => {
     const { fabio, classeId, nomeClasse, luca, fasi } = await scenario(request);
     await officina(request, luca, 'consegna', { classeId, compitoId: 'cartello', fase: 0, codice: fasi[0].soluzione });
+    // Le consegne: solo quelle delle fasi superate, mai quelle da fare.
+    expect((await officina(request, luca, 'compito', { classeId, compitoId: 'cartello' })).corpo.consegne).toEqual([fasi[0].consegna]);
 
     // Mentre lavora il codice delle fasi superate c'è, ma richiuso: non spinge giù l'editor.
     await accedi(page, luca.email);
@@ -444,6 +447,7 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
 
     for (let k = 1; k < 5; k++) await officina(request, luca, 'consegna', { classeId, compitoId: 'cartello', fase: k, codice: fasi[k].soluzione });
     expect((await prof(request, fabio, 'chiudiClasse', { classeId })).stato).toBe(200);
+    expect((await officina(request, luca, 'compito', { classeId, compitoId: 'cartello' })).corpo.consegne).toEqual(fasi.map((f) => f.consegna));
 
     // A compito finito si apre sull'ultima fase; le altre si aprono con un clic.
     await page.reload();
@@ -455,6 +459,9 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await codice.getByText('Fase 1', { exact: true }).click();
     await expect(codice.locator('pre').first()).toBeVisible();
     await expect(codice.locator('pre').first()).toContainText(fasi[0].soluzione.split('\n')[0]);
+    // Accanto al codice, che cosa chiedeva quella fase (a schermo senza apici e grassetti).
+    await expect(codice.locator('p').first()).toBeVisible();
+    await expect(codice.locator('p').first()).toHaveText(fasi[0].consegna.replace(/`|\*\*/g, ''));
   });
 
   test("il diario mostra le domande fra le righe attese, nella fase e nella scheda", async ({ page, request }) => {
@@ -557,6 +564,8 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     // La festa: il cartello della fase superata (con i coriandoli), poi si passa alla fase dopo.
     await expect(page.getByRole('status', { name: 'fase superata' })).toContainText('Fase 1 superata!');
     await expect(page.getByText('Fase 2 di 5', { exact: true })).toBeVisible();
+    // La fase appena superata entra subito nel riquadro, con la sua consegna, senza ricaricare.
+    await expect(page.getByRole('region', { name: 'il tuo codice' }).locator('p')).toHaveCount(1);
     await expect(prova).toHaveCount(0);
     await page.getByRole('button', { name: 'Prova ▶' }).click();
     await expect(prova).toBeVisible();

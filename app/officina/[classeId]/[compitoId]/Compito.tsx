@@ -92,6 +92,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
               votoSeFinisci: r.votoSeFinisci,
               esercizio: r.esercizio,
               codice: { ...p.codice, [String(c.fasi)]: codiceRef.current },
+              consegne: c.esercizio ? [...p.consegne, c.esercizio.consegna] : p.consegne,
             }
           : p,
       );
@@ -237,7 +238,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
 
       <SchedaCompito key={compitoId} scheda={c.scheda} fase={Math.min(fase, c.fasiTotali)} fasi={c.fasiTotali} />
 
-      <IlTuoCodice codice={c.codice} finito={c.finito} />
+      <IlTuoCodice codice={c.codice} consegne={c.consegne} finito={c.finito} />
 
       {es && (
         <section
@@ -343,10 +344,11 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
 }
 
 /**
- * Il codice promosso, fase per fase, da rileggere: a compito finito è aperto sull'ultima
- * fase (il programma intero); mentre si lavora sta richiuso, per non spingere giù l'editor.
+ * Il codice promosso, fase per fase, con la consegna che chiedeva: a compito finito è aperto
+ * sull'ultima fase (il programma intero); mentre si lavora sta richiuso, per non spingere
+ * giù l'editor.
  */
-function IlTuoCodice({ codice, finito }: { codice: Record<string, string>; finito: boolean }) {
+function IlTuoCodice({ codice, consegne, finito }: { codice: Record<string, string>; consegne: string[]; finito: boolean }) {
   const fasi = Object.entries(codice).sort((a, b) => Number(a[0]) - Number(b[0]));
   if (fasi.length === 0) return null;
   return (
@@ -357,6 +359,11 @@ function IlTuoCodice({ codice, finito }: { codice: Record<string, string>; finit
           {fasi.map(([k, testo], i) => (
             <details key={k} open={i === fasi.length - 1}>
               <summary className="cursor-pointer font-bold text-(--color-testo-tenue)">Fase {Number(k) + 1}</summary>
+              {consegne[Number(k)] && (
+                <p className="mt-1">
+                  <Testo>{consegne[Number(k)]}</Testo>
+                </p>
+              )}
               <pre className="mt-1 overflow-x-auto rounded-xl border border-(--color-bordo) bg-black/40 p-4 font-mono text-[1.05rem]">{testo}</pre>
             </details>
           ))}
