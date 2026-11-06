@@ -522,14 +522,34 @@ describe('la prova nascosta che cade: che cosa si dice (PERCORSO.md §23)', () =
     ],
   };
 
-  it('il ramo else dimenticato: quante righe e da dove, senza dettare la riga', () => {
+  it('il ramo else dimenticato: fra quali righe ne manca una, senza dettare la riga', () => {
     const senzaElse = sconto.soluzione.replace('else:\n    print(f"Ti mancano {20 - totale} € per lo sconto")\n', '');
     const esito = valutaRisposta(sconto, senzaElse);
     expect(esito.promosso).toBe(false);
-    expect(esito.hint).toContain('rispondendo «2» stampa un\'altra cosa: 2 righe invece di 3');
-    expect(esito.hint).toContain('la prima riga è giusta, alla riga 2 stampi «Grazie!»');
+    expect(esito.hint).toContain('rispondendo «2» stampa un\'altra cosa: le righe che stampi sono giuste, ma manca una riga fra «Totale: 10 €» e «Grazie!»');
+    expect(esito.hint).toContain('rileggi la consegna');
     expect(esito.hint).not.toContain('`input()`');
     expect(esito.hint).not.toContain('Ti mancano');
+  });
+
+  it('le righe mancanti in fondo, e più d\'una', () => {
+    const finale: Esercizio = { ...sconto, prove: [sconto.prove![0], { risposte: ['2'], output: ['Totale: 10 €', 'Grazie!', 'A', 'B'] }] };
+    const senzaCoda = valutaRisposta(finale, sconto.soluzione.replace('else:\n    print(f"Ti mancano {20 - totale} € per lo sconto")\n', ''));
+    expect(senzaCoda.hint).toContain('mancano 2 righe dopo «Grazie!», in fondo');
+  });
+
+  it('un secondo esempio mostrato: chi ci cade riceve il confronto aperto, come sul primo', () => {
+    const conEsempi: Esercizio = {
+      ...sconto,
+      esempi: 2,
+      prove: [...sconto.prove!, { risposte: ['3'], output: ['Totale: 15 €', 'Ti mancano 5 € per lo sconto', 'Grazie!'] }],
+    };
+    const senzaElse = sconto.soluzione.replace('else:\n    print(f"Ti mancano {20 - totale} € per lo sconto")\n', '');
+    const esito = valutaRisposta(conEsempi, senzaElse);
+    expect(esito.promosso).toBe(false);
+    expect(esito.hint).toMatch(/^Con il primo esempio funziona, ma con il secondo \(rispondendo «2»\): /);
+    expect(esito.output).toEqual(['Totale: 10 €', 'Grazie!']);
+    expect(valutaRisposta(conEsempi, conEsempi.soluzione).promosso).toBe(true);
   });
 
   it('i valori scritti a mano: con altre risposte stampa le stesse righe, e si parla di input()', () => {

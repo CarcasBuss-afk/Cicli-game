@@ -216,7 +216,8 @@ function notePromozione(p: ParametriPromozione): string[] {
     `Dopo il ciclo, senza rientro, if totale >= ${p.soglia} con due print rientrati; da pagare è totale meno ${p.sconto}, calcolato. ` +
       `Errori tipici: l'if dentro il ciclo (le righe compaiono più volte), > al posto di >=, lo sconto stampato sempre senza if (cade ${nascosti}), il numero da pagare scritto a mano.`,
     `L'else dell'if sul totale stampa quanto manca (${p.soglia} meno totale, calcolato), e il saluto va dopo, fuori dall'if, senza rientro. ` +
-      `Il ramo else si vede SOLO ${nascosti}: con la prova mostrata il totale supera la soglia, quindi un errore in quella riga non si vede finché non si consegna. ` +
+      `Con la prima prova mostrata il totale supera la soglia e l'else non parte: per questo l'allievo vede anche un secondo esempio, un cliente sotto la soglia, con la riga di quanto manca. ` +
+        'Chi dimentica l\'else passa il primo esempio e cade sul secondo: fagli confrontare il suo output con quel riquadro. ' +
       'Errori tipici: il testo della riga scritto diverso (maiuscole, un punto in fondo), il saluto dentro l\'else o dentro l\'if, il numero mancante scritto a mano.',
   ];
 }

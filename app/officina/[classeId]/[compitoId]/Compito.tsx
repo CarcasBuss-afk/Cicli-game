@@ -265,6 +265,19 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
               </div>
             )
           )}
+          {es.altriEsempi?.map((altro, i) => (
+            <section key={i} aria-label="secondo esempio" className="flex flex-col gap-2 border-t border-dashed border-(--color-bordo) pt-3">
+              <p className="text-sm font-bold">E con altre risposte il programma deve fare anche questo:</p>
+              <RisposteDiProva risposte={altro.risposte} casuali={altro.casuali} />
+              {altro.schermoAtteso ? (
+                <Schermo righe={altro.schermoAtteso} classe="border-(--color-verde)/40 bg-(--color-verde)/5 p-4 text-[1.05rem] text-(--color-verde)" />
+              ) : (
+                <pre className="overflow-x-auto rounded-xl border border-(--color-verde)/40 bg-(--color-verde)/5 p-4 font-mono text-[1.05rem] text-(--color-verde)">
+                  {altro.outputAtteso.join('\n')}
+                </pre>
+              )}
+            </section>
+          ))}
           <EditorPython
             key={`editor-${ripartenza}`}
             valoreIniziale={es.codiceIniziale ?? ''}
@@ -287,7 +300,11 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
             </button>
             <span className="text-sm text-(--color-testo-tenue)">
               oppure <kbd className="rounded bg-black/40 px-1.5 py-0.5 font-mono">Ctrl</kbd>+<kbd className="rounded bg-black/40 px-1.5 py-0.5 font-mono">Invio</kbd>
-              {es.risposte && es.risposte.length > 0 ? ': gira con le risposte di prova e viene controllato' : ': viene controllato'}
+              {es.altriEsempi && es.altriEsempi.length > 0
+                ? ': gira con le risposte dei due esempi e viene controllato'
+                : es.risposte && es.risposte.length > 0
+                  ? ': gira con le risposte di prova e viene controllato'
+                  : ': viene controllato'}
             </span>
           </div>
         </section>

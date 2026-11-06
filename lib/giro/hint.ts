@@ -11,7 +11,7 @@
  */
 import type { Giudizio } from './giudice';
 import { esegui, type CicloVuoto, type RigaSchermo } from './interprete';
-import { descriviProva, opzioniDiProva, type Esercizio } from './esercizi';
+import { descriviProva, numeroEsempi, opzioniDiProva, type Esercizio } from './esercizi';
 
 export interface Valutazione {
   promosso: boolean;
@@ -336,6 +336,19 @@ function hintCicloVuoto(c: CicloVuoto): string {
 function descriviDifferenza(prodotto: string[], atteso: string[]): string {
   const k = prodotto.findIndex((r, i) => r !== atteso[i]);
   const prima = k < 0 ? Math.min(prodotto.length, atteso.length) : k;
+  // Le righe che stampa sono tutte giuste, ma in un punto ne mancano: è il ramo che con quei
+  // dati doveva partire. Si dice fra quali righe sue, mai che cosa ci andava.
+  const mancano = atteso.length - prodotto.length;
+  if (mancano > 0 && prodotto.length > 0 && uguali(prodotto.slice(prima), atteso.slice(prima + mancano))) {
+    const quante = mancano === 1 ? 'manca una riga' : `mancano ${mancano} righe`;
+    const dove =
+      prima === 0
+        ? `prima di ${virgolette(prodotto[0])}`
+        : prima === prodotto.length
+          ? `dopo ${virgolette(prodotto[prima - 1])}, in fondo`
+          : `fra ${virgolette(prodotto[prima - 1])} e ${virgolette(prodotto[prima])}`;
+    return `le righe che stampi sono giuste, ma ${quante} ${dove}. Con questi dati il programma deve passare da un pezzo (un ramo, un \`else\`) che con i dati di prova non parte: rileggi la consegna`;
+  }
   const righe =
     prodotto.length !== atteso.length
       ? `${prodotto.length} righe invece di ${atteso.length}`
@@ -433,10 +446,26 @@ export function valutaRisposta(tappa: Esercizio, risposta: string): Valutazione 
     return { promosso: false, hint: spiega(tappa, prodotto, atteso, conWhile), output: prodotto, schermo };
   }
 
-  // Le prove nascoste: con altre risposte il programma deve funzionare lo stesso.
+  // Gli altri esempi mostrati (una fase che aggiunge un ramo), poi le prove nascoste: con
+  // altre risposte il programma deve funzionare lo stesso.
   if (prove) {
-    for (const prova of prove.slice(1)) {
+    const esempi = numeroEsempi(tappa);
+    for (const [indice, prova] of prove.entries()) {
+      if (indice === 0) continue;
       const altro = esegui(testo, opzioniDiProva(prova));
+      if (indice < esempi) {
+        // L'esempio si vede nel riquadro atteso: il confronto si può fare apertamente, come sul primo.
+        const quale = `Con il primo esempio funziona, ma con il secondo (${descriviProva(prova)})`;
+        if (!altro.ok) return { promosso: false, hint: `${quale} il programma si ferma: ${altro.errore.messaggio}`, output: prodotto, schermo, riga: altro.errore.riga };
+        const prodottoAltro = normalizza(altro.output);
+        const attesoAltro = normalizza(prova.output);
+        if (!uguali(prodottoAltro, attesoAltro)) {
+          const conWhileAltro = altro.struttura.numWhile > 0 && altro.struttura.numFor === 0;
+          const perche = spiega(tappa, prodottoAltro, attesoAltro, conWhileAltro);
+          return { promosso: false, hint: `${quale}: ${perche.charAt(0).toLowerCase()}${perche.slice(1)}`, output: altro.output, schermo: altro.schermo };
+        }
+        continue;
+      }
       const daDove = prova.casuali && prova.casuali.length > 0 ? 'i valori devono arrivare da `input()` e da `randint()`, non essere scritti a mano nel programma' : 'i valori devono arrivare da `input()`, non essere scritti a mano nel programma';
       if (!altro.ok) {
         return {

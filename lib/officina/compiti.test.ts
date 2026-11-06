@@ -346,8 +346,9 @@ describe('il diario delle uscite (input dentro il ciclo)', () => {
     expect(km.length).toBeLessThanOrEqual(5);
   });
 
-  it("il mese mostrato raggiunge l'obiettivo, quello corto no: l'else si vede solo sulla prova nascosta", () => {
+  it("il mese mostrato raggiunge l'obiettivo, quello corto no: l'else si vede nel secondo esempio", () => {
     const [mostrato, corto] = fasi[4].prove!;
+    expect(fasi[4].esempi).toBe(2);
     expect(mostrato.output[mostrato.output.length - 1]).toBe(`Obiettivo di ${obiettivo} km raggiunto!`);
     expect(corto.output[corto.output.length - 1]).toMatch(/^Mancano \d+ km all'obiettivo/);
     expect(obiettivo % 10).toBe(0);
@@ -783,14 +784,21 @@ describe('il distributore (monete finché basta)', () => {
   const fasi = generaCompito('distributore', 27);
 
   it('tre prove: le monete mostrate, una da 2 €, le monete giuste senza resto; il ciclo si ferma appena basta', () => {
+    // L'ordine delle due prove dopo la prima può cambiare: in fase 5 quella che fa vedere il ramo
+    // che manca alla prima diventa il secondo esempio (esempi.ts). Si cercano per contenuto.
     for (const fase of fasi) {
       expect(fase.prove).toHaveLength(3);
-      expect(fase.prove![1].risposte).toEqual(['200']);
+      expect(fase.prove!.slice(1).filter((p) => p.risposte.length === 1 && p.risposte[0] === '200')).toHaveLength(1);
     }
-    const giuste = fasi[4].prove![2];
+    const [, ...altre] = fasi[4].prove!;
+    const due = altre.find((p) => p.risposte[0] === '200')!;
+    const giuste = altre.find((p) => p !== due)!;
     expect(giuste.output[giuste.output.length - 1]).toBe('Nessun resto');
-    const due = fasi[4].prove![1];
     expect(due.output[due.output.length - 1]).toMatch(/^Resto: \d+ centesimi$/);
+    // Il secondo esempio mostra il ramo che il primo non percorre.
+    expect(fasi[4].esempi).toBe(2);
+    const fineDi = (p: { output: string[] }) => p.output[p.output.length - 1].startsWith('Resto');
+    expect(fineDi(fasi[4].prove![1])).not.toBe(fineDi(fasi[4].prove![0]));
   });
 
   it('le monete scritte nel programma passano la prova mostrata ma cadono su quella nascosta', () => {

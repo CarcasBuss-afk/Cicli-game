@@ -23,6 +23,7 @@ import { fasiCassa, fasiParola, schedaCassa, schedaParola } from './compitiWhile
 import { fasiDistributore, fasiMenu, schedaDistributore, schedaMenu } from './compitiWhileMisti';
 import { fasiDado, fasiDuello, fasiIndovina, schedaDado, schedaDuello, schedaIndovina } from './compitiWhileCaso';
 import { fasiPatentinoWhile, schedaPatentinoWhile } from './compitiPatentinoWhile';
+import { esempiDelCompito } from './esempi';
 
 export type CompitoId =
   | 'cartello'
@@ -574,9 +575,12 @@ export function eEsame(id: CompitoId): boolean {
   return PROGETTI[id].scheda(1).esame === true;
 }
 
-/** Le fasi del progetto, come chilometri della tappa. Stesso seme, stesse fasi. */
+/**
+ * Le fasi del progetto, come chilometri della tappa. Stesso seme, stesse fasi. Dove il primo
+ * esempio non mostra le righe nuove della fase, se ne mostra un secondo (`esempiDelCompito`).
+ */
 export function generaCompito(progetto: CompitoId, seme: number): Esercizio[] {
-  return PROGETTI[progetto].fasi(seme);
+  return esempiDelCompito(PROGETTI[progetto].fasi(seme));
 }
 
 /** La scheda del compito, ricalcolata dal seme della tappa ovunque serva. */

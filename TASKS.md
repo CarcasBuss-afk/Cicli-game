@@ -100,4 +100,5 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 13l. L'Officina dell'allievo a card per argomento: chiuse all'ingresso, con compiti svolti e voto medio, si aprono con un clic (2 novembre 2026).
 - [x] 13m. La sezione `while` si apre senza i `for`: il primo compito di ogni sezione è sempre aperto, dentro la sezione uno alla volta (4 novembre 2026).
 - [x] 13n. Il compito riaperto mostra il codice promosso e la consegna, fase per fase: aperto a compito finito, richiuso mentre si lavora (4 novembre 2026).
+- [x] 13o. Il secondo esempio quando la fase aggiunge un ramo che il primo non percorre, l'hint con le righe mancanti, il tutor che distingue esempio e prova nascosta (il caso di Maruf, 6 novembre 2026; PERCORSO.md §24).
 - [ ] 13g. Dopo la prima lezione con le novità: rileggere dal database conversazioni, bozze ferme, registro del giudice ed errori per fase; confrontare con la prima settimana.

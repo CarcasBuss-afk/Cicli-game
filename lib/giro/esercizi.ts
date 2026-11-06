@@ -116,6 +116,12 @@ export interface Esercizio {
   /** Le prove con le risposte alle `input()`; `prove[0].output` coincide con `outputAtteso`. */
   prove?: Prova[];
   /**
+   * Quante prove, le prime, si mostrano all'allievo (assente = una). Una seconda serve quando
+   * la fase aggiunge un ramo che la prima non percorre: altrimenti la riga nuova non si vede
+   * nel riquadro atteso e chi la dimentica crede di avere finito (PERCORSO.md §24).
+   */
+  esempi?: number;
+  /**
    * La nota dell'autore del compito per il tutor (PERCORSO.md §23): gli errori tipici della
    * fase e che cosa far capire. **Solo al tutor**: l'allievo non la vede mai.
    */
@@ -131,29 +137,58 @@ export type EsercizioPubblico = Omit<Esercizio, 'soluzione' | 'outputAtteso' | '
   casuali?: number[];
   /** Con le `input()`: lo schermo atteso, con le domande e le risposte fra le righe stampate. */
   schermoAtteso?: RigaSchermo[];
+  /** Gli altri esempi mostrati (`Esercizio.esempi`), con le loro risposte e il loro schermo atteso. */
+  altriEsempi?: EsempioPubblico[];
 };
 
+/** Un esempio in più mostrato all'allievo: è una prova, quindi è controllato anche lui. */
+export interface EsempioPubblico {
+  risposte: string[];
+  casuali?: number[];
+  outputAtteso: string[];
+  schermoAtteso?: RigaSchermo[];
+}
+
+/** Quante prove sono mostrate all'allievo: almeno una, mai tutte se ce n'è più d'una (una resta nascosta). */
+export function numeroEsempi(tappa: Pick<Esercizio, 'prove' | 'esempi'>): number {
+  const n = tappa.prove?.length ?? 0;
+  if (n <= 1) return n;
+  return Math.min(Math.max(1, tappa.esempi ?? 1), n - 1);
+}
+
 /**
- * Lo schermo della soluzione di riferimento sulla prova mostrata: le domande fra le righe,
+ * Lo schermo della soluzione di riferimento su una prova mostrata: le domande fra le righe,
  * come in un terminale. Solo se il programma fa domande: altrimenti basta l'output.
  */
-export function schermoAtteso(tappa: Esercizio): RigaSchermo[] | undefined {
-  const prova = tappa.prove?.[0];
+export function schermoAtteso(tappa: Esercizio, indice = 0): RigaSchermo[] | undefined {
+  const prova = tappa.prove?.[indice];
   if (!prova || prova.risposte.length === 0) return undefined;
   const { schermo } = esegui(tappa.soluzione, opzioniDiProva(prova));
   return schermo?.some((r) => r.k === 'in') ? schermo : undefined;
 }
 
 export function esercizioPerAllievo(tappa: Esercizio): EsercizioPubblico {
-  const { soluzione: _soluzione, nota: _nota, outputAtteso, prove, ...resto } = tappa;
+  const { soluzione: _soluzione, nota: _nota, outputAtteso, prove, esempi: _esempi, ...resto } = tappa;
   void _soluzione;
   void _nota;
+  void _esempi;
   const pubblico: EsercizioPubblico = tappa.mostraOutput ? { ...resto, outputAtteso } : resto;
   if (prove && prove.length > 0) {
     pubblico.risposte = prove[0].risposte;
     if (prove[0].casuali) pubblico.casuali = prove[0].casuali;
     const schermo = tappa.mostraOutput ? schermoAtteso(tappa) : undefined;
     if (schermo) pubblico.schermoAtteso = schermo;
+    // Gli esempi in più solo dove l'output si mostra: negli esercizi a output segreto non ce ne sono.
+    const altri = tappa.mostraOutput ? prove.slice(1, numeroEsempi(tappa)) : [];
+    if (altri.length > 0) {
+      pubblico.altriEsempi = altri.map((p, i) => {
+        const e: EsempioPubblico = { risposte: p.risposte, outputAtteso: p.output };
+        if (p.casuali) e.casuali = p.casuali;
+        const s = schermoAtteso(tappa, i + 1);
+        if (s) e.schermoAtteso = s;
+        return e;
+      });
+    }
   }
   return pubblico;
 }

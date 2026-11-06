@@ -431,6 +431,34 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     expect((await officina(request, luca, 'compito', { classeId, compitoId: 'cartello' })).corpo.fasi).toBe(1);
   });
 
+  test("la fase che aggiunge un ramo mostra un secondo esempio: la promozione, fase 5 (il caso di Maruf)", async ({ page, request }) => {
+    const { classeId, nomeClasse } = await scenario(request);
+    const r = await request.post('/api/officina/test-login', { data: { email: TEACHER_EMAIL, nome: 'Fabio' } });
+    const d = (await r.json()) as { token: string; uid: string };
+    const fabio: Utente = { token: await idToken(request, d.token), uid: d.uid, email: TEACHER_EMAIL };
+    await officina(request, fabio, 'entra', { classeId });
+    const fasi = await fasiDi(request, fabio.uid, 'promozione');
+    for (let k = 0; k < 4; k++) await officina(request, fabio, 'consegna', { classeId, compitoId: 'promozione', fase: k, codice: fasi[k].soluzione });
+
+    // L'API: un esempio in più, con le sue risposte; la terza prova resta nascosta.
+    const c = (await officina(request, fabio, 'compito', { classeId, compitoId: 'promozione' })).corpo;
+    expect(c.esercizio.altriEsempi).toHaveLength(1);
+    expect(c.esercizio.altriEsempi[0].outputAtteso.some((riga: string) => riga.startsWith('Ti mancano'))).toBe(true);
+    expect(JSON.stringify(c)).not.toContain('soluzione');
+
+    // La pagina: il secondo riquadro, e chi dimentica l'else cade lì con il confronto aperto.
+    await accedi(page, TEACHER_EMAIL);
+    await apriCard(page, nomeClasse, 'Il ciclo for');
+    await page.locator(`a[href="/officina/${classeId}/promozione"]`).click();
+    await expect(page.getByText('Fase 5 di 5', { exact: true })).toBeVisible();
+    const secondo = page.getByRole('region', { name: 'secondo esempio' });
+    await expect(secondo).toContainText('Ti mancano');
+    const senzaElse = fasi[4].soluzione.replace(/\nelse:\n[^\n]*/, '');
+    const consegna = await officina(request, fabio, 'consegna', { classeId, compitoId: 'promozione', fase: 4, codice: senzaElse });
+    expect(consegna.corpo.promosso).toBe(false);
+    expect(consegna.corpo.hint).toMatch(/^Con il primo esempio funziona, ma con il secondo/);
+  });
+
   test('il compito finito si riapre e mostra il codice scritto, anche a Officina chiusa', async ({ page, request }) => {
     const { fabio, classeId, nomeClasse, luca, fasi } = await scenario(request);
     await officina(request, luca, 'consegna', { classeId, compitoId: 'cartello', fase: 0, codice: fasi[0].soluzione });

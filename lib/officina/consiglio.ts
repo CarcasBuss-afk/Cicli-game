@@ -5,7 +5,7 @@
  *
  * Modulo puro: la chiamata al modello sta in tutor.ts (server-only).
  */
-import { descriviProva, opzioniDiProva, type Esercizio } from '../giro/esercizi';
+import { descriviProva, numeroEsempi, opzioniDiProva, type Esercizio } from '../giro/esercizi';
 import { contieneCodice, pulisciConsiglio } from '../giro/filtroCodice';
 import { descriviFatti } from '../giro/giudice';
 import { esegui, type Struttura } from '../giro/interprete';
@@ -26,6 +26,8 @@ export interface ProvaNascosta {
   atteso: string[];
   prodotto: string[] | null;
   errore?: string;
+  /** Vero se è un esempio mostrato all'allievo (il secondo), non una prova nascosta. */
+  esempio?: boolean;
 }
 
 export interface ContestoConsiglio {
@@ -33,7 +35,7 @@ export interface ContestoConsiglio {
   /** Numero della fase, da 1. */
   fase: number;
   fasiTotali: number;
-  esercizio: Pick<Esercizio, 'consegna' | 'outputAtteso' | 'prove' | 'regola' | 'nota'>;
+  esercizio: Pick<Esercizio, 'consegna' | 'outputAtteso' | 'prove' | 'esempi' | 'regola' | 'nota'>;
   /** Il codice com'è adesso nell'editor. */
   codice: string;
   /**
@@ -62,14 +64,16 @@ const normalizza = (righe: string[]) => righe.map((r) => r.trimEnd()).join('\n')
  * La prova nascosta su cui cade il codice, se c'è: solo quando la prova mostrata passa
  * (altrimenti il problema è quello, e si vede già nell'esito). Pura: solo l'interprete.
  */
-export function provaCheCade(esercizio: Pick<Esercizio, 'outputAtteso' | 'prove'>, codice: string): ProvaNascosta | null {
+export function provaCheCade(esercizio: Pick<Esercizio, 'outputAtteso' | 'prove' | 'esempi'>, codice: string): ProvaNascosta | null {
   const prove = esercizio.prove;
   if (!prove || prove.length < 2 || !codice.trim()) return null;
   const mostrata = esegui(codice, opzioniDiProva(prove[0]));
   if (!mostrata.ok || normalizza(mostrata.output) !== normalizza(prove[0].output)) return null;
-  for (const prova of prove.slice(1)) {
+  const esempi = numeroEsempi(esercizio);
+  for (const [indice, prova] of prove.entries()) {
+    if (indice === 0) continue;
     const esito = esegui(codice, opzioniDiProva(prova));
-    const base = { risposte: prova.risposte, atteso: prova.output, ...(prova.casuali ? { casuali: prova.casuali } : {}) };
+    const base = { risposte: prova.risposte, atteso: prova.output, ...(prova.casuali ? { casuali: prova.casuali } : {}), ...(indice < esempi ? { esempio: true } : {}) };
     if (!esito.ok) return { ...base, prodotto: null, errore: esito.errore.messaggio };
     if (normalizza(esito.output) !== normalizza(prova.output)) return { ...base, prodotto: esito.output };
   }
@@ -91,6 +95,15 @@ export function messaggioConsiglio(c: ContestoConsiglio): string {
   if (prova && prova.risposte.length > 0) {
     parti.push(
       `Il programma usa input(): viene provato rispondendo, nell'ordine, ${prova.risposte.map(virgolette).join(', ')} (e poi con altre risposte: deve funzionare per chiunque). Il testo delle domande è libero; si confrontano solo le righe stampate con print.`,
+    );
+  }
+  const secondo = numeroEsempi(c.esercizio) > 1 ? c.esercizio.prove?.[1] : undefined;
+  if (secondo) {
+    parti.push(
+      blocco(
+        `L'allievo vede anche un secondo esempio, per il ramo che il primo non percorre: ${descriviProva(secondo)} deve stampare:`,
+        secondo.output,
+      ),
     );
   }
   if (prova?.casuali && prova.casuali.length > 0) {
@@ -119,12 +132,16 @@ export function messaggioConsiglio(c: ContestoConsiglio): string {
   }
   if (c.provaNascosta) {
     const p = c.provaNascosta;
+    const titolo = p.esempio
+      ? "CON IL PRIMO ESEMPIO FUNZIONA, MA CADE SUL SECONDO, CHE L'ALLIEVO VEDE NEL RIQUADRO ATTESO."
+      : "CON I DATI DI PROVA FUNZIONA, MA CADE SU UN'ALTRA PROVA (NASCOSTA).";
     parti.push(
-      `CON I DATI DI PROVA FUNZIONA, MA CADE SU UN'ALTRA PROVA. ${descriviProva({ risposte: p.risposte, casuali: p.casuali, output: p.atteso }).replace(/^./, (m) => m.toUpperCase())}:\n` +
+      `${titolo} ${descriviProva({ risposte: p.risposte, casuali: p.casuali, output: p.atteso }).replace(/^./, (m) => m.toUpperCase())}:\n` +
         blocco('deve stampare:', p.atteso) +
         '\n' +
         (p.prodotto ? blocco('invece stampa:', p.prodotto) : `invece si ferma con l'errore: ${p.errore}`) +
-        '\nPuoi dirgli questi dati e che cosa succede: il punto da far capire è che i numeri devono arrivare dalle risposte (o da randint), non essere scritti nel programma.',
+        '\nPuoi dirgli questi dati e che cosa succede. Le cause tipiche: i numeri scritti nel programma invece che presi dalle risposte (o da randint), ' +
+        'oppure un ramo (un `else`, un `if`) che con quei dati deve partire e manca o stampa altro: confronta le righe per capire quale delle due.',
     );
   }
   if (c.hint) parti.push(`Hint automatico che ha già visto: ${c.hint}`);
