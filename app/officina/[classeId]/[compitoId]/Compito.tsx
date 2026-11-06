@@ -13,7 +13,7 @@ import Testo from '@/components/Testo';
 import TutorChat from '@/components/TutorChat';
 import type { RigaSchermo } from '@/lib/giro/interprete';
 import { suonoErrore, suonoTappa, suonoTraguardo } from '@/lib/giro/suoni';
-import { chiamaOfficina, ErroreOfficina, messaggioErrore, type CompitoAperto, type RispostaConsegna, type RispostaTutor } from '@/lib/officina/client';
+import { chiamaOfficina, ErroreOfficina, fasePassata, messaggioErrore, type CompitoAperto, type FasePassata, type RispostaConsegna, type RispostaTutor } from '@/lib/officina/client';
 import { scriviVoto } from '@/lib/officina/voto';
 import { AccessoAllievo } from '../../Accesso';
 import { useAllievo } from '../../useAllievo';
@@ -92,7 +92,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
               votoSeFinisci: r.votoSeFinisci,
               esercizio: r.esercizio,
               codice: { ...p.codice, [String(c.fasi)]: codiceRef.current },
-              consegne: c.esercizio ? [...p.consegne, c.esercizio.consegna] : p.consegne,
+              passate: c.esercizio ? [...p.passate, fasePassata(c.esercizio)] : p.passate,
             }
           : p,
       );
@@ -238,7 +238,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
 
       <SchedaCompito key={compitoId} scheda={c.scheda} fase={Math.min(fase, c.fasiTotali)} fasi={c.fasiTotali} />
 
-      <IlTuoCodice codice={c.codice} consegne={c.consegne} finito={c.finito} />
+      <IlTuoCodice codice={c.codice} passate={c.passate} finito={c.finito} />
 
       {es && (
         <section
@@ -365,7 +365,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
  * sull'ultima fase (il programma intero); mentre si lavora sta richiuso, per non spingere
  * giù l'editor.
  */
-function IlTuoCodice({ codice, consegne, finito }: { codice: Record<string, string>; consegne: string[]; finito: boolean }) {
+function IlTuoCodice({ codice, passate, finito }: { codice: Record<string, string>; passate: FasePassata[]; finito: boolean }) {
   const fasi = Object.entries(codice).sort((a, b) => Number(a[0]) - Number(b[0]));
   if (fasi.length === 0) return null;
   return (
@@ -376,17 +376,53 @@ function IlTuoCodice({ codice, consegne, finito }: { codice: Record<string, stri
           {fasi.map(([k, testo], i) => (
             <details key={k} open={i === fasi.length - 1}>
               <summary className="cursor-pointer font-bold text-(--color-testo-tenue)">Fase {Number(k) + 1}</summary>
-              {consegne[Number(k)] && (
-                <p className="mt-1">
-                  <Testo>{consegne[Number(k)]}</Testo>
+              {passate[Number(k)]?.consegna && (
+                <p className="mt-1" aria-label="consegna della fase">
+                  <Testo>{passate[Number(k)].consegna}</Testo>
                 </p>
               )}
-              <pre className="mt-1 overflow-x-auto rounded-xl border border-(--color-bordo) bg-black/40 p-4 font-mono text-[1.05rem]">{testo}</pre>
+              <div className="mt-2 grid gap-3 sm:grid-cols-2">
+                <Atteso fase={passate[Number(k)]} />
+                <div>
+                  <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Il tuo codice:</p>
+                  <pre aria-label="codice della fase" className="overflow-x-auto rounded-xl border border-(--color-bordo) bg-black/40 p-4 font-mono text-[1.05rem]">
+                    {testo}
+                  </pre>
+                </div>
+              </div>
             </details>
           ))}
         </div>
       </details>
     </section>
+  );
+}
+
+/** Che cosa doveva comparire sullo schermo in una fase superata: i riquadri attesi di allora, anche il secondo esempio. */
+function Atteso({ fase }: { fase: FasePassata | undefined }) {
+  if (!fase || (!fase.schermoAtteso && !fase.outputAtteso)) return null;
+  const verde = 'border-(--color-verde)/40 bg-(--color-verde)/5 p-4 text-[1.05rem] text-(--color-verde)';
+  return (
+    <div aria-label="doveva comparire" className="flex flex-col gap-2">
+      {fase.schermoAtteso ? (
+        <Schermo righe={fase.schermoAtteso} titolo="Doveva comparire:" classe={verde} />
+      ) : (
+        <div>
+          <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">Doveva stampare:</p>
+          <pre className={`overflow-x-auto rounded-xl border font-mono ${verde}`}>{(fase.outputAtteso ?? []).join('\n')}</pre>
+        </div>
+      )}
+      {fase.altriEsempi?.map((altro, i) =>
+        altro.schermoAtteso ? (
+          <Schermo key={i} righe={altro.schermoAtteso} titolo="E con le altre risposte:" classe={verde} />
+        ) : (
+          <div key={i}>
+            <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">E con le altre risposte:</p>
+            <pre className={`overflow-x-auto rounded-xl border font-mono ${verde}`}>{altro.outputAtteso.join('\n')}</pre>
+          </div>
+        ),
+      )}
+    </div>
   );
 }
 

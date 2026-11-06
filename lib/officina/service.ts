@@ -14,6 +14,7 @@ import { esegui } from '@/lib/giro/interprete';
 import { eCompito, eEsame, generaCompito, schedaCompito, SEZIONI, sezioneDi, type CompitoId } from '@/lib/officina/compiti';
 import { richiestaAmmessa } from '@/lib/giro/rateLimit';
 import type { Utente } from './auth';
+import type { FasePassata } from './client';
 import { FASI_PER_COMPITO, mediaVoti, percorsoDi, semeDa, votoSeFinisce } from './regole';
 import {
   allieviRef,
@@ -176,8 +177,11 @@ export async function compito(body: Record<string, unknown>, utente: Utente) {
     scheda: schedaCompito(progetto, semeDi(utente.uid, progetto)),
     esercizio: esercizio ? { ...esercizioPerAllievo(esercizio), codiceIniziale: daCui || undefined } : null,
     codice: lavoro.codice ?? {},
-    // Solo le fasi già superate: quelle da fare restano nascoste.
-    consegne: fasi.slice(0, lavoro.fasi).map((f) => f.consegna),
+    // Solo le fasi già superate, come l'allievo le vedeva (consegna e riquadri attesi): quelle da fare restano nascoste.
+    passate: fasi.slice(0, lavoro.fasi).map((f): FasePassata => {
+      const { consegna, outputAtteso, schermoAtteso, altriEsempi } = esercizioPerAllievo(f);
+      return { consegna, outputAtteso, schermoAtteso, altriEsempi };
+    }),
     tutor: (lavoro.tutor ?? []).map((s) => ({ fase: s.fase + 1, domanda: s.domanda, risposta: s.risposta })),
     errori: lavoro.errori,
   };

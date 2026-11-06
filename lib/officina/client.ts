@@ -69,6 +69,14 @@ export type Percorso = { classe: { id: string; nome: string; chiusa: boolean }; 
 
 export type Scambio = { fase: number; domanda: string; risposta: string };
 
+/** Una fase già superata, da rileggere: che cosa chiedeva e che cosa doveva comparire sullo schermo. */
+export type FasePassata = Pick<EsercizioPubblico, 'consegna' | 'outputAtteso' | 'schermoAtteso' | 'altriEsempi'>;
+
+/** La fase come la vedeva l'allievo, ridotta a quello che serve per rileggerla. */
+export function fasePassata({ consegna, outputAtteso, schermoAtteso, altriEsempi }: FasePassata): FasePassata {
+  return { consegna, outputAtteso, schermoAtteso, altriEsempi };
+}
+
 export type CompitoAperto = {
   /** Il docente che prova il compito: può ricominciarlo da capo. */
   docente: boolean;
@@ -88,8 +96,8 @@ export type CompitoAperto = {
   scheda: SchedaCompito;
   esercizio: EsercizioPubblico | null;
   codice: Record<string, string>;
-  /** Le consegne delle fasi già superate, nell'ordine: quelle da fare non arrivano mai. */
-  consegne: string[];
+  /** Le fasi già superate, nell'ordine, come l'allievo le vedeva: quelle da fare non arrivano mai. */
+  passate: FasePassata[];
   tutor: Scambio[];
   errori: number;
 };
