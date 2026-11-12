@@ -225,12 +225,11 @@ export async function ricomincia(body: Record<string, unknown>, utente: Utente) 
  * Ripete un compito finito per esercitarsi: si riparte dalla fase 1, con numeri nuovi, gli
  * hint, il giudice e il tutor come la prima volta. Il voto e il codice della prima volta
  * restano dove sono: l'esercitazione ha il suo lavoro a parte, e una nuova rimpiazza la
- * precedente.
+ * precedente. Si può anche a Officina chiusa (da casa): non c'è voto da proteggere.
  */
 export async function ripeti(body: Record<string, unknown>, utente: Utente) {
   limita(utente);
   const ctx = await contesto(body, utente);
-  if (ctx.classe.chiusa && !utente.docente) throw new ApiError(403, 'CLASSE_CHIUSA', "L'Officina è chiusa: il prof la riapre alla prossima lezione");
   const { progetto, voce, lavoro } = compitoAperto(ctx.allievo, testo(body.compitoId, 64), utente.docente);
   if (voce.stato !== 'finito') throw new ApiError(403, 'NON_FINITO', 'Si ripete un compito finito: prima arriva in fondo');
   const numero = (lavoro.esercitazione?.numero ?? 0) + 1;
@@ -247,14 +246,17 @@ function intero(v: unknown): number {
 }
 
 /**
- * Controlli comuni a consegna e tutor: classe aperta, compito sbloccato e non finito (o
- * finito ma con un'esercitazione in corso: allora si lavora su quella).
+ * Controlli comuni a consegna e tutor: compito sbloccato e non finito (o finito ma con
+ * un'esercitazione in corso: allora si lavora su quella). A Officina chiusa si lavora solo
+ * sulle esercitazioni: i compiti che valgono il voto si fanno in classe.
  */
 function lavoroInCorso(ctx: Contesto, body: Record<string, unknown>, { uid, docente }: Utente) {
-  if (ctx.classe.chiusa && !docente) throw new ApiError(403, 'CLASSE_CHIUSA', "L'Officina è chiusa: il prof la riapre alla prossima lezione");
   const aperto = compitoAperto(ctx.allievo, testo(body.compitoId, 64), docente);
   const { progetto, voce } = aperto;
   const { lavoro, seme, esercitazione } = corsoDi(uid, progetto, voce, aperto.lavoro);
+  if (ctx.classe.chiusa && !docente && esercitazione === null) {
+    throw new ApiError(403, 'CLASSE_CHIUSA', "L'Officina è chiusa: il prof la riapre alla prossima lezione. Intanto puoi ripetere per esercizio i compiti finiti");
+  }
   if (voce.stato === 'finito' && esercitazione === null) throw new ApiError(403, 'FINITO', 'Hai già finito questo compito!');
   const fasi = generaCompito(progetto, seme);
   return { progetto, lavoro, fasi, esercizio: fasi[lavoro.fasi], seme, esercitazione, voto: voce.voto };

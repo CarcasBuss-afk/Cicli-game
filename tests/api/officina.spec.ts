@@ -547,11 +547,30 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     expect(percorso.media).toBe(9.5);
     expect((await officina(request, luca, 'consegna', { ...dati, fase: 0, codice: fasi[0].soluzione })).corpo.error).toBe('FINITO');
 
-    // Si ripete ancora: l'esercitazione n. 2 riparte da zero. A Officina chiusa no.
+    // Si ripete ancora: l'esercitazione n. 2 riparte da zero.
     expect((await officina(request, luca, 'ripeti', dati)).corpo).toMatchObject({ ok: true, esercitazione: 2 });
     expect((await officina(request, luca, 'compito', dati)).corpo).toMatchObject({ fasi: 0, esercitazione: 2, consigli: 0 });
+
+    // A Officina chiusa (da casa): le esercitazioni sì, consegne e tutor compresi; il compito nuovo no.
     expect((await prof(request, fabio, 'chiudiClasse', { classeId })).stato).toBe(200);
-    expect((await officina(request, luca, 'ripeti', dati)).corpo.error).toBe('CLASSE_CHIUSA');
+    const terza = await officina(request, luca, 'ripeti', dati);
+    expect(terza.corpo).toMatchObject({ ok: true, esercitazione: 3 });
+    const fasiTerza = (await (await request.post('/api/giro/test-setup', { data: { azione: 'fasiOfficina', uid: luca.uid, progetto: 'cartello', esercitazione: 3 } })).json()).fasi as Esercizio[];
+    expect((await officina(request, luca, 'consegna', { ...dati, fase: 0, codice: fasiTerza[0].soluzione })).corpo.promosso).toBe(true);
+    expect((await officina(request, luca, 'tutor', { ...dati, domanda: 'aiuto', codice: '' })).corpo).toMatchObject({ consigli: 1, votoSeFinisci: 9.5 });
+    const classifica = await fasiDi(request, luca.uid, 'classifica');
+    const nuovo = await officina(request, luca, 'consegna', { classeId, compitoId: 'classifica', fase: 0, codice: classifica[0].soluzione });
+    expect(nuovo.corpo.error).toBe('CLASSE_CHIUSA');
+    expect((await officina(request, luca, 'tutor', { classeId, compitoId: 'classifica', domanda: 'aiuto', codice: '' })).corpo.error).toBe('CLASSE_CHIUSA');
+
+    // Sulla pagina: l'esercitazione si lavora, il compito nuovo dice che l'Officina è chiusa.
+    await page.reload();
+    await expect(page.getByRole('note', { name: 'esercitazione' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Consegna ✔' })).toBeEnabled();
+    await expect(page.getByRole('status', { name: 'officina chiusa' })).toHaveCount(0);
+    await page.goto(`/officina/${classeId}/classifica`);
+    await expect(page.getByRole('status', { name: 'officina chiusa' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Consegna ✔' })).toBeDisabled();
   });
 
   test("il diario mostra le domande fra le righe attese, nella fase e nella scheda", async ({ page, request }) => {

@@ -77,7 +77,7 @@ export function Officina() {
             </div>
             {p.classe.chiusa && (
               <p role="status" className="rounded-xl border border-(--color-bordo) bg-black/30 p-3 text-(--color-testo-tenue)">
-                Il prof ha chiuso l&apos;Officina per oggi: puoi rileggere i compiti e il tuo codice, ma consegne e tutor riprendono alla prossima lezione.
+                Il prof ha chiuso l&apos;Officina per oggi: i compiti nuovi riprendono alla prossima lezione. Intanto puoi rileggere il tuo codice e ripetere per esercizio i compiti che hai già finito (il voto non cambia).
               </p>
             )}
             {p.sezioni.map((s) => (

@@ -195,6 +195,8 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
 
   const fase = c.fasi + 1;
   const es = c.esercizio;
+  /** A Officina chiusa si lavora solo sulle esercitazioni: i compiti che valgono il voto aspettano la lezione. */
+  const fermo = c.classeChiusa && c.esercitazione === null;
 
   return (
     <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-4 p-4 sm:p-6">
@@ -231,11 +233,11 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
 
       <Fasi fatte={c.fasi} totale={c.fasiTotali} />
 
-      {c.classeChiusa && !c.finito && (
+      {fermo && !c.finito && (
         <section role="status" aria-label="officina chiusa" className="rounded-2xl border border-(--color-bordo) bg-black/30 p-4 text-center">
           <p className="text-lg font-bold">🔒 L&apos;Officina è chiusa</p>
           <p className="text-(--color-testo-tenue)">
-            Il prof la riapre alla prossima lezione. Il tuo lavoro è salvato: puoi rileggere la scheda e il tuo codice, ma non consegnare né chiedere al tutor.
+            Il prof la riapre alla prossima lezione. Il tuo lavoro è salvato: puoi rileggere la scheda e il tuo codice, ma non consegnare né chiedere al tutor. Intanto puoi ripetere per esercizio i compiti che hai già finito.
           </p>
         </section>
       )}
@@ -266,18 +268,17 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
               </p>
             </>
           )}
-          {!c.classeChiusa && (
-            <div className="mt-3 flex flex-col items-center gap-1">
-              <button
-                onClick={() => void ripeti()}
-                disabled={invio}
-                className="rounded-lg border-2 border-(--color-verde) px-4 py-2 font-bold text-(--color-verde) hover:bg-(--color-verde)/10 disabled:opacity-40"
-              >
-                {c.esercitazione !== null ? '🔁 Ripeti ancora' : '🔁 Ripeti per esercitarti'}
-              </button>
-              <span className="text-sm text-(--color-testo-tenue)">Si riparte dalla fase 1 con numeri nuovi. Il voto non cambia.</span>
-            </div>
-          )}
+          {/* Anche a Officina chiusa: l'esercitazione non vale il voto, si può fare da casa. */}
+          <div className="mt-3 flex flex-col items-center gap-1">
+            <button
+              onClick={() => void ripeti()}
+              disabled={invio}
+              className="rounded-lg border-2 border-(--color-verde) px-4 py-2 font-bold text-(--color-verde) hover:bg-(--color-verde)/10 disabled:opacity-40"
+            >
+              {c.esercitazione !== null ? '🔁 Ripeti ancora' : '🔁 Ripeti per esercitarti'}
+            </button>
+            <span className="text-sm text-(--color-testo-tenue)">Si riparte dalla fase 1 con numeri nuovi. Il voto non cambia.</span>
+          </div>
         </section>
       )}
 
@@ -337,14 +338,14 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
               codiceRef.current = v;
             }}
             onConsegna={() => void consegna()}
-            attivo={!invio && !c.classeChiusa}
+            attivo={!invio && !fermo}
             rigaErrore={rigaErrore}
           />
-          <Prova key={`prova-${compitoId}-${ripartenza}`} codice={() => codiceRef.current} fase={c.fasi} attivo={!c.classeChiusa} />
+          <Prova key={`prova-${compitoId}-${ripartenza}`} codice={() => codiceRef.current} fase={c.fasi} attivo={!fermo} />
           <div className="flex flex-wrap items-center gap-3 border-t border-(--color-bordo) pt-4">
             <button
               onClick={() => void consegna()}
-              disabled={invio || c.classeChiusa}
+              disabled={invio || fermo}
               className="rounded-lg bg-(--color-rosa) px-5 py-2.5 text-lg font-bold text-white hover:brightness-110 disabled:opacity-40"
             >
               {invio ? '…' : 'Consegna ✔'}
@@ -392,7 +393,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
           votoSeFinisci={c.votoSeFinisci}
           domandeRimaste={c.domandeRimaste}
           onChiedi={chiedi}
-          attivo={!c.finito && !c.classeChiusa}
+          attivo={!c.finito && !fermo}
           esercitazione={c.esercitazione !== null}
         />
       )}
