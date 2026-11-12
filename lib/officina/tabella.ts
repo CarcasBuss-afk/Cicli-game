@@ -13,6 +13,8 @@ export type LavoroVisto = {
   ultimoAt: Date | null;
   codice: Record<string, string>;
   bozza: string;
+  /** Quante volte il compito finito è stato ripetuto per esercitarsi (non conta nel voto). */
+  esercitazioni?: number;
   tutor: Array<{ fase: number; domanda: string; risposta: string; at: Date | null }>;
   /** Il registro del giudice (fase da 1), se c'è. */
   giudizi?: Array<{ fase: number; verdetto: 'OK' | 'NO' | 'GUASTO'; motivo: string | null; at: Date | null }>;

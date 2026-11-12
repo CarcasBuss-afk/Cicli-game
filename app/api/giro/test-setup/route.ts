@@ -10,7 +10,7 @@ import { ApiError, handler } from '@/lib/giro/http';
 import { apriTappa, chiudiGiro, chiudiTappa, creaGiro, eliminaTappa } from '@/lib/giro/sessioni';
 import { allieviRef, sessioniRef, type AllievoDoc, type SessioneDoc } from '@/lib/giro/store';
 import { eCompito, generaCompito } from '@/lib/officina/compiti';
-import { semeDa } from '@/lib/officina/regole';
+import { semeCompito } from '@/lib/officina/regole';
 import { allieviRef as allieviOfficinaRef, lavoroVuoto, type AllievoOfficinaDoc } from '@/lib/officina/store';
 
 export const dynamic = 'force-dynamic';
@@ -146,11 +146,13 @@ export const POST = handler(async (body) => {
   }
 
   if (azione === 'fasiOfficina') {
-    // Le fasi di un compito dell'Officina per un allievo, con le soluzioni: dal suo seme.
+    // Le fasi di un compito dell'Officina per un allievo, con le soluzioni: dal suo seme
+    // (con `esercitazione`, quelle dell'esercitazione numero N).
     const uid = typeof body.uid === 'string' ? body.uid : '';
     const progetto = body.progetto;
     if (!eCompito(progetto)) throw new ApiError(400, 'INVALID_BODY', 'Compito sconosciuto');
-    return { fasi: generaCompito(progetto, semeDa(`${uid}|${progetto}`)) };
+    const esercitazione = typeof body.esercitazione === 'number' ? body.esercitazione : null;
+    return { fasi: generaCompito(progetto, semeCompito(uid, progetto, esercitazione)) };
   }
 
   if (azione === 'domandeOfficina') {

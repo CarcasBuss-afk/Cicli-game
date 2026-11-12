@@ -30,6 +30,14 @@ export function semeDa(testo: string): number {
   return h >>> 0 || 1;
 }
 
+/**
+ * Il seme dei parametri di un compito per un allievo. L'esercitazione numero N (il compito
+ * finito rifatto per allenarsi) ha un seme suo: stesso compito, numeri nuovi.
+ */
+export function semeCompito(uid: string, progetto: string, esercitazione: number | null = null): number {
+  return semeDa(esercitazione ? `${uid}|${progetto}|esercitazione ${esercitazione}` : `${uid}|${progetto}`);
+}
+
 export type ProgressoCompito = { fasi: number; consigli: number };
 
 export type StatoCompito = 'finito' | 'in-corso' | 'da-cominciare' | 'bloccato';

@@ -649,3 +649,15 @@ Le domande sullo schermo atteso (2 novembre 2026). Nel diario delle uscite l'all
 - **L'hint sul secondo esempio** confronta apertamente («Con il primo esempio funziona, ma con il secondo (rispondendo «Luca», «2»): alla riga 6 stampi «Grazie, Luca!», invece ci vuole «Ti mancano 8 € per lo sconto»»): l'esempio è lì da vedere.
 - **L'hint sulle prove nascoste**, quando le righe stampate sono giuste ma ne mancano alcune, dice fra quali: «manca una riga fra «Totale: 8 €» e «Grazie, Luca!»… un ramo, un `else`, che con i dati di prova non parte». Mai la riga attesa.
 - **Il tutor** sa se la prova su cui cade il codice è il secondo esempio o una nascosta, vede il secondo esempio nel contesto, e tra le cause tipiche ha anche il ramo che manca, non solo i valori scritti a mano. Il prompt dice «mezzo punto» a domanda, come dal 2 novembre.
+
+## 25. Ripetere un compito finito per esercitarsi (12 novembre 2026)
+
+**La richiesta.** Fabio vuole che un allievo possa rifare un compito già finito per allenarsi, «nello stesso modo della prima volta ma senza migliorare il voto».
+
+**Che cosa è cambiato.**
+
+- **Il pulsante «🔁 Ripeti per esercitarti»** compare nel riquadro del voto a compito finito (non a Officina chiusa). Si riparte dalla fase 1 e funziona come la prima volta: hint, giudice, Prova, tutor, festa a ogni fase. È un'**esercitazione** (`LavoroDoc.esercitazione`, azione `ripeti`).
+- **Numeri nuovi**: l'esercitazione numero N ha un seme suo (`semeCompito(uid, progetto, N)` in `regole.ts`). Con gli stessi numeri l'allievo ricopierebbe il codice che rilegge sotto il voto, e non si eserciterebbe.
+- **Il voto non si muove**, né in su né in giù: l'esercitazione ha un lavoro a parte (fasi, bozza, codice, errori, tutor, giudizi). Il voto, la media, lo stato nel percorso e il codice della prima volta restano quelli. Le domande al tutor nell'esercitazione non costano punti, ma il tetto di 30 a esercitazione resta, perché è un tetto alla spesa. Il patentino si può ripetere, sempre con il tutor spento.
+- **Un'esercitazione alla volta**: finita, la pagina dice «Esercitazione finita! Il voto del compito resta …» con «🔁 Ripeti ancora». Riaprendo il compito si ritrova il compito di prima, con il suo codice. Una nuova esercitazione rimpiazza la precedente.
+- **Il docente** vede nel lavoro dell'allievo quante volte ha ripetuto il compito («🔁 ripetuto 2 volte per esercizio»). «Ricomincia da capo» (solo docente) azzera anche l'esercitazione.

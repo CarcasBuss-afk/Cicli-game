@@ -102,4 +102,5 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 13n. Il compito riaperto mostra il codice promosso e la consegna, fase per fase: aperto a compito finito, richiuso mentre si lavora (4 novembre 2026).
 - [x] 13o. Il secondo esempio quando la fase aggiunge un ramo che il primo non percorre, l'hint con le righe mancanti, il tutor che distingue esempio e prova nascosta (il caso di Maruf, 6 novembre 2026; PERCORSO.md §24).
 - [x] 13p. Accanto al codice di ogni fase superata, l'output atteso di allora («Doveva comparire», anche il secondo esempio), su richiesta di un allievo (6 novembre 2026).
+- [x] 13q. «Ripeti per esercitarti»: il compito finito si rifà da capo con numeri nuovi, come la prima volta, senza toccare il voto (12 novembre 2026; PERCORSO.md §25).
 - [ ] 13g. Dopo la prima lezione con le novità: rileggere dal database conversazioni, bozze ferme, registro del giudice ed errori per fase; confrontare con la prima settimana.

@@ -27,6 +27,7 @@ function lavoroDa(grezzo: Record<string, unknown>): LavoroVisto {
     ultimoAt: data(grezzo.ultimoAt),
     codice: (grezzo.codice as Record<string, string>) ?? {},
     bozza: (grezzo.bozza as string) ?? '',
+    esercitazioni: ((grezzo.esercitazione as Record<string, unknown> | undefined)?.numero as number) ?? 0,
     tutor: ((grezzo.tutor ?? []) as Array<Record<string, unknown>>).map((s) => ({
       fase: ((s.fase as number) ?? 0) + 1,
       domanda: (s.domanda as string) ?? '',
@@ -263,6 +264,7 @@ function Lavoro({ allievo, titolo, lavoro, onChiudi }: { allievo: AllievoVisto; 
             <p className="mb-1 text-sm font-bold text-(--color-testo-tenue)">
               {lavoro.fasi}/{FASI_PER_COMPITO} fasi · {lavoro.errori} {lavoro.errori === 1 ? 'errore' : 'errori'}
               {lavoro.ultimoAt && ` · ultima consegna ${lavoro.ultimoAt.toLocaleString('it-IT')}`}
+              {(lavoro.esercitazioni ?? 0) > 0 && ` · 🔁 ripetuto ${lavoro.esercitazioni === 1 ? 'una volta' : `${lavoro.esercitazioni} volte`} per esercizio`}
             </p>
             {fasi.map(([k, codice]) => (
               <details key={k} open={Number(k) === fasi.length - 1} className="mb-1">

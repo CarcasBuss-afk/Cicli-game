@@ -6,7 +6,7 @@
 import 'server-only';
 import { FieldValue, Timestamp } from 'firebase-admin/firestore';
 import { getDb } from '@/lib/firebaseAdmin';
-import { esercizioPerAllievo, opzioniDiProva, type Esercizio } from '@/lib/giro/esercizi';
+import { esercizioPerAllievo, opzioniDiProva } from '@/lib/giro/esercizi';
 import { ApiError } from '@/lib/giro/http';
 import { valutaRisposta } from '@/lib/giro/hint';
 import { verificaConsegna } from '@/lib/giro/verifica';
@@ -15,7 +15,7 @@ import { eCompito, eEsame, generaCompito, schedaCompito, SEZIONI, sezioneDi, typ
 import { richiestaAmmessa } from '@/lib/giro/rateLimit';
 import type { Utente } from './auth';
 import type { FasePassata } from './client';
-import { FASI_PER_COMPITO, mediaVoti, percorsoDi, semeDa, votoSeFinisce } from './regole';
+import { FASI_PER_COMPITO, mediaVoti, percorsoDi, semeCompito, votoSeFinisce, type VoceCompito } from './regole';
 import {
   allieviRef,
   appartenenzeRef,
@@ -24,6 +24,7 @@ import {
   type AllievoOfficinaDoc,
   type AppartenenzaDoc,
   type ClasseDoc,
+  type EsercitazioneDoc,
   type LavoroDoc,
 } from './store';
 import { provaCheCade } from './consiglio';
@@ -116,10 +117,24 @@ async function contesto(body: Record<string, unknown>, utente: Utente, tx?: Fire
   return { classeId, classe, allievo, allievoRef };
 }
 
-const semeDi = (uid: string, progetto: CompitoId) => semeDa(`${uid}|${progetto}`);
+/**
+ * Il lavoro su cui l'allievo sta lavorando adesso. Di solito è il compito; se il compito è
+ * finito ed è aperta un'esercitazione non ancora finita, è l'esercitazione: stesse fasi con
+ * numeri nuovi (seme suo), lavoro a parte, il voto resta quello della prima volta.
+ */
+type Corso = {
+  lavoro: LavoroDoc;
+  seme: number;
+  /** Il numero dell'esercitazione in corso, null se si lavora sul compito. */
+  esercitazione: number | null;
+};
 
-function fasiDi(progetto: CompitoId, uid: string): Esercizio[] {
-  return generaCompito(progetto, semeDi(uid, progetto));
+function corsoDi(uid: string, progetto: CompitoId, voce: VoceCompito, lavoro: LavoroDoc): Corso {
+  const e = lavoro.esercitazione;
+  if (voce.stato === 'finito' && e && e.fasi < FASI_PER_COMPITO) {
+    return { lavoro: e, seme: semeCompito(uid, progetto, e.numero), esercitazione: e.numero };
+  }
+  return { lavoro, seme: semeCompito(uid, progetto), esercitazione: null };
 }
 
 /** Il compito richiesto, se è nel percorso e sbloccato per questo allievo. */
@@ -155,9 +170,12 @@ export async function compiti(body: Record<string, unknown>, utente: Utente) {
 /** Il compito aperto: scheda, fase da fare, codice da cui ripartire, conversazione col tutor. */
 export async function compito(body: Record<string, unknown>, utente: Utente) {
   const ctx = await contesto(body, utente);
-  const { progetto, voce, lavoro } = compitoAperto(ctx.allievo, testo(body.compitoId, 64), utente.docente);
-  const fasi = fasiDi(progetto, utente.uid);
-  const finito = voce.stato === 'finito';
+  const aperto = compitoAperto(ctx.allievo, testo(body.compitoId, 64), utente.docente);
+  const { progetto, voce } = aperto;
+  // Durante un'esercitazione la pagina mostra quella: fasi, bozza, codice e tutor suoi.
+  const { lavoro, seme, esercitazione } = corsoDi(utente.uid, progetto, voce, aperto.lavoro);
+  const fasi = generaCompito(progetto, seme);
+  const finito = voce.stato === 'finito' && esercitazione === null;
   const esercizio = !finito ? fasi[lavoro.fasi] : undefined;
   // Si riparte dall'ultima consegna, giusta o no; altrimenti dal codice della fase prima;
   // altrimenti da quello che la fase porta già scritto (la promozione riparte dallo scontrino).
@@ -173,8 +191,11 @@ export async function compito(body: Record<string, unknown>, utente: Utente) {
     domandeRimaste: domandeRimaste(lavoro.consigli),
     finito,
     voto: voce.voto,
-    votoSeFinisci: votoSeFinisce(lavoro.consigli),
-    scheda: schedaCompito(progetto, semeDi(utente.uid, progetto)),
+    // Nell'esercitazione il voto non si muove: quello «se finisci» è quello che ha già.
+    votoSeFinisci: esercitazione !== null && voce.voto !== null ? voce.voto : votoSeFinisce(lavoro.consigli),
+    esercitazione,
+    esercitazioni: aperto.lavoro.esercitazione?.numero ?? 0,
+    scheda: schedaCompito(progetto, seme),
     esercizio: esercizio ? { ...esercizioPerAllievo(esercizio), codiceIniziale: daCui || undefined } : null,
     codice: lavoro.codice ?? {},
     // Solo le fasi già superate, come l'allievo le vedeva (consegna e riquadri attesi): quelle da fare restano nascoste.
@@ -200,19 +221,48 @@ export async function ricomincia(body: Record<string, unknown>, utente: Utente) 
   return { ok: true };
 }
 
+/**
+ * Ripete un compito finito per esercitarsi: si riparte dalla fase 1, con numeri nuovi, gli
+ * hint, il giudice e il tutor come la prima volta. Il voto e il codice della prima volta
+ * restano dove sono: l'esercitazione ha il suo lavoro a parte, e una nuova rimpiazza la
+ * precedente.
+ */
+export async function ripeti(body: Record<string, unknown>, utente: Utente) {
+  limita(utente);
+  const ctx = await contesto(body, utente);
+  if (ctx.classe.chiusa && !utente.docente) throw new ApiError(403, 'CLASSE_CHIUSA', "L'Officina è chiusa: il prof la riapre alla prossima lezione");
+  const { progetto, voce, lavoro } = compitoAperto(ctx.allievo, testo(body.compitoId, 64), utente.docente);
+  if (voce.stato !== 'finito') throw new ApiError(403, 'NON_FINITO', 'Si ripete un compito finito: prima arriva in fondo');
+  const numero = (lavoro.esercitazione?.numero ?? 0) + 1;
+  const nuova: EsercitazioneDoc = { ...lavoroVuoto(), numero };
+  // update, non set con merge: l'esercitazione di prima va sostituita per intero.
+  await ctx.allievoRef.update({ [`lavori.${progetto}.esercitazione`]: nuova });
+  return { ok: true, esercitazione: numero };
+}
+
 /* ----------------------------------------------------------------- consegna */
 
 function intero(v: unknown): number {
   return typeof v === 'number' ? v : typeof v === 'string' && v.trim() !== '' ? Number(v) : Number.NaN;
 }
 
-/** Controlli comuni a consegna e tutor: classe aperta, compito sbloccato e non finito. */
+/**
+ * Controlli comuni a consegna e tutor: classe aperta, compito sbloccato e non finito (o
+ * finito ma con un'esercitazione in corso: allora si lavora su quella).
+ */
 function lavoroInCorso(ctx: Contesto, body: Record<string, unknown>, { uid, docente }: Utente) {
   if (ctx.classe.chiusa && !docente) throw new ApiError(403, 'CLASSE_CHIUSA', "L'Officina è chiusa: il prof la riapre alla prossima lezione");
-  const { progetto, voce, lavoro } = compitoAperto(ctx.allievo, testo(body.compitoId, 64), docente);
-  if (voce.stato === 'finito') throw new ApiError(403, 'FINITO', 'Hai già finito questo compito!');
-  const fasi = fasiDi(progetto, uid);
-  return { progetto, lavoro, fasi, esercizio: fasi[lavoro.fasi] };
+  const aperto = compitoAperto(ctx.allievo, testo(body.compitoId, 64), docente);
+  const { progetto, voce } = aperto;
+  const { lavoro, seme, esercitazione } = corsoDi(uid, progetto, voce, aperto.lavoro);
+  if (voce.stato === 'finito' && esercitazione === null) throw new ApiError(403, 'FINITO', 'Hai già finito questo compito!');
+  const fasi = generaCompito(progetto, seme);
+  return { progetto, lavoro, fasi, esercizio: fasi[lavoro.fasi], seme, esercitazione, voto: voce.voto };
+}
+
+/** Dove si scrive il lavoro: nel compito, o nella sua esercitazione. */
+function dovePer(progetto: CompitoId, esercitazione: number | null, dati: Record<string, unknown>) {
+  return { lavori: { [progetto]: esercitazione === null ? dati : { esercitazione: dati } } };
 }
 
 /** La fase che l'allievo sta consegnando: i controlli, uguali nei due tempi della consegna. */
@@ -242,9 +292,13 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
 
   return getDb().runTransaction(async (tx) => {
     const ctx = await contesto(body, utente, tx);
-    const { progetto, lavoro, fasi, f } = faseInConsegna(ctx, body, utente);
+    const { progetto, lavoro, fasi, f, esercitazione, voto } = faseInConsegna(ctx, body, utente);
+    // Nel frattempo è partita un'altra esercitazione (numeri diversi): la verifica non vale più.
+    if (esercitazione !== prima.esercitazione) {
+      throw new ApiError(409, 'FASE_SBAGLIATA', 'Il compito è ripartito da capo: ricarica la pagina');
+    }
     const salva = (dati: Partial<LavoroDoc>) =>
-      tx.set(ctx.allievoRef, { lavori: { [progetto]: { ...lavoro, ...dati, ultimoAt: Timestamp.now() } } }, { merge: true });
+      tx.set(ctx.allievoRef, dovePer(progetto, esercitazione, { ...lavoro, ...dati, ultimoAt: Timestamp.now() }), { merge: true });
     // Il registro del giudice: ogni verdetto (anche il guasto) resta, il docente lo legge.
     const giudizi = valutazione.giudizio
       ? [...(lavoro.giudizi ?? []), { fase: f, verdetto: valutazione.giudizio.verdetto, motivo: valutazione.giudizio.motivo ?? null, at: Timestamp.now() }].slice(-20)
@@ -285,8 +339,9 @@ export async function consegna(body: Record<string, unknown>, utente: Utente) {
       schermo: valutazione.schermo,
       fasi: nuoveFasi,
       finito,
-      voto: finito ? votoSeFinisce(lavoro.consigli) : null,
-      votoSeFinisci: votoSeFinisce(lavoro.consigli),
+      // L'esercitazione non cambia il voto: alla fine si ritrova quello di prima.
+      voto: finito ? (esercitazione !== null ? voto : votoSeFinisce(lavoro.consigli)) : null,
+      votoSeFinisci: esercitazione !== null && voto !== null ? voto : votoSeFinisce(lavoro.consigli),
       esercizio: seguente ? { ...esercizioPerAllievo(seguente), codiceIniziale: codice } : null,
     };
   });
@@ -306,7 +361,7 @@ export async function tutor(body: Record<string, unknown>, utente: Utente) {
   const codice = typeof body.codice === 'string' ? body.codice.slice(0, 6000) : '';
 
   const ctx = await contesto(body, utente);
-  const { progetto, lavoro, esercizio } = lavoroInCorso(ctx, body, utente);
+  const { progetto, lavoro, esercizio, seme, esercitazione, voto } = lavoroInCorso(ctx, body, utente);
   if (eEsame(progetto)) {
     throw new ApiError(403, 'TUTOR_SPENTO', 'Nel patentino il tutor è spento: è un esame, ce la fai da solo. Gli hint automatici restano');
   }
@@ -317,7 +372,7 @@ export async function tutor(body: Record<string, unknown>, utente: Utente) {
   const valutazione = codice.trim() ? valutaRisposta(esercizio, codice) : null;
   const risposta = await chiediTutor(
     {
-      scheda: schedaCompito(progetto, semeDi(utente.uid, progetto)),
+      scheda: schedaCompito(progetto, seme),
       fase: lavoro.fasi + 1,
       fasiTotali: FASI_PER_COMPITO,
       esercizio,
@@ -334,16 +389,19 @@ export async function tutor(body: Record<string, unknown>, utente: Utente) {
 
   const consigli = await getDb().runTransaction(async (tx) => {
     const snap = await tx.get(ctx.allievoRef);
-    const fresco = snap.data() as AllievoOfficinaDoc | undefined;
-    const attuale = fresco?.lavori?.[progetto] ?? lavoroVuoto();
+    const fresco = (snap.data() as AllievoOfficinaDoc | undefined)?.lavori?.[progetto];
+    // La domanda va nel lavoro dove è stata fatta: nell'esercitazione, se è ancora quella.
+    const attuale: LavoroDoc =
+      esercitazione === null ? (fresco ?? lavoroVuoto()) : fresco?.esercitazione?.numero === esercitazione ? fresco.esercitazione : lavoro;
     const scambio = { fase: lavoro.fasi, domanda, risposta, at: Timestamp.now() };
     tx.set(
       ctx.allievoRef,
-      { lavori: { [progetto]: { ...attuale, bozza: codice || attuale.bozza, consigli: attuale.consigli + 1, tutor: [...(attuale.tutor ?? []), scambio] } } },
+      dovePer(progetto, esercitazione, { ...attuale, bozza: codice || attuale.bozza, consigli: attuale.consigli + 1, tutor: [...(attuale.tutor ?? []), scambio] }),
       { merge: true },
     );
     return attuale.consigli + 1;
   });
 
-  return { risposta, consigli, domandeRimaste: domandeRimaste(consigli), votoSeFinisci: votoSeFinisce(consigli), fase: lavoro.fasi + 1 };
+  const votoSeFinisci = esercitazione !== null && voto !== null ? voto : votoSeFinisce(consigli);
+  return { risposta, consigli, domandeRimaste: domandeRimaste(consigli), votoSeFinisci, fase: lavoro.fasi + 1 };
 }

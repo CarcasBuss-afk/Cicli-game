@@ -123,6 +123,27 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
     }
   }, [invio, classeId, compitoId, carica]);
 
+  /** Il compito finito si rifà da capo per esercitarsi: numeri nuovi, il voto resta quello. */
+  const ripeti = useCallback(async () => {
+    if (invio) return;
+    setInvio(true);
+    try {
+      await chiamaOfficina('ripeti', { classeId, compitoId });
+      codiceRef.current = '';
+      setHint(null);
+      setRigaErrore(null);
+      setOutput(null);
+      setSchermo(null);
+      setRipartenza((n) => n + 1);
+      await carica();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } catch (e) {
+      setErrore(messaggioErrore(e));
+    } finally {
+      setInvio(false);
+    }
+  }, [invio, classeId, compitoId, carica]);
+
   const azzeraEsito = () => {
     setHint(null);
     setRigaErrore(null);
@@ -189,7 +210,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
               {festa.finito ? '🏆' : '🎉'}
             </span>
             <span className="block text-3xl font-black text-(--color-giallo)">
-              {festa.finito ? (c.esame ? 'Patentino preso!' : 'Programma finito!') : `Fase ${festa.fase} superata!`}
+              {festa.finito ? (c.esercitazione !== null ? 'Esercitazione finita!' : c.esame ? 'Patentino preso!' : 'Programma finito!') : `Fase ${festa.fase} superata!`}
             </span>
             <span className="block text-(--color-testo-tenue)">{festa.finito ? 'Ce l’hai fatta.' : 'Avanti con la prossima.'}</span>
           </p>
@@ -219,14 +240,44 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
         </section>
       )}
 
-      {c.finito && (
-        <section ref={finitoRef} className="scroll-mt-4 rounded-2xl border border-(--color-giallo)/50 bg-(--color-giallo)/10 p-5 text-center">
-          <p className="text-sm text-(--color-testo-tenue)">{c.esame ? '🪪 Patentino preso! Il tuo voto' : 'Programma finito! Il tuo voto'}</p>
-          <p className="font-mono text-6xl font-black text-(--color-giallo)">{c.voto === null ? '' : scriviVoto(c.voto)}</p>
+      {c.esercitazione !== null && !c.finito && (
+        <section role="note" aria-label="esercitazione" className="rounded-xl border border-(--color-verde)/40 bg-(--color-verde)/10 p-3 text-center">
+          <p className="font-bold">🔁 Esercitazione{c.esercitazione > 1 ? ` n. ${c.esercitazione}` : ''}: rifai il compito con numeri nuovi</p>
           <p className="text-(--color-testo-tenue)">
-            {c.fasi} {c.fasi === 1 ? 'fase' : 'fasi'} su {c.fasiTotali}
-            {!c.esame && ` · ${c.consigli} ${c.consigli === 1 ? 'domanda' : 'domande'} al tutor`}
+            Funziona come la prima volta, ma il voto resta {c.voto === null ? 'quello che hai' : scriviVoto(c.voto)}: qui non sale e non scende.
           </p>
+        </section>
+      )}
+
+      {c.finito && (
+        <section ref={finitoRef} className="flex scroll-mt-4 flex-col items-center gap-1 rounded-2xl border border-(--color-giallo)/50 bg-(--color-giallo)/10 p-5 text-center">
+          {c.esercitazione !== null ? (
+            <>
+              <p className="text-sm text-(--color-testo-tenue)">🔁 Esercitazione finita! Il voto del compito resta</p>
+              <p className="font-mono text-6xl font-black text-(--color-giallo)">{c.voto === null ? '' : scriviVoto(c.voto)}</p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-(--color-testo-tenue)">{c.esame ? '🪪 Patentino preso! Il tuo voto' : 'Programma finito! Il tuo voto'}</p>
+              <p className="font-mono text-6xl font-black text-(--color-giallo)">{c.voto === null ? '' : scriviVoto(c.voto)}</p>
+              <p className="text-(--color-testo-tenue)">
+                {c.fasi} {c.fasi === 1 ? 'fase' : 'fasi'} su {c.fasiTotali}
+                {!c.esame && ` · ${c.consigli} ${c.consigli === 1 ? 'domanda' : 'domande'} al tutor`}
+              </p>
+            </>
+          )}
+          {!c.classeChiusa && (
+            <div className="mt-3 flex flex-col items-center gap-1">
+              <button
+                onClick={() => void ripeti()}
+                disabled={invio}
+                className="rounded-lg border-2 border-(--color-verde) px-4 py-2 font-bold text-(--color-verde) hover:bg-(--color-verde)/10 disabled:opacity-40"
+              >
+                {c.esercitazione !== null ? '🔁 Ripeti ancora' : '🔁 Ripeti per esercitarti'}
+              </button>
+              <span className="text-sm text-(--color-testo-tenue)">Si riparte dalla fase 1 con numeri nuovi. Il voto non cambia.</span>
+            </div>
+          )}
         </section>
       )}
 
@@ -335,7 +386,16 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
         </button>
       )}
 
-      {!c.esame && <TutorChat scambi={c.tutor} votoSeFinisci={c.votoSeFinisci} domandeRimaste={c.domandeRimaste} onChiedi={chiedi} attivo={!c.finito && !c.classeChiusa} />}
+      {!c.esame && (
+        <TutorChat
+          scambi={c.tutor}
+          votoSeFinisci={c.votoSeFinisci}
+          domandeRimaste={c.domandeRimaste}
+          onChiedi={chiedi}
+          attivo={!c.finito && !c.classeChiusa}
+          esercitazione={c.esercitazione !== null}
+        />
+      )}
 
       {errore && (
         <section role="alert" className="rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-red-200">
@@ -354,7 +414,7 @@ export function Compito({ classeId, compitoId }: { classeId: string; compitoId: 
 
       <footer className="mt-auto pt-4 text-center text-sm text-(--color-testo-tenue)">
         Gli errori non costano niente e il lavoro resta salvato: puoi chiudere e riprendere quando vuoi.
-        {!c.esame && ' Solo le domande al tutor costano mezzo punto.'}
+        {!c.esame && (c.esercitazione !== null ? ' È un’esercitazione: nemmeno le domande al tutor toccano il voto.' : ' Solo le domande al tutor costano mezzo punto.')}
       </footer>
     </main>
   );

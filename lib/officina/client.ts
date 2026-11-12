@@ -93,6 +93,10 @@ export type CompitoAperto = {
   finito: boolean;
   voto: number | null;
   votoSeFinisci: number;
+  /** Il numero dell'esercitazione in corso (il compito finito rifatto per allenarsi), null se non ce n'è. */
+  esercitazione: number | null;
+  /** Quante volte il compito è stato ripetuto per esercitarsi. */
+  esercitazioni: number;
   scheda: SchedaCompito;
   esercizio: EsercizioPubblico | null;
   codice: Record<string, string>;

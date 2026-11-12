@@ -53,7 +53,16 @@ export type LavoroDoc = {
   giudizi?: GiudizioDoc[];
   finitoAt: Timestamp | null;
   ultimoAt: Timestamp | null;
+  /**
+   * L'esercitazione: il compito finito rifatto da capo per allenarsi, con numeri nuovi.
+   * Ha il suo lavoro (fasi, bozza, errori, tutor) e non tocca né il voto né il codice
+   * della prima volta. Ce n'è una sola, l'ultima: «Ripeti» la rimpiazza.
+   */
+  esercitazione?: EsercitazioneDoc;
 };
+
+/** Il lavoro di un'esercitazione, con il suo numero (1 la prima volta che si ripete). */
+export type EsercitazioneDoc = Omit<LavoroDoc, 'esercitazione'> & { numero: number };
 
 export type AllievoOfficinaDoc = {
   uid: string;

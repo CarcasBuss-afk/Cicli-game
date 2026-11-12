@@ -499,6 +499,61 @@ test.describe("l'Officina nella pagina dell'allievo", () => {
     await expect(atteso).toContainText(fasi[0].outputAtteso[0]);
   });
 
+  test("il compito finito si ripete per esercitarsi: numeri nuovi, il voto non cambia", async ({ page, request }) => {
+    const { fabio, classeId, nomeClasse, luca, fasi } = await scenario(request);
+    const dati = { classeId, compitoId: 'cartello' };
+    // Prima di finirlo non si ripete.
+    expect((await officina(request, luca, 'ripeti', dati)).corpo.error).toBe('NON_FINITO');
+    // Una domanda al tutor la prima volta: voto 9,5.
+    await officina(request, luca, 'tutor', { ...dati, domanda: 'come parto?', codice: '' });
+    await finisci(request, luca, classeId, 'cartello');
+    expect((await officina(request, luca, 'compito', dati)).corpo).toMatchObject({ finito: true, voto: 9.5, esercitazione: null, esercitazioni: 0 });
+
+    // Dalla pagina: «Ripeti per esercitarti» riparte dalla fase 1, con l'avviso che il voto resta.
+    await accedi(page, luca.email);
+    await apriCard(page, nomeClasse, 'Il ciclo for');
+    await page.getByRole('link', { name: /Il cartello della festa/ }).click();
+    await expect(page.getByText('Programma finito! Il tuo voto')).toBeVisible();
+    await page.getByRole('button', { name: /Ripeti per esercitarti/ }).click();
+    await expect(page.getByRole('note', { name: 'esercitazione' })).toContainText('il voto resta 9,5');
+    await expect(page.getByRole('button', { name: 'Consegna ✔' })).toBeVisible();
+    await expect(page.getByText('Programma finito! Il tuo voto')).toHaveCount(0);
+    await expect(page.getByText('Nell’esercitazione le domande non costano punti.')).toBeVisible();
+
+    const ripasso = (await officina(request, luca, 'compito', dati)).corpo;
+    expect(ripasso).toMatchObject({ finito: false, fasi: 0, esercitazione: 1, voto: 9.5, consigli: 0, tutor: [], codice: {}, passate: [] });
+    const nuove = (await request.post('/api/giro/test-setup', { data: { azione: 'fasiOfficina', uid: luca.uid, progetto: 'cartello', esercitazione: 1 } })).json();
+    const fasiNuove = (await nuove).fasi as Esercizio[];
+    expect(ripasso.esercizio.consegna).toBe(fasiNuove[0].consegna);
+    expect(JSON.stringify(ripasso)).not.toContain('soluzione');
+
+    // Si lavora come la prima volta: errori, tutor, fasi. Il voto non si muove.
+    const sbagliata = await officina(request, luca, 'consegna', { ...dati, fase: 0, codice: 'print("ciao")' });
+    expect(sbagliata.corpo.promosso).toBe(false);
+    const domanda = await officina(request, luca, 'tutor', { ...dati, domanda: 'aiuto', codice: 'print("ciao")' });
+    expect(domanda.corpo).toMatchObject({ consigli: 1, votoSeFinisci: 9.5 });
+    for (let k = 0; k < 5; k++) {
+      const r = await officina(request, luca, 'consegna', { ...dati, fase: k, codice: fasiNuove[k].soluzione });
+      expect(r.corpo.promosso, `esercitazione fase ${k + 1}: ${JSON.stringify(r.corpo)}`).toBe(true);
+      if (k === 4) expect(r.corpo).toMatchObject({ finito: true, voto: 9.5 });
+    }
+
+    // Finita l'esercitazione si ritrova il compito di prima: stesso voto, stesso codice, una ripetizione contata.
+    const dopo = (await officina(request, luca, 'compito', dati)).corpo;
+    expect(dopo).toMatchObject({ finito: true, voto: 9.5, consigli: 1, esercitazione: null, esercitazioni: 1 });
+    expect(dopo.codice['0']).toBe(fasi[0].soluzione);
+    const percorso = (await officina(request, luca, 'compiti', { classeId })).corpo;
+    expect(percorso.compiti.find((c: { id: string }) => c.id === 'cartello')).toMatchObject({ stato: 'finito', voto: 9.5 });
+    expect(percorso.media).toBe(9.5);
+    expect((await officina(request, luca, 'consegna', { ...dati, fase: 0, codice: fasi[0].soluzione })).corpo.error).toBe('FINITO');
+
+    // Si ripete ancora: l'esercitazione n. 2 riparte da zero. A Officina chiusa no.
+    expect((await officina(request, luca, 'ripeti', dati)).corpo).toMatchObject({ ok: true, esercitazione: 2 });
+    expect((await officina(request, luca, 'compito', dati)).corpo).toMatchObject({ fasi: 0, esercitazione: 2, consigli: 0 });
+    expect((await prof(request, fabio, 'chiudiClasse', { classeId })).stato).toBe(200);
+    expect((await officina(request, luca, 'ripeti', dati)).corpo.error).toBe('CLASSE_CHIUSA');
+  });
+
   test("il diario mostra le domande fra le righe attese, nella fase e nella scheda", async ({ page, request }) => {
     const { classeId, nomeClasse } = await scenario(request);
     const r = await request.post("/api/officina/test-login", { data: { email: TEACHER_EMAIL, nome: "Fabio" } });
