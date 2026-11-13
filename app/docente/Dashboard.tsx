@@ -77,6 +77,9 @@ export function Dashboard() {
           <Link href="/docente/officina" className="font-bold text-(--color-giallo) underline">
             🔧 L&apos;Officina
           </Link>
+          <Link href="/docente/sfondi" className="underline">
+            🎄 sfondi
+          </Link>
           <span>{utente?.email}</span>
           <button onClick={esci} className="underline">
             esci

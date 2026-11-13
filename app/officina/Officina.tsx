@@ -45,7 +45,7 @@ export function Officina() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col gap-5 p-4 sm:p-6">
+    <main className="pannello-sfondo mx-auto flex min-h-screen max-w-3xl flex-col gap-5 p-4 sm:p-6">
       <header className="flex flex-wrap items-baseline justify-between gap-2">
         <div>
           <h1 className="text-2xl font-black text-(--color-giallo)">🔧 L&apos;Officina</h1>

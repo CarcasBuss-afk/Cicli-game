@@ -19,7 +19,8 @@ export function AccessoAllievo({
 }) {
   const [email, setEmail] = useState('');
   return (
-    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-6 p-6 text-center">
+    <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center p-6 text-center">
+      <div className="pannello-sfondo flex w-full flex-col items-center gap-6">
       <p className="text-5xl" aria-hidden>
         🔧
       </p>
@@ -70,6 +71,7 @@ export function AccessoAllievo({
       <Link href="/" className="text-sm text-(--color-testo-tenue) underline hover:text-(--color-testo)">
         ← tutte le attività
       </Link>
+      </div>
     </main>
   );
 }

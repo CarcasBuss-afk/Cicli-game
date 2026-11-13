@@ -18,6 +18,7 @@ import {
   type RispostaJoin,
 } from '@/lib/giro/client';
 import { sbloccaSuoni } from '@/lib/giro/suoni';
+import SfondoFestivo from '@/components/SfondoFestivo';
 import Testo from '@/components/Testo';
 
 type Porta = 'nuovo' | 'rientro';
@@ -91,7 +92,9 @@ export default function Ingresso() {
   }
 
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center gap-8 p-6">
+    <main className="mx-auto flex min-h-screen max-w-lg flex-col justify-center p-6">
+      <SfondoFestivo />
+      <div className="pannello-sfondo flex flex-col gap-8">
       <header className="text-center">
         <p className="text-5xl" aria-hidden>
           🚴
@@ -246,6 +249,7 @@ export default function Ingresso() {
           </button>
         </form>
       )}
+      </div>
     </main>
   );
 }

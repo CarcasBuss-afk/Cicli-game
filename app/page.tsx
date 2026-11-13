@@ -2,6 +2,7 @@
  * i rimandi: il Giro (la gara in classe, col codice alla LIM) e l'Officina (i compiti di
  * realtà, da soli, con l'account della scuola); in fondo le due dashboard del docente. */
 import Link from 'next/link';
+import SfondoFestivo from '@/components/SfondoFestivo';
 
 const ATTIVITA = [
   {
@@ -35,7 +36,10 @@ const TITOLO = { rosa: 'text-(--color-rosa)', giallo: 'text-(--color-giallo)' };
 
 export default function Ingresso() {
   return (
-    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center gap-10 p-6">
+    <main className="mx-auto flex min-h-screen max-w-3xl flex-col justify-center p-6">
+      {/* Lo sfondo delle feste, se il docente ne ha acceso uno: il contenuto va su un pannello. */}
+      <SfondoFestivo />
+      <div className="pannello-sfondo flex flex-col gap-10">
       <header className="text-center">
         <h1 className="text-4xl font-black tracking-tight">
           I cicli <code className="font-mono text-(--color-giallo)">for</code> in Python
@@ -73,6 +77,7 @@ export default function Ingresso() {
           ))}
         </ul>
       </section>
+      </div>
     </main>
   );
 }

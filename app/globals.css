@@ -110,3 +110,14 @@ body {
   color: var(--color-testo);
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
+
+/* Lo sfondo delle feste (components/SfondoFestivo.tsx): mentre c'è un'immagine, il body ha la
+ * classe con-sfondo e i contenuti marcati pannello-sfondo stanno su un pannello scuro velato,
+ * così il testo resta leggibile. Senza sfondo la classe non fa niente: la pagina di sempre. */
+.con-sfondo .pannello-sfondo {
+  background-color: rgb(17 20 28 / 0.86);
+  backdrop-filter: blur(8px);
+  border-radius: 1.5rem;
+  box-shadow: 0 20px 50px rgb(0 0 0 / 0.45);
+  padding: 1.5rem;
+}

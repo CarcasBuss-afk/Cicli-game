@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import EditorPython from '@/components/EditorPython';
 import SchermoProgramma, { RisposteDiProva } from '@/components/Schermo';
+import SfondoFestivo from '@/components/SfondoFestivo';
 import Testo from '@/components/Testo';
 import {
   leggiIdentita,
@@ -479,10 +480,12 @@ function Generale({ g }: { g: NonNullable<RispostaStatus['generale']> }) {
   );
 }
 
-/** Schermata a tutto campo per attesa, traguardo, errori. */
+/** Schermata a tutto campo per attesa, traguardo, errori: qui, e solo qui, lo sfondo delle feste. */
 function Schermo({ titolo, icona, children }: { titolo: string; icona?: string; children?: React.ReactNode }) {
   return (
-    <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center gap-4 p-6 text-center">
+    <main className="mx-auto flex min-h-screen max-w-lg flex-col items-center justify-center p-6 text-center">
+      <SfondoFestivo />
+      <div className="pannello-sfondo flex w-full flex-col items-center gap-4">
       {icona && (
         <p className="text-6xl" aria-hidden>
           {icona}
@@ -490,6 +493,7 @@ function Schermo({ titolo, icona, children }: { titolo: string; icona?: string; 
       )}
       <h1 className="text-3xl font-black text-(--color-rosa)">{titolo}</h1>
       {children}
+      </div>
     </main>
   );
 }

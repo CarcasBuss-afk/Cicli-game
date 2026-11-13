@@ -66,6 +66,9 @@ export function Classi() {
           <Link href="/docente" className="underline">
             le gare del Giro
           </Link>
+          <Link href="/docente/sfondi" className="underline">
+            🎄 sfondi
+          </Link>
           <span>{utente?.email}</span>
           <button onClick={esci} className="underline">
             esci
