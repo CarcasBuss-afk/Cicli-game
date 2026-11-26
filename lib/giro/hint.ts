@@ -38,6 +38,17 @@ function uguali(a: string[], b: string[]): boolean {
   return a.length === b.length && a.every((r, i) => r === b[i]);
 }
 
+/** Due righe della stessa forma: cambia solo un pezzo in mezzo (il nome, il numero), il
+ *  resto, all'inizio e alla fine, è uguale per almeno due terzi della riga più lunga. */
+function stessaForma(a: string, b: string): boolean {
+  const n = Math.min(a.length, b.length);
+  let inizio = 0;
+  while (inizio < n && a[inizio] === b[inizio]) inizio++;
+  let fine = 0;
+  while (fine < n - inizio && a[a.length - 1 - fine] === b[b.length - 1 - fine]) fine++;
+  return inizio + fine >= (2 / 3) * Math.max(a.length, b.length);
+}
+
 function tuttiNumeri(righe: string[]): boolean {
   return righe.length > 0 && righe.every((r) => /^-?\d+$/.test(r.trim()));
 }
@@ -186,8 +197,10 @@ function hintTesto(prodotto: string[], atteso: string[]): string {
     // Se le righe che mancano sono ripetizioni di quelle già stampate, il ciclo si è fermato presto.
     // Se sono righe nuove, il ciclo è giusto e manca quello che viene dopo (il print finale, l'else):
     // dire «il ciclo gira poco» mandava a toccare il while giusto.
+    // Con le liste ogni giro stampa un cassetto diverso: le righe che mancano non ripetono quelle
+    // stampate ma hanno la stessa forma (`5. Caro Luca, …` dopo `1. Caro Sara, …`).
     const mancanti = atteso.slice(prodotto.length);
-    if (mancanti.every((r) => prodotto.includes(r))) {
+    if (mancanti.every((r) => prodotto.includes(r) || prodotto.some((p) => stessaForma(r, p)))) {
       return `Stampi ${prodotto.length} righe invece di ${atteso.length}: il ciclo gira troppe poche volte`;
     }
     const giuste = prodotto.length === 1 ? 'la prima riga è giusta' : `le prime ${prodotto.length} righe sono giuste`;
