@@ -104,3 +104,11 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 13p. Accanto al codice di ogni fase superata, l'output atteso di allora («Doveva comparire», anche il secondo esempio), su richiesta di un allievo (6 novembre 2026).
 - [x] 13q. «Ripeti per esercitarti»: il compito finito si rifà da capo con numeri nuovi, come la prima volta, senza toccare il voto (12 novembre 2026; PERCORSO.md §25).
 - [ ] 13g. Dopo la prima lezione con le novità: rileggere dal database conversazioni, bozze ferme, registro del giudice ed errori per fase; confrontare con la prima settimana.
+
+## Task 14 — Le liste (PERCORSO.md §26)
+
+- [x] 14a. Il micro-interprete con le liste del primo video: `[...]`, `lista[i]`, `append`, `len`, `for x in lista`, `print` della lista come Python, l'`IndexError` a parole di cassettiera; i fatti nuovi per giudice e tutor; i suggerimenti dell'editor (26 novembre 2026).
+- [x] 14b. La sezione «Le liste» con i primi due compiti, su quello che il primo video ha detto: gli invitati della festa (fase 1 guidata) e l'ordine d'arrivo (26 novembre 2026).
+- [x] 14c. Il giudice torna a giudicare: Sonnet 5.5 rifiuta `thinking: disabled`, dal 30 ottobre tutti i verdetti erano `GUASTO`; ora `between_tools` (PERCORSO.md §27).
+- [ ] 14d. Fabio legge i testi dei due compiti; deploy; alla prima lezione controllare nel registro che i verdetti non siano più `GUASTO`.
+- [ ] 14e. I compiti dopo il secondo video (scorrere la lista con il `for`): stamparli tutti, contarli, sommarli, cercare, il migliore. Da decidere con Fabio quando il video c'è.

@@ -23,6 +23,7 @@ import { fasiCassa, fasiParola, schedaCassa, schedaParola } from './compitiWhile
 import { fasiDistributore, fasiMenu, schedaDistributore, schedaMenu } from './compitiWhileMisti';
 import { fasiDado, fasiDuello, fasiIndovina, schedaDado, schedaDuello, schedaIndovina } from './compitiWhileCaso';
 import { fasiPatentinoWhile, schedaPatentinoWhile } from './compitiPatentinoWhile';
+import { fasiArrivo, fasiInvitati, schedaArrivo, schedaInvitati } from './compitiListe';
 import { esempiDelCompito } from './esempi';
 
 export type CompitoId =
@@ -49,7 +50,9 @@ export type CompitoId =
   | 'indovina'
   | 'dado'
   | 'duello'
-  | 'patentinoWhile';
+  | 'patentinoWhile'
+  | 'invitati'
+  | 'arrivo';
 
 export interface SchedaCompito {
   id: CompitoId;
@@ -478,11 +481,13 @@ const PROGETTI: Record<CompitoId, { fasi: (seme: number) => Esercizio[]; scheda:
   dado: { fasi: fasiDado, scheda: schedaDado },
   duello: { fasi: fasiDuello, scheda: schedaDuello },
   patentinoWhile: { fasi: fasiPatentinoWhile, scheda: schedaPatentinoWhile },
+  invitati: { fasi: fasiInvitati, scheda: schedaInvitati },
+  arrivo: { fasi: fasiArrivo, scheda: schedaArrivo },
 };
 
 /* ------------------------------------------------------------------- sezioni */
 
-export type SezioneId = 'for' | 'while';
+export type SezioneId = 'for' | 'while' | 'liste';
 
 /** Un capitolo del percorso: i compiti su un ciclo, con l'esame in fondo. */
 export interface Sezione {
@@ -502,7 +507,8 @@ export interface Sezione {
  * d'ordine (richiedi finché non è giusta) · batteria (`-=`) · cassa (la sentinella) ·
  * pettegolezzo (`*=`) · distributore (monete finché basta) · menu (la sentinella con l'if) ·
  * indovina il numero (`randint`) · dado (`randint` nel ciclo) · duello (il gioco intero) ·
- * il patentino dei cicli while.
+ * il patentino dei cicli while. La terza, le liste (§26), cresce con i video della serie: per
+ * ora gli invitati della festa (la cassettiera) e l'ordine d'arrivo (la posizione e la targhetta).
  */
 /* ------------------------------------------------------------ le note per il tutor */
 
@@ -560,6 +566,11 @@ export const SEZIONI: Sezione[] = [
     id: 'while',
     titolo: 'Il ciclo while',
     compiti: ['timer', 'obiettivo', 'parola', 'batteria', 'cassa', 'pettegolezzo', 'distributore', 'menu', 'indovina', 'dado', 'duello', 'patentinoWhile'],
+  },
+  {
+    id: 'liste',
+    titolo: 'Le liste',
+    compiti: ['invitati', 'arrivo'],
   },
 ];
 

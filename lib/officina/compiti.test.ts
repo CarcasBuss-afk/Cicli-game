@@ -488,7 +488,7 @@ describe('le uscite che contano (il contatore in un ramo)', () => {
 
 describe('le sezioni del percorso', () => {
   it('il percorso è le sezioni una dopo l\'altra; il for finisce col patentino, il while comincia dal timer', () => {
-    expect(SEZIONI.map((s) => s.id)).toEqual(['for', 'while']);
+    expect(SEZIONI.map((s) => s.id)).toEqual(['for', 'while', 'liste']);
     expect(ELENCO_COMPITI).toEqual(SEZIONI.flatMap((s) => s.compiti));
     const [perFor, perWhile] = SEZIONI;
     expect(perFor.compiti[perFor.compiti.length - 1]).toBe('patentino');
@@ -496,6 +496,8 @@ describe('le sezioni del percorso', () => {
     expect(sezioneDi('cartello').id).toBe('for');
     expect(sezioneDi('patentino').id).toBe('for');
     expect(sezioneDi('timer').id).toBe('while');
+    expect(SEZIONI[2].compiti[0]).toBe('invitati');
+    expect(sezioneDi('arrivo').id).toBe('liste');
   });
 
   it('i due patentini sono gli unici esami, uno in fondo a ogni sezione', () => {
@@ -977,8 +979,8 @@ describe('il patentino dei cicli while (l\'esame della seconda sezione)', () => 
 describe('le note per il tutor (PERCORSO.md §23)', () => {
   const conNota: CompitoId[] = ELENCO_COMPITI.filter((id) => !eEsame(id));
 
-  it('ogni fase dei compiti con il tutor acceso (le due sezioni) ha una nota, con i parametri del compito dentro', () => {
-    expect(conNota).toHaveLength(22);
+  it('ogni fase dei compiti con il tutor acceso (tutte le sezioni) ha una nota, con i parametri del compito dentro', () => {
+    expect(conNota).toHaveLength(24);
     for (const id of conNota) {
       for (const seme of [1, 7, 42]) {
         const fasi = generaCompito(id, seme);
@@ -1164,5 +1166,106 @@ describe('le domande sullo schermo atteso', () => {
   it('senza domande non cambia niente', () => {
     expect(esercizioPerAllievo(generaCompito('cartello', 3)[0]).schermoAtteso).toBeUndefined();
     expect(schedaCompito('cartello', 3).schermoFinale).toBeUndefined();
+  });
+});
+
+describe('gli invitati della festa (la cassettiera)', () => {
+  const fasi = generaCompito('invitati', 31);
+  const nomi = (fase: number) => fasi[fase].outputAtteso[0];
+
+  it('la fase 1 è guidata: la lista c\'è già, manca la riga del primo, e così com\'è non passa', () => {
+    expect(fasi[0].codiceIniziale).toContain('invitati = [');
+    expect(fasi[0].codiceIniziale).toContain('# qui manca');
+    expect(valutaRisposta(fasi[0], fasi[0].codiceIniziale!).promosso).toBe(false);
+    expect(nomi(0)).toMatch(/^\['\w+', '\w+', '\w+', '\w+'\]$/);
+  });
+
+  it('il secondo cassetto al posto del primo sbaglia già sulla prova mostrata', () => {
+    expect(valutaRisposta(fasi[0], fasi[0].soluzione.replace('invitati[0]', 'invitati[1]')).promosso).toBe(false);
+  });
+
+  it("alla fase 2 l'ultimo con la targhetta uguale a len apre un cassetto che non c'è", () => {
+    const v = valutaRisposta(fasi[1], fasi[1].soluzione.replace('invitati[len(invitati) - 1]', 'invitati[len(invitati)]'));
+    expect(v.promosso).toBe(false);
+    expect(v.hint).toContain('IndexError');
+  });
+
+  it("alla fase 3 l'ultimo preso con una targhetta scritta a mano sbaglia: la lista è cresciuta", () => {
+    const fissa = fasi[2].soluzione.replace('invitati[len(invitati) - 1]', 'invitati[3]');
+    expect(valutaRisposta(fasi[2], fissa).promosso).toBe(false);
+    expect(fasi[2].regola).toContain('`append`');
+  });
+
+  it('alla fase 4 la lista scritta a mano passa la prova mostrata ma cade su quelle nascoste', () => {
+    const f = fasi[3];
+    const mostrati = f.prove![0].risposte.slice(0, -1);
+    const aMano = f.soluzione.replace(/invitati = \[\][\s\S]*?\n(?=print)/, `invitati = [${mostrati.map((n) => `"${n}"`).join(', ')}]\n`);
+    expect(aMano).not.toContain('while');
+    const esito = esegui(aMano);
+    expect(esito.ok && esito.output).toEqual(f.outputAtteso);
+    expect(valutaRisposta(f, aMano).promosso).toBe(false);
+  });
+
+  it("alla fase 4 l'append dopo la domanda mette in lista anche «fine»", () => {
+    const f = fasi[3];
+    const dopo = f.soluzione.replace('    invitati.append(nome)\n    nome = input("Chi inviti? ")', '    nome = input("Chi inviti? ")\n    invitati.append(nome)');
+    expect(dopo).not.toEqual(f.soluzione);
+    expect(valutaRisposta(f, dopo).promosso).toBe(false);
+  });
+
+  it('alla fase 5 la lista vuota è il secondo esempio, e senza if il programma si ferma sul cassetto 0', () => {
+    const f = fasi[4];
+    expect(f.esempi).toBe(2);
+    expect(f.prove![1].risposte).toEqual(['fine']);
+    expect(f.prove![1].output).toEqual(['Nessun invitato: festa annullata!']);
+    expect(f.prove!.length).toBeGreaterThan(2);
+    const senzaIf = valutaRisposta(f, fasi[3].soluzione);
+    expect(senzaIf.promosso).toBe(false);
+  });
+
+  it('le regole crescono con le fasi: il while e l\'append arrivano alla 4, l\'if sulla lista vuota alla 5', () => {
+    expect(fasi[0].regola).not.toContain('`while`');
+    expect(fasi[3].regola).toContain('`while`');
+    expect(fasi[3].regola).toContain('`append`');
+    expect(fasi[4].regola).toContain('`if`');
+  });
+});
+
+describe("l'ordine d'arrivo (la posizione e la targhetta)", () => {
+  const fasi = generaCompito('arrivo', 57);
+
+  it('il podio dal cassetto 1 slitta di uno: sbaglia già sulla prova mostrata', () => {
+    const slittato = fasi[0].soluzione.replace('arrivi[0]', 'arrivi[3]');
+    expect(valutaRisposta(fasi[0], slittato).promosso).toBe(false);
+  });
+
+  it('alla fase 3 la targhetta uguale alla posizione sbaglia sulla prova mostrata', () => {
+    const v = valutaRisposta(fasi[2], fasi[2].soluzione.replace('arrivi[posizione - 1]', 'arrivi[posizione]'));
+    expect(v.promosso).toBe(false);
+  });
+
+  it('alla fase 3 la targhetta della prova scritta a mano passa la mostrata ma cade sulle posizioni 1 e 5', () => {
+    const f = fasi[2];
+    expect(f.prove!.map((p) => p.risposte[0])).toEqual(['4', '1', '5']);
+    const aMano = f.soluzione.replace('arrivi[posizione - 1]', 'arrivi[3]');
+    const esito = esegui(aMano, { risposte: ['4'] });
+    expect(esito.ok && esito.output).toEqual(f.outputAtteso);
+    expect(valutaRisposta(f, aMano).promosso).toBe(false);
+  });
+
+  it('alla fase 5 la posizione fuori di uno è il secondo esempio, e `>=` al posto di `>` cade sull\'ultimo arrivato', () => {
+    const f = fasi[4];
+    expect(f.esempi).toBe(2);
+    expect(f.prove![1].output.at(-1)).toMatch(/^Nessun corridore al \d+° posto$/);
+    const ultimo = f.prove![2];
+    expect(Number(ultimo.risposte.at(-1))).toBe(ultimo.risposte.length - 2);
+    expect(valutaRisposta(f, f.soluzione.replace('posizione > len(arrivi)', 'posizione >= len(arrivi)')).promosso).toBe(false);
+  });
+
+  it('la scheda ha la gara, l\'ordine d\'arrivo e la posizione di prova', () => {
+    const scheda = schedaCompito('arrivo', 57);
+    expect(scheda.titolo).toBe("L'ordine d'arrivo");
+    expect(scheda.dati.join('\n')).toContain('Posizione di prova: 4');
+    expect(scheda.schermoFinale?.some((r) => r.k === 'in' && r.risposta === 'fine')).toBe(true);
   });
 });
