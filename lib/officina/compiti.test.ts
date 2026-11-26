@@ -980,7 +980,7 @@ describe('le note per il tutor (PERCORSO.md §23)', () => {
   const conNota: CompitoId[] = ELENCO_COMPITI.filter((id) => !eEsame(id));
 
   it('ogni fase dei compiti con il tutor acceso (tutte le sezioni) ha una nota, con i parametri del compito dentro', () => {
-    expect(conNota).toHaveLength(24);
+    expect(conNota).toHaveLength(26);
     for (const id of conNota) {
       for (const seme of [1, 7, 42]) {
         const fasi = generaCompito(id, seme);
@@ -1173,7 +1173,7 @@ describe('gli invitati della festa (la cassettiera)', () => {
   const fasi = generaCompito('invitati', 31);
   const nomi = (fase: number) => fasi[fase].outputAtteso[0];
 
-  it('la fase 1 è guidata: la lista c\'è già, manca la riga del primo, e così com\'è non passa', () => {
+  it("la fase 1 è guidata: la lista c'è già, manca la riga del primo, e così com'è non passa", () => {
     expect(fasi[0].codiceIniziale).toContain('invitati = [');
     expect(fasi[0].codiceIniziale).toContain('# qui manca');
     expect(valutaRisposta(fasi[0], fasi[0].codiceIniziale!).promosso).toBe(false);
@@ -1196,37 +1196,36 @@ describe('gli invitati della festa (la cassettiera)', () => {
     expect(fasi[2].regola).toContain('`append`');
   });
 
-  it('alla fase 4 la lista scritta a mano passa la prova mostrata ma cade su quelle nascoste', () => {
+  it("alla fase 4 l'invitato dell'ultimo minuto scritto a mano passa la prova mostrata ma cade su quelle nascoste", () => {
     const f = fasi[3];
-    const mostrati = f.prove![0].risposte.slice(0, -1);
-    const aMano = f.soluzione.replace(/invitati = \[\][\s\S]*?\n(?=print)/, `invitati = [${mostrati.map((n) => `"${n}"`).join(', ')}]\n`);
-    expect(aMano).not.toContain('while');
-    const esito = esegui(aMano);
+    const mostrato = f.prove![0].risposte[0];
+    const aMano = f.soluzione.replace('invitati.append(nuovo)', `invitati.append("${mostrato}")`);
+    expect(aMano).not.toEqual(f.soluzione);
+    const esito = esegui(aMano, { risposte: [mostrato] });
     expect(esito.ok && esito.output).toEqual(f.outputAtteso);
     expect(valutaRisposta(f, aMano).promosso).toBe(false);
   });
 
-  it("alla fase 4 l'append dopo la domanda mette in lista anche «fine»", () => {
+  it('alla fase 4 la parola nuovo fra virgolette aggiunge «nuovo», non il nome', () => {
     const f = fasi[3];
-    const dopo = f.soluzione.replace('    invitati.append(nome)\n    nome = input("Chi inviti? ")', '    nome = input("Chi inviti? ")\n    invitati.append(nome)');
-    expect(dopo).not.toEqual(f.soluzione);
-    expect(valutaRisposta(f, dopo).promosso).toBe(false);
+    expect(valutaRisposta(f, f.soluzione.replace('invitati.append(nuovo)', 'invitati.append("nuovo")')).promosso).toBe(false);
   });
 
-  it('alla fase 5 la lista vuota è il secondo esempio, e senza if il programma si ferma sul cassetto 0', () => {
+  it('alla fase 5 i posti mancanti sono il secondo esempio, e `>=` cade sui posti giusti giusti', () => {
     const f = fasi[4];
     expect(f.esempi).toBe(2);
-    expect(f.prove![1].risposte).toEqual(['fine']);
-    expect(f.prove![1].output).toEqual(['Nessun invitato: festa annullata!']);
-    expect(f.prove!.length).toBeGreaterThan(2);
-    const senzaIf = valutaRisposta(f, fasi[3].soluzione);
-    expect(senzaIf.promosso).toBe(false);
+    expect(f.prove![0].output.at(-1)).toBe('Posti liberi: 3');
+    expect(f.prove![1].output.at(-1)).toBe('Posti mancanti: 2');
+    expect(f.prove![2].output.at(-1)).toBe('Posti liberi: 0');
+    expect(valutaRisposta(f, f.soluzione.replace('len(invitati) > posti', 'len(invitati) >= posti')).promosso).toBe(false);
   });
 
-  it('le regole crescono con le fasi: il while e l\'append arrivano alla 4, l\'if sulla lista vuota alla 5', () => {
-    expect(fasi[0].regola).not.toContain('`while`');
-    expect(fasi[3].regola).toContain('`while`');
-    expect(fasi[3].regola).toContain('`append`');
+  it('niente while: la lista che si riempie con la sentinella è il terzo video', () => {
+    for (const f of fasi) {
+      expect(f.soluzione).not.toContain('while');
+      expect(f.regola).not.toContain('`while`');
+    }
+    expect(fasi[3].regola).toContain('`input()`');
     expect(fasi[4].regola).toContain('`if`');
   });
 });
@@ -1234,7 +1233,7 @@ describe('gli invitati della festa (la cassettiera)', () => {
 describe("l'ordine d'arrivo (la posizione e la targhetta)", () => {
   const fasi = generaCompito('arrivo', 57);
 
-  it('il podio dal cassetto 1 slitta di uno: sbaglia già sulla prova mostrata', () => {
+  it('il podio dal cassetto sbagliato sbaglia già sulla prova mostrata', () => {
     const slittato = fasi[0].soluzione.replace('arrivi[0]', 'arrivi[3]');
     expect(valutaRisposta(fasi[0], slittato).promosso).toBe(false);
   });
@@ -1253,19 +1252,141 @@ describe("l'ordine d'arrivo (la posizione e la targhetta)", () => {
     expect(valutaRisposta(f, aMano).promosso).toBe(false);
   });
 
-  it('alla fase 5 la posizione fuori di uno è il secondo esempio, e `>=` al posto di `>` cade sull\'ultimo arrivato', () => {
+  it('alla fase 4 una prova nascosta chiede proprio il ritardatario, e il suo nome scritto a mano cade', () => {
+    const f = fasi[3];
+    const [nome, pos] = f.prove![1].risposte;
+    expect(pos).toBe('6');
+    expect(f.prove![1].output.at(-1)).toBe(`6° ${nome}`);
+    const aMano = f.soluzione.replace('arrivi.append(ritardatario)', `arrivi.append("${f.prove![0].risposte[0]}")`);
+    expect(valutaRisposta(f, aMano).promosso).toBe(false);
+  });
+
+  it('alla fase 4 la maglia nera rimasta sul cassetto 4 sbaglia: è arrivato il ritardatario', () => {
+    const f = fasi[3];
+    expect(valutaRisposta(f, f.soluzione.replace('arrivi[len(arrivi) - 1]', 'arrivi[4]')).promosso).toBe(false);
+  });
+
+  it("alla fase 5 la posizione fuori di uno è il secondo esempio, e `>=` al posto di `>` cade sull'ultimo arrivato", () => {
     const f = fasi[4];
     expect(f.esempi).toBe(2);
-    expect(f.prove![1].output.at(-1)).toMatch(/^Nessun corridore al \d+° posto$/);
-    const ultimo = f.prove![2];
-    expect(Number(ultimo.risposte.at(-1))).toBe(ultimo.risposte.length - 2);
+    expect(f.prove![1].output.at(-1)).toBe('Nessun corridore al 7° posto');
+    expect(f.prove![2].risposte.at(-1)).toBe('6');
     expect(valutaRisposta(f, f.soluzione.replace('posizione > len(arrivi)', 'posizione >= len(arrivi)')).promosso).toBe(false);
   });
 
-  it('la scheda ha la gara, l\'ordine d\'arrivo e la posizione di prova', () => {
+  it('niente while, e la scheda ha la gara, il ritardatario e la posizione di prova', () => {
+    for (const f of fasi) expect(f.soluzione).not.toContain('while');
     const scheda = schedaCompito('arrivo', 57);
     expect(scheda.titolo).toBe("L'ordine d'arrivo");
     expect(scheda.dati.join('\n')).toContain('Posizione di prova: 4');
-    expect(scheda.schermoFinale?.some((r) => r.k === 'in' && r.risposta === 'fine')).toBe(true);
+    expect(scheda.dati.join('\n')).toContain('Ritardatario di prova');
+    expect(scheda.schermoFinale?.filter((r) => r.k === 'in')).toHaveLength(2);
+  });
+});
+
+describe("i biglietti d'invito (il for che apre tutti i cassetti)", () => {
+  const fasi = generaCompito('biglietti', 12);
+
+  it("la fase 1 è guidata: lista e for ci sono già, manca il print, e così com'è non passa", () => {
+    expect(fasi[0].codiceIniziale).toContain('for invitato in invitati:');
+    expect(valutaRisposta(fasi[0], fasi[0].codiceIniziale!).promosso).toBe(false);
+    expect(fasi[0].outputAtteso).toHaveLength(4);
+  });
+
+  it('alla fase 1 vale anche il ciclo con range(len(...)): il video li mostra tutti e due', () => {
+    const f = fasi[0];
+    const conRange = f.soluzione.replace('for invitato in invitati:', 'for i in range(len(invitati)):').replace('{invitato}', '{invitati[i]}');
+    expect(valutaRisposta(f, conRange).promosso).toBe(true);
+  });
+
+  it('alla fase 2 il numero senza il più uno parte da 0', () => {
+    expect(valutaRisposta(fasi[1], fasi[1].soluzione.replace('{i + 1}', '{i}')).promosso).toBe(false);
+  });
+
+  it('alla fase 3 il range scritto a mano della fase 2 lascia fuori i ritardatari, come Giulia nel video', () => {
+    const f = fasi[2];
+    expect(f.outputAtteso).toHaveLength(6);
+    const v = valutaRisposta(f, f.soluzione.replace('range(len(invitati))', 'range(4)'));
+    expect(v.promosso).toBe(false);
+    // le righe che mancano sono biglietti come gli altri, con un altro nome: il ciclo gira poco
+    expect(v.hint).toContain('il ciclo gira troppe poche volte');
+  });
+
+  it('alla fase 4 la risposta presa sempre dal cassetto 0 sbaglia: le risposte non sono tutte uguali', () => {
+    const f = fasi[3];
+    expect(f.soluzione).toContain('risposte = [');
+    expect(f.outputAtteso.some((r) => r.endsWith(': viene'))).toBe(true);
+    expect(f.outputAtteso.some((r) => r.endsWith(': non viene'))).toBe(true);
+    expect(valutaRisposta(f, f.soluzione.replace('risposte[i]', 'risposte[0]')).promosso).toBe(false);
+  });
+
+  it('alla fase 5 il contatore nel ramo sbagliato conta chi non viene', () => {
+    const f = fasi[4];
+    expect(f.outputAtteso.at(-1)).toMatch(/^Vengono: [24] su 6$/);
+    const sbagliato = f.soluzione.replace('        vengono += 1\n', '').replace('    else:\n', '    else:\n        vengono += 1\n');
+    expect(sbagliato).not.toEqual(f.soluzione);
+    expect(valutaRisposta(f, sbagliato).promosso).toBe(false);
+  });
+
+  it("le regole crescono: il for dalla 1, il range non scritto a mano dalla 3, l'if sulle risposte dalla 4", () => {
+    expect(fasi[0].regola).toContain('`for`');
+    expect(fasi[1].regola).not.toContain('`append`');
+    expect(fasi[2].regola).toContain('`range`');
+    expect(fasi[3].regola).toContain('`risposte`');
+    expect(fasi[4].regola).toContain('`len`');
+  });
+});
+
+describe('le uscite in bici (dove e cosa)', () => {
+  const fasi = generaCompito('uscite', 44);
+  const km = schedaCompito('uscite', 44).dati[1].replace('Km delle uscite: ', '').split(', ').map(Number);
+
+  it('alla fase 1 i km senza la targhetta stampano tutta la lista', () => {
+    expect(fasi[0].outputAtteso).toHaveLength(5);
+    expect(valutaRisposta(fasi[0], fasi[0].soluzione.replace('{km[i]}', '{km}')).promosso).toBe(false);
+  });
+
+  it('alla fase 2 sommare le targhette al posto dei km sbaglia', () => {
+    expect(valutaRisposta(fasi[1], fasi[1].soluzione.replace('totale += km[i]', 'totale += i')).promosso).toBe(false);
+  });
+
+  it("alla fase 3 il record senza if resta l'ultima uscita", () => {
+    const f = fasi[2];
+    expect(km.at(-1)).not.toBe(Math.max(...km));
+    const senzaIf = f.soluzione.replace('    if km[i] > record:\n        record = km[i]', '    record = km[i]');
+    expect(senzaIf).not.toEqual(f.soluzione);
+    expect(valutaRisposta(f, senzaIf).promosso).toBe(false);
+  });
+
+  it("alla fase 4 l'uscita senza il più uno dice quella prima", () => {
+    expect(valutaRisposta(fasi[3], fasi[3].soluzione.replace('quale = i + 1', 'quale = i')).promosso).toBe(false);
+  });
+
+  it("alla fase 5 un obiettivo nascosto è proprio un'uscita: `>` al posto di `>=` cade", () => {
+    const f = fasi[4];
+    expect(f.prove).toHaveLength(3);
+    expect(km).toContain(Number(f.prove![1].risposte[0]));
+    expect(f.prove![2].output.at(-1)).toMatch(/: 0$/);
+    expect(valutaRisposta(f, f.soluzione.replace('km[i] >= obiettivo', 'km[i] > obiettivo')).promosso).toBe(false);
+  });
+
+  it('su tanti semi i km sono tutti diversi e il record è uno solo', () => {
+    for (let seme = 1; seme <= 60; seme++) {
+      const dati = schedaCompito('uscite', seme).dati[1].replace('Km delle uscite: ', '').split(', ').map(Number);
+      expect(new Set(dati).size).toBe(5);
+      expect(dati.filter((x) => x === Math.max(...dati))).toHaveLength(1);
+    }
+  });
+});
+
+describe('la sezione delle liste segue i video', () => {
+  it('quattro compiti, due dal primo video e due dal secondo, e nessuno usa il while', () => {
+    expect(SEZIONI[2].compiti).toEqual(['invitati', 'arrivo', 'biglietti', 'uscite']);
+    for (const id of SEZIONI[2].compiti) for (const f of generaCompito(id, 9)) expect(f.soluzione).not.toMatch(/\bwhile\b/);
+  });
+
+  it('i compiti del primo video non scorrono la lista con il for, quelli del secondo sì', () => {
+    for (const id of ['invitati', 'arrivo'] as const) for (const f of generaCompito(id, 9)) expect(f.soluzione).not.toMatch(/\bfor\b/);
+    for (const id of ['biglietti', 'uscite'] as const) for (const f of generaCompito(id, 9)) expect(f.soluzione).toMatch(/\bfor\b/);
   });
 });
