@@ -34,8 +34,10 @@ export async function giudica(contesto: ContestoGiudizio): Promise<Verdetto> {
     const risposta = await anthropic().messages.create({
       model: MODELLO_GIUDICE,
       max_tokens: 200,
-      // Niente ragionamento esteso: i fatti sono già misurati, la lettura è breve.
-      thinking: { type: 'disabled' },
+      // Niente ragionamento esteso: i fatti sono già misurati, la lettura è breve. Sonnet 5.5
+      // rifiuta `disabled` con un 400 (e il giudice, fail-open, faceva passare tutto): il
+      // ragionamento si spegne con `between_tools`, ammesso fino all'effort `high` (il default).
+      thinking: { type: 'between_tools' },
       system: PROMPT_GIUDICE,
       messages: [{ role: 'user', content: messaggioGiudizio(contesto) }],
     });
