@@ -63,6 +63,8 @@ function suggerimentiGiro(context: CompletionContext) {
       snippetCompletion('int(${})', { label: 'int', detail: 'da testo a numero', type: 'function', boost: 80 }),
       snippetCompletion('random.randint(${1}, ${10})', { label: 'random.randint', detail: 'numero casuale fra 1 e 10', type: 'function', boost: 70 }),
       snippetCompletion('import random', { label: 'import random', detail: 'in cima: serve per randint', type: 'keyword', boost: 70 }),
+      snippetCompletion('append(${})', { label: 'append', detail: 'aggiunge un cassetto in fondo alla lista', type: 'method', boost: 75 }),
+      snippetCompletion('len(${})', { label: 'len', detail: 'quanti cassetti ha la lista', type: 'function', boost: 75 }),
     ],
   };
 }

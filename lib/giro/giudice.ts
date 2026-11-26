@@ -68,6 +68,10 @@ export function descriviFatti(s: Struttura, giri: number): string[] {
     `input() fuori dai cicli: ${s.numInput - s.inputNelCiclo}`,
     `random.randint(): ${s.numCasuali} (di cui dentro un ciclo: ${s.casualiNelCiclo})`,
     `variabili a cui dentro un ciclo viene assegnato un numero fisso (x = 35): ${s.assegnazioniFisseNelCiclo}`,
+    `liste scritte fra parentesi quadre ([] compresa): ${s.numListe}`,
+    `append: ${s.numAppend} (di cui dentro un ciclo: ${s.appendNelCiclo})`,
+    `cassetti aperti con le quadre (lista[i]): ${s.numIndici}`,
+    `len(): ${s.numLen}`,
   ];
 }
 

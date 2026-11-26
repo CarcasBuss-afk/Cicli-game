@@ -354,14 +354,8 @@ describe('costrutti fuori dal gioco', () => {
     expect(errore('x = input()').tipo).toBe('nonAmmesso');
   });
 
-  it('liste', () => {
-    const e = errore('for x in [1, 2, 3]: print(x)');
-    expect(e.tipo).toBe('nonAmmesso');
-    expect(e.messaggio).toContain('range');
-  });
-
   it('funzioni non previste', () => {
-    expect(errore('print(len("ciao"))').messaggio).toContain('len()');
+    expect(errore('print(abs(-3))').messaggio).toContain('abs()');
   });
 
   it('numeri con la virgola', () => {
@@ -966,5 +960,130 @@ describe('i messaggi nati dalla revisione dei compiti while (1° novembre 2026)'
     expect(e.messaggio).not.toContain('int()');
     const senzaInt = esegui('m = input("m")\nif m == 1:\n    print("uno")', { risposte: ['1'] });
     if (!senzaInt.ok) expect(senzaInt.errore.messaggio).toContain('mettilo dentro `int()`');
+  });
+});
+
+describe('le liste (il video «Le liste»)', () => {
+  it('la cassettiera: si crea con le quadre e si apre un cassetto dal suo numero', () => {
+    const codice = 'amici = ["Luca", "Sara", "Omar"]\nprint(amici[0])\nprint(amici[1])\nprint(amici[2])';
+    expect(out(codice)).toEqual(['Luca', 'Sara', 'Omar']);
+  });
+
+  it('print della lista intera la scrive come Python: la cassettiera sdraiata', () => {
+    expect(out('amici = ["Luca", "Sara", "Omar"]\nprint(amici)')).toEqual(["['Luca', 'Sara', 'Omar']"]);
+    expect(out('voti = [7, 8, 10]\nprint(voti)')).toEqual(['[7, 8, 10]']);
+    expect(out('vuota = []\nprint(vuota)')).toEqual(['[]']);
+    expect(out('print([1, "uno", [2, 3]])')).toEqual(["[1, 'uno', [2, 3]]"]);
+    expect(out('print(["l\'uva"])')).toEqual(['["l\'uva"]']);
+    expect(out('amici = ["Luca"]\nprint("Invitati:", amici)')).toEqual(["Invitati: ['Luca']"]);
+    expect(out('amici = ["Luca"]\nprint(f"Invitati: {amici}")')).toEqual(["Invitati: ['Luca']"]);
+  });
+
+  it('la lista vuota cresce con append, e len conta i cassetti', () => {
+    const codice = 'amici = []\namici.append("Luca")\namici.append("Sara")\namici.append("Omar")\nprint(len(amici))\nprint(amici)';
+    expect(out(codice)).toEqual(['3', "['Luca', 'Sara', 'Omar']"]);
+  });
+
+  it('la sfida del video: dopo append il cassetto 3 esiste', () => {
+    const codice = 'amici = ["Luca", "Sara", "Omar"]\namici.append("Giulia")\nprint(amici[3])';
+    expect(out(codice)).toEqual(['Giulia']);
+  });
+
+  it('il cassetto che non c\'è: IndexError con le targhette che esistono', () => {
+    const e = errore('amici = ["Luca", "Sara", "Omar"]\nprint(amici[3])');
+    expect(e.riga).toBe(2);
+    expect(e.messaggio).toContain('da 0 a 2');
+    expect(e.messaggio).toContain('IndexError');
+    expect(errore('amici = []\nprint(amici[0])').messaggio).toContain('vuota');
+    expect(errore('amici = ["Luca"]\nprint(amici[1])').messaggio).toContain('un cassetto solo');
+  });
+
+  it('le targhette negative contano dal fondo, come in Python', () => {
+    expect(out('amici = ["Luca", "Sara", "Omar"]\nprint(amici[-1])\nprint(amici[len(amici) - 1])')).toEqual(['Omar', 'Omar']);
+    expect(errore('amici = ["Luca"]\nprint(amici[-2])').messaggio).toContain('IndexError');
+  });
+
+  it('la lista si riempie in un ciclo, con le risposte', () => {
+    const codice = 'amici = []\nnome = input("Nome? ")\nwhile nome != "fine":\n    amici.append(nome)\n    nome = input("Nome? ")\nprint(f"Invitati: {len(amici)}")\nprint(amici)';
+    const esito = esegui(codice, { risposte: ['Luca', 'Sara', 'fine'] });
+    expect(esito.ok).toBe(true);
+    if (!esito.ok) return;
+    expect(esito.output).toEqual(['Invitati: 2', "['Luca', 'Sara']"]);
+    expect(esito.struttura).toMatchObject({ numListe: 1, numAppend: 1, appendNelCiclo: 1, numLen: 1, whileAggiornati: 1 });
+  });
+
+  it('il while che si ferma quando la lista è abbastanza lunga conta append come aggiornamento', () => {
+    const esito = esegui('numeri = []\nwhile len(numeri) < 3:\n    numeri.append(len(numeri) * 2)\nprint(numeri)');
+    expect(esito.ok && esito.output).toEqual(['[0, 2, 4]']);
+    expect(esito.ok && esito.struttura.whileAggiornati).toBe(1);
+  });
+
+  it('for su una lista e for su range(len(...))', () => {
+    expect(out('amici = ["Luca", "Sara"]\nfor nome in amici:\n    print(f"Ciao {nome}!")')).toEqual(['Ciao Luca!', 'Ciao Sara!']);
+    expect(out('amici = ["Luca", "Sara"]\nfor i in range(len(amici)):\n    print(i, amici[i])')).toEqual(['0 Luca', '1 Sara']);
+    expect(out('for x in [3, 1, 2]: print(x * 10)')).toEqual(['30', '10', '20']);
+  });
+
+  it('si cambia il contenuto di un cassetto', () => {
+    expect(out('punti = [0, 0, 0]\npunti[1] = 5\npunti[2] += 3\npunti[-1] *= 2\nprint(punti)')).toEqual(['[0, 5, 6]']);
+    const e = errore('punti = [0]\npunti[4] = 1');
+    expect(e.messaggio).toContain('IndexError');
+  });
+
+  it('la stessa lista con due nomi: chi la cambia la cambia per tutti, come in Python', () => {
+    expect(out('a = [1]\nb = a\nb.append(2)\nprint(a)')).toEqual(['[1, 2]']);
+    expect(out('a = [1]\na += [2, 3]\nprint(a)')).toEqual(['[1, 2, 3]']);
+    expect(out('print([1, 2] + [3])\nprint([0] * 3)')).toEqual(['[1, 2, 3]', '[0, 0, 0]']);
+  });
+
+  it('confronti fra liste e liste vuote', () => {
+    expect(out('a = []\nif a == []:\n    print("vuota")')).toEqual(['vuota']);
+    expect(out('a = [1]\nif len(a) > 0:\n    print("piena")')).toEqual(['piena']);
+    expect(errore('a = [1]\nif a > 0:\n    print("x")').messaggio).toContain('len(...)');
+  });
+
+  it('len anche sui testi, e le lettere con le quadre', () => {
+    expect(out('parola = "ciao"\nprint(len(parola))\nprint(parola[0])')).toEqual(['4', 'c']);
+    expect(errore('print(len(5))').messaggio).toContain('un numero non ha una lunghezza');
+    expect(errore('parola = "ciao"\nparola[0] = "C"').messaggio).toContain('non si cambiano');
+  });
+
+  it('gli errori tipici con un messaggio che dice dove guardare', () => {
+    expect(errore('amici = []\namici.push("Luca")').messaggio).toContain('JavaScript');
+    expect(errore('amici = []\nprint(amici.length)').messaggio).toContain('len(amici)');
+    expect(errore('amici.append("Luca")').messaggio).toContain('amici = []');
+    expect(errore('amici = ""\namici.append("Luca")').messaggio).toContain('è un testo');
+    expect(errore('amici = []\nappend("Luca")').messaggio).toContain('amici.append');
+    expect(errore('amici = []\namici.Append("Luca")').messaggio).toContain('minuscolo');
+    expect(errore('amici = []\namici.append()').messaggio).toContain('vuoto');
+    expect(errore('amici = []\namici.append("Luca", "Sara")').messaggio).toContain('un valore solo');
+    expect(errore('amici = []\namici.remove("Luca")').tipo).toBe('nonAmmesso');
+    expect(errore('amici = []\nx = amici.append("Luca")').messaggio).toContain('non dà un valore');
+    expect(errore('amici = []\namici += "Luca"').messaggio).toContain('append');
+    expect(errore('amici = ["Luca" "Sara"]').messaggio).toContain('virgola');
+    expect(errore('amici = ["Luca", "Sara"').messaggio).toContain('quadra chiusa');
+    expect(errore('amici = ["Luca"]\nprint(amici[])').messaggio).toContain('numero del cassetto');
+    expect(errore('amici = ["Luca"]\nprint(amici["0"])').messaggio).toContain('è un testo');
+    expect(errore('amici = ["Luca"]\nprint(amici[0:1])').tipo).toBe('nonAmmesso');
+    expect(errore('amici = ["Luca"]\namici[0]').messaggio).toContain('print(amici[...])');
+    expect(errore('amici = ["Luca"]\nprint(amici + "Sara")').messaggio).toContain('append');
+    expect(errore('amici = ["Luca"]\nfor i in range(amici): print(i)').messaggio).toContain('range(len(...))');
+    expect(errore('len = 3').tipo).toBe('nonAmmesso');
+  });
+
+  it('la lista scorsa e allungata insieme si ferma sul tetto, senza bloccare il server', () => {
+    const e = errore('a = [1]\nfor x in a:\n    a.append(x)');
+    expect(e.tipo).toBe('limite');
+    expect(e.messaggio).toContain('stessa lista');
+    expect(errore('print([0] * 100000)').tipo).toBe('limite');
+  });
+
+  it('una lista dentro sé stessa si stampa senza girare all\'infinito', () => {
+    expect(out('a = []\na.append(a)\nprint(a)')).toEqual(['[[...]]']);
+  });
+
+  it('i fatti per il giudice contano liste, append, cassetti e len', () => {
+    const esito = esegui('voti = [6, 8]\nfor i in range(3):\n    voti.append(i)\nprint(voti[0], len(voti))');
+    expect(esito.ok && esito.struttura).toMatchObject({ numListe: 1, numAppend: 1, appendNelCiclo: 1, numIndici: 1, numLen: 1 });
   });
 });

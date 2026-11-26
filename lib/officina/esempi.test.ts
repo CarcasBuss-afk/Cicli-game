@@ -41,7 +41,7 @@ describe('gli esempi mostrati (PERCORSO.md §24)', () => {
       }
     }
     expect(problemi.slice(0, 10)).toEqual([]);
-  });
+  }, 30_000); // 24 compiti per 80 semi: sotto carico supera i 5 secondi di Vitest
 
   it('la promozione, fase 5: il secondo esempio è il cliente sotto la soglia, con la riga di quanto manca', () => {
     const f = generaCompito('promozione', 4242)[4];
