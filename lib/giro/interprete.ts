@@ -26,7 +26,9 @@
  *   - le liste (la cassettiera del video «Le liste»): `[...]` e `[]`, `lista[i]` anche a
  *     sinistra dell'uguale, `lista.append(x)`, `len(...)`, `for x in lista`, `print(lista)`
  *     scritta come la scrive Python (`['Luca', 'Sara']`); il cassetto che non c'è è un errore
- *     che dice quali targhette esistono
+ *     che dice quali targhette esistono; `lista.insert(i, x)` (un cassetto in mezzo, come
+ *     istruzione) e `lista.pop()` / `lista.pop(i)` (toglie un cassetto e dà quello che c'era:
+ *     anche dentro un calcolo, `tolta = playlist.pop()`), con le targhette di Python
  * Tutto il resto è un errore con un messaggio in italiano scritto per un allievo.
  */
 
@@ -101,6 +103,10 @@ export interface Struttura {
   numIndici: number;
   /** Quante chiamate a `len()`. */
   numLen: number;
+  /** Quanti `insert` (il cassetto messo in mezzo). */
+  numInsert: number;
+  /** Quanti `pop` (il cassetto tolto), anche dentro un calcolo. */
+  numPop: number;
 }
 
 /** Un `for` su `range(a, b[, c])` che non ha fatto nemmeno un giro. */
@@ -388,7 +394,9 @@ type Espr =
   /** `e[i]`: il cassetto `i` della lista (o la lettera `i` del testo). */
   | { k: 'indice'; e: Espr; i: Espr }
   /** `len(e)`: quanti cassetti (o quante lettere). */
-  | { k: 'len'; e: Espr };
+  | { k: 'len'; e: Espr }
+  /** `lista.pop()` o `lista.pop(i)`: toglie un cassetto e dà quello che c'era dentro. */
+  | { k: 'pop'; nome: string; i: Espr | null };
 
 type Confronto = '==' | '!=' | '<' | '>' | '<=' | '>=';
 const CONFRONTI: Confronto[] = ['==', '!=', '<', '>', '<=', '>='];
@@ -412,6 +420,10 @@ type Istruzione =
   | { k: 'if'; rami: Ramo[]; altrimenti: Istruzione[] | null; riga: number }
   /** `lista.append(x)`: un cassetto nuovo in fondo. */
   | { k: 'append'; nome: string; espr: Espr; riga: number }
+  /** `lista.insert(i, x)`: un cassetto nuovo alla targhetta `i`, quelli dopo scalano di uno. */
+  | { k: 'insert'; nome: string; indice: Espr; espr: Espr; riga: number }
+  /** `lista.pop()` su una riga sua: il cassetto si toglie e quello che c'era non serve. */
+  | { k: 'pop'; nome: string; indice: Espr | null; riga: number }
   /** `lista[i] = x` (o `+=`, `-=`, `*=`): si cambia il contenuto di un cassetto. */
   | { k: 'assegnaIndice'; nome: string; indice: Espr; op: OpAssegna; espr: Espr; riga: number }
   /** `import random`: non fa niente, ma da lì in poi `random.randint` esiste. */
@@ -607,7 +619,7 @@ function parseFattore(l: Lettore): Espr {
   if (l.prossimoEOp('.') && e.k !== 'nome') {
     l.avanti();
     const cosa = l.guarda();
-    err('nonAmmesso', `\`.${cosa.t === 'nome' ? cosa.v : ''}\` non si usa in questo gioco: delle liste si usa solo \`append\`, scritto attaccato al nome della lista`, l.riga);
+    err('nonAmmesso', `\`.${cosa.t === 'nome' ? cosa.v : ''}\` non si usa in questo gioco: delle liste si usano solo \`append\`, \`insert\` e \`pop\`, scritti attaccati al nome della lista`, l.riga);
   }
   return e;
 }
@@ -647,13 +659,29 @@ function parseLista(l: Lettore): Espr {
 function errMetodo(nome: string, l: Lettore): never {
   const cosa = l.guarda();
   const metodo = cosa.t === 'nome' ? cosa.v : '';
-  if (metodo === 'append') {
-    err('sintassi', `\`${nome}.append(...)\` aggiunge un cassetto ma non dà un valore: scrivilo su una riga sua, da solo`, l.riga);
+  if (metodo === 'append' || metodo === 'insert') {
+    err('sintassi', `\`${nome}.${metodo}(...)\` aggiunge un cassetto ma non dà un valore: scrivilo su una riga sua, da solo`, l.riga);
   }
-  if (metodo.toLowerCase() === 'append') err('sintassi', '`append` va scritto tutto minuscolo', l.riga);
+  if (['append', 'insert', 'pop'].includes(metodo.toLowerCase())) err('sintassi', `\`${metodo.toLowerCase()}\` va scritto tutto minuscolo`, l.riga);
   if (metodo === 'push') err('sintassi', `\`push\` è JavaScript: in Python un cassetto in fondo si aggiunge con \`${nome}.append(...)\``, l.riga);
+  if (metodo === 'unshift') err('sintassi', `\`unshift\` è JavaScript: in Python un cassetto in testa si aggiunge con \`${nome}.insert(0, ...)\``, l.riga);
+  if (metodo === 'shift') err('sintassi', `\`shift\` è JavaScript: in Python il primo cassetto si toglie con \`${nome}.pop(0)\``, l.riga);
   if (metodo === 'length') err('sintassi', `\`.length\` è JavaScript: in Python i cassetti si contano con \`len(${nome})\``, l.riga);
-  err('nonAmmesso', `\`.${metodo}\` non si usa in questo gioco: delle liste si usa solo \`append\` (e \`len(${nome})\` per contarle)`, l.riga);
+  err('nonAmmesso', `\`.${metodo}\` non si usa in questo gioco: delle liste si usano solo \`append\`, \`insert\` e \`pop\` (e \`len(${nome})\` per contarle)`, l.riga);
+}
+
+/** Fra le tonde di `pop`, dopo il nome del metodo: niente (l'ultimo cassetto) oppure una targhetta. */
+function parseArgPop(nome: string, l: Lettore): Espr | null {
+  l.avanti();
+  l.attesoOp('(', `Dopo \`${nome}.pop\` ci vogliono le parentesi tonde: \`${nome}.pop()\` toglie l'ultimo cassetto, \`${nome}.pop(0)\` il primo`);
+  if (l.prossimoEOp(')')) {
+    l.avanti();
+    return null;
+  }
+  const i = parseEspressione(l);
+  if (l.prossimoEOp(',')) err('sintassi', '`pop` toglie un cassetto alla volta: fra le tonde ci va al massimo una targhetta', l.riga);
+  l.attesoOp(')', `Manca la parentesi tonda chiusa \`)\` di \`${nome}.pop\``);
+  return i;
 }
 
 function parseAtomo(l: Lettore): Espr {
@@ -719,6 +747,8 @@ function parseAtomo(l: Lettore): Espr {
     }
     if (l.prossimoEOp('.')) {
       l.avanti();
+      const m = l.guarda();
+      if (m.t === 'nome' && m.v === 'pop') return { k: 'pop', nome: t.v, i: parseArgPop(t.v, l) };
       errMetodo(t.v, l);
     }
     if (t.v === 'len') err('sintassi', 'Dopo `len` ci vogliono le parentesi tonde con dentro la lista: `len(amici)`', l.riga);
@@ -1171,9 +1201,30 @@ class Parser {
     return { k: 'print', args, riga: riga.numero };
   }
 
-  /** `lista.metodo(...)` come istruzione, dopo il punto: delle liste c'è solo `append`. */
+  /** `lista.metodo(...)` come istruzione, dopo il punto: delle liste ci sono `append`, `insert` e `pop`. */
   private metodo(l: Lettore, riga: Riga, nome: string): Istruzione {
     const m = l.guarda();
+    if (m.t === 'nome' && m.v === 'pop') {
+      const indice = parseArgPop(nome, l);
+      this.fineRiga(l, riga);
+      return { k: 'pop', nome, indice, riga: riga.numero };
+    }
+    if (m.t === 'nome' && m.v === 'insert') {
+      l.avanti();
+      const esempio = `\`${nome}.insert(0, "Luca")\``;
+      l.attesoOp('(', `Dopo \`${nome}.insert\` ci vuole la parentesi tonda aperta \`(\` con dentro la targhetta e quello da aggiungere`);
+      if (l.prossimoEOp(')')) err('sintassi', `\`${nome}.insert()\` è vuoto: fra le tonde ci vanno due cose, la targhetta del cassetto nuovo e quello da metterci, per esempio ${esempio}`, riga.numero);
+      const indice = parseEspressione(l);
+      if (!l.prossimoEOp(',')) {
+        err('sintassi', `\`insert\` vuole due cose separate da una virgola: prima la targhetta del cassetto nuovo, poi quello da metterci, per esempio ${esempio}`, riga.numero);
+      }
+      l.avanti();
+      const espr = parseEspressione(l);
+      if (l.prossimoEOp(',')) err('sintassi', `\`insert\` aggiunge un cassetto alla volta: fra le tonde ci vanno solo la targhetta e un valore, per esempio ${esempio}`, riga.numero);
+      l.attesoOp(')', `Manca la parentesi tonda chiusa \`)\` di \`${nome}.insert\``);
+      this.fineRiga(l, riga);
+      return { k: 'insert', nome, indice, espr, riga: riga.numero };
+    }
     if (m.t !== 'nome' || m.v !== 'append') errMetodo(nome, l);
     l.avanti();
     l.attesoOp('(', `Dopo \`${nome}.append\` ci vuole la parentesi tonda aperta \`(\` con dentro quello da aggiungere`);
@@ -1370,6 +1421,27 @@ class Macchina {
       lista.push(valore);
       return;
     }
+    if (istr.k === 'insert') {
+      const lista = this.listaDi(istr.nome, 'insert', istr.riga);
+      const i = this.valuta(istr.indice, istr.riga);
+      if (typeof i !== 'number') {
+        if (typeof i === 'string' && /^\s*-?\d+\s*$/.test(i)) {
+          err('tipo', `La targhetta di \`insert\` dev'essere un numero, e «${i}» è un testo. ${RICORDA_INT}`, istr.riga);
+        }
+        err('tipo', `\`insert\` vuole prima la targhetta del cassetto nuovo, un numero, e poi quello da metterci: per esempio \`${istr.nome}.insert(0, "Luca")\``, istr.riga);
+      }
+      const valore = this.valuta(istr.espr, istr.riga);
+      if (lista.length >= MAX_CASSETTI) err('limite', `La lista \`${istr.nome}\` ha già ${MAX_CASSETTI} cassetti: sono troppi per questo gioco`, istr.riga);
+      // Come Python: una targhetta oltre la fine mette il cassetto in fondo, una negativa conta dalla fine.
+      const n = lista.length;
+      const k = i < 0 ? Math.max(0, n + i) : Math.min(i, n);
+      lista.splice(k, 0, valore);
+      return;
+    }
+    if (istr.k === 'pop') {
+      this.togli(istr.nome, istr.indice, istr.riga);
+      return;
+    }
     if (istr.k === 'assegnaIndice') {
       const lista = this.ambiente.get(istr.nome);
       if (lista === undefined) err('nome', `La lista \`${istr.nome}\` non esiste: non le hai mai dato un valore`, istr.riga);
@@ -1538,8 +1610,32 @@ class Macchina {
     }
   }
 
+  /** La lista `nome` su cui lavora un metodo: deve esistere ed essere una lista. */
+  private listaDi(nome: string, metodo: 'insert' | 'pop', riga: number): Valore[] {
+    const lista = this.ambiente.get(nome);
+    if (lista === undefined) err('nome', `La lista \`${nome}\` non esiste ancora: prima scrivi \`${nome} = [...]\``, riga);
+    if (!Array.isArray(lista)) {
+      const fa = metodo === 'insert' ? 'aggiunge un cassetto a' : 'toglie un cassetto da';
+      err('tipo', `\`${metodo}\` ${fa} una lista, ma \`${nome}\` è ${descrivi(lista)}`, riga);
+    }
+    return lista;
+  }
+
+  /** `lista.pop()` / `lista.pop(i)`: toglie il cassetto e dà quello che c'era dentro. */
+  private togli(nome: string, indice: Espr | null, riga: number): Valore {
+    const lista = this.listaDi(nome, 'pop', riga);
+    if (lista.length === 0) {
+      err('limite', `La lista \`${nome}\` è vuota: \`pop\` non ha nessun cassetto da togliere (Python direbbe IndexError: pop from empty list)`, riga);
+    }
+    if (indice === null) return lista.pop() as Valore;
+    const k = posizione(lista, this.valuta(indice, riga), nome, riga, 'pop index out of range');
+    return lista.splice(k, 1)[0];
+  }
+
   private valuta(e: Espr, riga: number): Valore {
     switch (e.k) {
+      case 'pop':
+        return this.togli(e.nome, e.i, riga);
       case 'num':
         return e.v;
       case 'str':
@@ -1662,7 +1758,7 @@ function descrivi(v: Valore): string {
  * La targhetta `i` di un cassetto, controllata: un intero, e un cassetto che c'è. Le targhette
  * negative contano dal fondo, come in Python (`amici[-1]` è l'ultimo).
  */
-function posizione(contenitore: string | Valore[], i: Valore, nome: string | null, riga: number): number {
+function posizione(contenitore: string | Valore[], i: Valore, nome: string | null, riga: number, pythonDice = 'list index out of range'): number {
   const lista = Array.isArray(contenitore);
   const chi = nome ? `\`${nome}\`` : lista ? 'la lista' : 'il testo';
   if (typeof i !== 'number') {
@@ -1677,10 +1773,10 @@ function posizione(contenitore: string | Valore[], i: Valore, nome: string | nul
     err('limite', `Il testo ${chi} ha ${n} lettere, dalla 0 alla ${n - 1}: la lettera ${i} non c'è (Python direbbe IndexError: string index out of range)`, riga);
   }
   if (n === 0) {
-    err('limite', `La lista ${chi} è vuota: non ha nessun cassetto, nemmeno lo 0 (Python direbbe IndexError: list index out of range)`, riga);
+    err('limite', `La lista ${chi} è vuota: non ha nessun cassetto, nemmeno lo 0 (Python direbbe IndexError: ${pythonDice})`, riga);
   }
   const cassetti = n === 1 ? 'un cassetto solo, con la targhetta 0' : `${n} cassetti, con le targhette da 0 a ${n - 1}`;
-  err('limite', `Il cassetto ${i} non esiste: ${chi} ha ${cassetti} (Python direbbe IndexError: list index out of range)`, riga);
+  err('limite', `Il cassetto ${i} non esiste: ${chi} ha ${cassetti} (Python direbbe IndexError: ${pythonDice})`, riga);
 }
 
 /** Due liste uguali: stessi cassetti, nello stesso ordine, con lo stesso contenuto. */
@@ -1769,6 +1865,8 @@ function figli(e: Espr): Espr[] {
       return e.elementi;
     case 'indice':
       return [e.e, e.i];
+    case 'pop':
+      return e.i ? [e.i] : [];
     default:
       return [];
   }
@@ -1780,7 +1878,7 @@ function usaNome(e: Espr, nome: string): boolean {
 }
 
 /** Quante volte `cosa` compare dentro un'espressione: `input()`, `randint()`, una lista fra quadre, un cassetto aperto, `len()`. */
-function conta(e: Espr, cosa: 'input' | 'casuale' | 'lista' | 'indice' | 'len'): number {
+function conta(e: Espr, cosa: 'input' | 'casuale' | 'lista' | 'indice' | 'len' | 'pop'): number {
   return (e.k === cosa ? 1 : 0) + figli(e).reduce((n, f) => n + conta(f, cosa), 0);
 }
 
@@ -1791,14 +1889,24 @@ function nomiIn(e: Espr, out: Set<string> = new Set()): Set<string> {
   return out;
 }
 
+/** true se l'espressione toglie un cassetto (`pop`) da una delle liste `nomi`: anche così la lista cambia. */
+function toglieDa(e: Espr, nomi: Set<string>): boolean {
+  return (e.k === 'pop' && nomi.has(e.nome)) || figli(e).some((f) => toglieDa(f, nomi));
+}
+
 /** true se nel blocco (anche dentro `if` e cicli annidati) qualche istruzione assegna uno dei `nomi`. */
 function assegnaUnoDi(istruzioni: Istruzione[], nomi: Set<string>): boolean {
   return istruzioni.some((istr) => {
     switch (istr.k) {
       case 'assegna':
       case 'append':
+        return nomi.has(istr.nome) || toglieDa(istr.espr, nomi);
       case 'assegnaIndice':
+      case 'insert':
+      case 'pop':
         return nomi.has(istr.nome);
+      case 'print':
+        return istr.args.some((a) => toglieDa(a, nomi));
       case 'for':
         return nomi.has(istr.variabile) || assegnaUnoDi(istr.corpo, nomi);
       case 'while':
@@ -1833,6 +1941,8 @@ function struttura(corpo: Istruzione[]): Struttura {
     appendNelCiclo: 0,
     numIndici: 0,
     numLen: 0,
+    numInsert: 0,
+    numPop: 0,
   };
 
   const visita = (istruzioni: Istruzione[], dentroCiclo: boolean) => {
@@ -1848,6 +1958,7 @@ function struttura(corpo: Istruzione[]): Struttura {
       s.numListe += conta(e, 'lista');
       s.numIndici += conta(e, 'indice');
       s.numLen += conta(e, 'len');
+      s.numPop += conta(e, 'pop');
     };
     for (const istr of istruzioni) {
       if (istr.k === 'import') continue;
@@ -1872,6 +1983,17 @@ function struttura(corpo: Istruzione[]): Struttura {
         espressione(istr.espr);
         s.numAppend++;
         if (dentroCiclo) s.appendNelCiclo++;
+        continue;
+      }
+      if (istr.k === 'insert') {
+        espressione(istr.indice);
+        espressione(istr.espr);
+        s.numInsert++;
+        continue;
+      }
+      if (istr.k === 'pop') {
+        if (istr.indice) espressione(istr.indice);
+        s.numPop++;
         continue;
       }
       if (istr.k === 'assegnaIndice') {

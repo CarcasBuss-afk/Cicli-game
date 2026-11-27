@@ -72,6 +72,8 @@ export function descriviFatti(s: Struttura, giri: number): string[] {
     `append: ${s.numAppend} (di cui dentro un ciclo: ${s.appendNelCiclo})`,
     `cassetti aperti con le quadre (lista[i]): ${s.numIndici}`,
     `len(): ${s.numLen}`,
+    `insert (un cassetto messo in mezzo): ${s.numInsert}`,
+    `pop (un cassetto tolto): ${s.numPop}`,
   ];
 }
 

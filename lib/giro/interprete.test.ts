@@ -1087,3 +1087,54 @@ describe('le liste (il video «Le liste»)', () => {
     expect(esito.ok && esito.struttura).toMatchObject({ numListe: 1, numAppend: 1, appendNelCiclo: 1, numIndici: 1, numLen: 1 });
   });
 });
+
+describe('insert e pop: il cassetto messo in mezzo e quello tolto', () => {
+  it('insert mette un cassetto alla targhetta data, e quelli dopo scalano', () => {
+    expect(out('a = ["B", "C"]\na.insert(0, "A")\nprint(a)')).toEqual(["['A', 'B', 'C']"]);
+    expect(out('a = ["A", "C"]\na.insert(1, "B")\nprint(a[1], a[2], len(a))')).toEqual(['B C 3']);
+    expect(out('n = 2\na = [1, 2, 3]\na.insert(n - 1, 9)\nprint(a)')).toEqual(['[1, 9, 2, 3]']);
+  });
+
+  it('insert con le targhette di Python: oltre la fine va in fondo, negativa conta dalla fine', () => {
+    expect(out('a = [1, 2]\na.insert(10, 3)\nprint(a)')).toEqual(['[1, 2, 3]']);
+    expect(out('a = [1, 2]\na.insert(-1, 9)\nprint(a)')).toEqual(['[1, 9, 2]']);
+    expect(out('a = [1, 2]\na.insert(-10, 0)\nprint(a)')).toEqual(['[0, 1, 2]']);
+  });
+
+  it("pop toglie l'ultimo, o quello della targhetta, e dà quello che c'era", () => {
+    expect(out('a = ["A", "B", "C"]\nx = a.pop()\nprint(x)\nprint(a)')).toEqual(['C', "['A', 'B']"]);
+    expect(out('a = ["A", "B", "C"]\nx = a.pop(0)\nprint(x, a)')).toEqual(["A ['B', 'C']"]);
+    expect(out('a = ["A", "B", "C"]\na.pop(1)\nprint(a)')).toEqual(["['A', 'C']"]);
+    expect(out('a = ["A", "B"]\nprint(f"Tolta: {a.pop()}")\nprint(len(a))')).toEqual(['Tolta: B', '1']);
+    expect(out('a = [1, 2, 3]\nprint(a.pop(-1))')).toEqual(['3']);
+  });
+
+  it('gli errori di insert e pop dicono dove guardare', () => {
+    expect(errore('a = []\na.pop()').messaggio).toContain('pop from empty list');
+    expect(errore('a = [1]\na.pop(3)').messaggio).toContain('pop index out of range');
+    expect(errore('a = [1]\na.insert("Luca")').messaggio).toContain('due cose');
+    expect(errore('a = [1]\na.insert()').messaggio).toContain('vuoto');
+    expect(errore('a = [1]\na.insert(0, 1, 2)').messaggio).toContain('un cassetto alla volta');
+    expect(errore('a = [1]\nx = a.insert(0, 2)').messaggio).toContain('non dà un valore');
+    expect(errore('a = [1]\na.insert("0", 2)').messaggio).toContain('è un testo');
+    expect(errore('a = [1]\na.Insert(0, 2)').messaggio).toContain('minuscolo');
+    expect(errore('a = [1]\na.pop(0, 1)').messaggio).toContain('al massimo una targhetta');
+    expect(errore('a = [1]\na.pop').messaggio).toContain('parentesi tonde');
+    expect(errore('a = 5\na.pop()').messaggio).toContain('toglie un cassetto da una lista');
+    expect(errore('b.insert(0, 1)').messaggio).toContain('non esiste');
+    expect(errore('a = [1]\na.unshift(0)').messaggio).toContain('insert(0, ...)');
+    expect(errore('a = [1]\na.shift()').messaggio).toContain('pop(0)');
+    expect(errore('a = [1]\na.remove(1)').messaggio).toContain('`append`, `insert` e `pop`');
+  });
+
+  it('i fatti per il giudice contano insert e pop, anche dentro un calcolo', () => {
+    const esito = esegui('a = [1, 2]\na.insert(0, 5)\nx = a.pop()\na.pop(0)\nprint(x)');
+    expect(esito.ok && esito.struttura).toMatchObject({ numInsert: 1, numPop: 2 });
+  });
+
+  it('il while che svuota la lista con pop cambia la sua condizione', () => {
+    const esito = esegui('a = [1, 2, 3]\nwhile len(a) > 0:\n    print(a.pop())');
+    expect(esito.ok && esito.output).toEqual(['3', '2', '1']);
+    expect(esito.ok && esito.struttura.whileAggiornati).toBe(1);
+  });
+});

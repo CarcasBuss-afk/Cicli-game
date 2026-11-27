@@ -23,7 +23,7 @@ import { fasiCassa, fasiParola, schedaCassa, schedaParola } from './compitiWhile
 import { fasiDistributore, fasiMenu, schedaDistributore, schedaMenu } from './compitiWhileMisti';
 import { fasiDado, fasiDuello, fasiIndovina, schedaDado, schedaDuello, schedaIndovina } from './compitiWhileCaso';
 import { fasiPatentinoWhile, schedaPatentinoWhile } from './compitiPatentinoWhile';
-import { fasiArrivo, fasiBiglietti, fasiInvitati, fasiUscite, schedaArrivo, schedaBiglietti, schedaInvitati, schedaUscite } from './compitiListe';
+import { fasiArrivo, fasiBiglietti, fasiInvitati, fasiPlaylist, fasiUscite, schedaArrivo, schedaBiglietti, schedaInvitati, schedaPlaylist, schedaUscite } from './compitiListe';
 import { esempiDelCompito } from './esempi';
 
 export type CompitoId =
@@ -53,6 +53,7 @@ export type CompitoId =
   | 'patentinoWhile'
   | 'invitati'
   | 'arrivo'
+  | 'playlist'
   | 'biglietti'
   | 'uscite';
 
@@ -485,6 +486,7 @@ const PROGETTI: Record<CompitoId, { fasi: (seme: number) => Esercizio[]; scheda:
   patentinoWhile: { fasi: fasiPatentinoWhile, scheda: schedaPatentinoWhile },
   invitati: { fasi: fasiInvitati, scheda: schedaInvitati },
   arrivo: { fasi: fasiArrivo, scheda: schedaArrivo },
+  playlist: { fasi: fasiPlaylist, scheda: schedaPlaylist },
   biglietti: { fasi: fasiBiglietti, scheda: schedaBiglietti },
   uscite: { fasi: fasiUscite, scheda: schedaUscite },
 };
@@ -512,8 +514,8 @@ export interface Sezione {
  * pettegolezzo (`*=`) · distributore (monete finché basta) · menu (la sentinella con l'if) ·
  * indovina il numero (`randint`) · dado (`randint` nel ciclo) · duello (il gioco intero) ·
  * il patentino dei cicli while. La terza, le liste (§26, §28), cresce con i video della serie:
- * dal primo gli invitati della festa (la cassettiera) e l'ordine d'arrivo (la posizione e la
- * targhetta), dal secondo i biglietti d'invito e le uscite in bici (il for che apre tutti i cassetti).
+ * dal primo gli invitati della festa (la cassettiera), l'ordine d'arrivo (la posizione e la
+ * targhetta) e la playlist della festa (`insert` e `pop`, §29), dal secondo i biglietti d'invito e le uscite in bici (il for che apre tutti i cassetti).
  */
 /* ------------------------------------------------------------ le note per il tutor */
 
@@ -575,7 +577,7 @@ export const SEZIONI: Sezione[] = [
   {
     id: 'liste',
     titolo: 'Le liste',
-    compiti: ['invitati', 'arrivo', 'biglietti', 'uscite'],
+    compiti: ['invitati', 'arrivo', 'playlist', 'biglietti', 'uscite'],
   },
 ];
 

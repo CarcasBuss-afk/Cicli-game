@@ -980,7 +980,7 @@ describe('le note per il tutor (PERCORSO.md §23)', () => {
   const conNota: CompitoId[] = ELENCO_COMPITI.filter((id) => !eEsame(id));
 
   it('ogni fase dei compiti con il tutor acceso (tutte le sezioni) ha una nota, con i parametri del compito dentro', () => {
-    expect(conNota).toHaveLength(26);
+    expect(conNota).toHaveLength(27);
     for (const id of conNota) {
       for (const seme of [1, 7, 42]) {
         const fasi = generaCompito(id, seme);
@@ -1284,6 +1284,78 @@ describe("l'ordine d'arrivo (la posizione e la targhetta)", () => {
   });
 });
 
+describe('la playlist della festa (append, insert e pop)', () => {
+  const fasi = generaCompito('playlist', 23);
+
+  it('nessun ciclo: la lista cambia con append, insert e pop, che ci sono tutti e tre', () => {
+    for (const f of fasi) expect(f.soluzione).not.toMatch(/\b(for|while)\b/);
+    const finale = fasi[4].soluzione;
+    expect(finale).toContain('.append(');
+    expect(finale).toContain('.insert(0, ');
+    expect(finale).toContain('.insert(posto - 1, richiesta)');
+    expect(finale).toContain('.pop()');
+    expect(finale).toContain('.pop(salto - 1)');
+  });
+
+  it('alla fase 2 il cassetto 0 sovrascritto al posto di insert sbaglia già sulla prova mostrata', () => {
+    const f = fasi[1];
+    const preferita = f.soluzione.match(/insert\(0, "([^"]+)"\)/)![1];
+    const sovrascritta = f.soluzione.replace(`playlist.insert(0, "${preferita}")`, `playlist[0] = "${preferita}"`);
+    expect(valutaRisposta(f, sovrascritta).promosso).toBe(false);
+    expect(valutaRisposta(f, f.soluzione.replace('insert(0, ', 'insert(1, ')).promosso).toBe(false);
+    // gli argomenti scambiati: la targhetta dev'essere un numero
+    const scambiati = f.soluzione.replace(`insert(0, "${preferita}")`, `insert("${preferita}", 0)`);
+    expect(valutaRisposta(f, scambiati).promosso).toBe(false);
+  });
+
+  it("alla fase 3 pop(0) toglie la prima e sbaglia; stampare l'ultima prima di toglierla vale", () => {
+    const f = fasi[2];
+    expect(f.outputAtteso[0]).toMatch(/^Tolta: /);
+    expect(valutaRisposta(f, f.soluzione.replace('playlist.pop()', 'playlist.pop(0)')).promosso).toBe(false);
+    const prima = f.soluzione.replace(
+      'tolta = playlist.pop()\nprint(f"Tolta: {tolta}")',
+      'print(f"Tolta: {playlist[len(playlist) - 1]}")\nplaylist.pop()',
+    );
+    expect(valutaRisposta(f, prima).promosso).toBe(true);
+  });
+
+  it('alla fase 4 il posto usato come targhetta cade sulle prove nascoste, e una chiede il 1° posto', () => {
+    const f = fasi[3];
+    expect(f.prove!.map((p) => p.risposte[1])).toEqual(['3', '1', '5']);
+    expect(f.prove![1].output.at(-1)).toBe(`Si comincia con: ${f.prove![1].risposte[0]}`);
+    expect(valutaRisposta(f, f.soluzione.replace('insert(posto - 1, richiesta)', 'insert(posto, richiesta)')).promosso).toBe(false);
+    const aMano = f.soluzione.replace('playlist.insert(posto - 1, richiesta)', `playlist.insert(2, "${f.prove![0].risposte[0]}")`);
+    expect(esegui(aMano, { risposte: f.prove![0].risposte }).ok).toBe(true);
+    expect(valutaRisposta(f, aMano).promosso).toBe(false);
+  });
+
+  it("alla fase 5 il posto che non c'è è il secondo esempio, e `>=` o pop(salto) cadono sull'ultima", () => {
+    const f = fasi[4];
+    expect(f.esempi).toBe(2);
+    expect(f.prove![1].output[1]).toBe("Non c'è la canzone 8: in scaletta sono 7");
+    expect(f.prove![2].risposte.at(-1)).toBe('7');
+    expect(f.prove![0].output[1]).toMatch(/^Saltata: /);
+    expect(valutaRisposta(f, f.soluzione.replace('salto > len(playlist)', 'salto >= len(playlist)')).promosso).toBe(false);
+    expect(valutaRisposta(f, f.soluzione.replace('pop(salto - 1)', 'pop(salto)')).promosso).toBe(false);
+  });
+
+  it('la scheda ha le canzoni, i posti di prova e le tre domande sullo schermo', () => {
+    const scheda = schedaCompito('playlist', 23);
+    expect(scheda.titolo).toBe('La playlist della festa');
+    expect(scheda.committente).toContain('insert');
+    expect(scheda.committente).toContain('pop');
+    expect(scheda.dati.join('\n')).toContain('Posto da saltare di prova (fase 5): 2');
+    expect(scheda.schermoFinale?.filter((r) => r.k === 'in')).toHaveLength(3);
+  });
+
+  it('le regole nominano insert dalla fase 2 e pop dalla fase 3', () => {
+    expect(fasi[0].regola).not.toMatch(/insert|pop/);
+    expect(fasi[1].regola).toContain('`insert`');
+    expect(fasi[1].regola).not.toContain('`pop`');
+    expect(fasi[2].regola).toContain('`pop`');
+  });
+});
+
 describe("i biglietti d'invito (il for che apre tutti i cassetti)", () => {
   const fasi = generaCompito('biglietti', 12);
 
@@ -1380,13 +1452,13 @@ describe('le uscite in bici (dove e cosa)', () => {
 });
 
 describe('la sezione delle liste segue i video', () => {
-  it('quattro compiti, due dal primo video e due dal secondo, e nessuno usa il while', () => {
-    expect(SEZIONI[2].compiti).toEqual(['invitati', 'arrivo', 'biglietti', 'uscite']);
+  it('cinque compiti, tre dal primo video e due dal secondo, e nessuno usa il while', () => {
+    expect(SEZIONI[2].compiti).toEqual(['invitati', 'arrivo', 'playlist', 'biglietti', 'uscite']);
     for (const id of SEZIONI[2].compiti) for (const f of generaCompito(id, 9)) expect(f.soluzione).not.toMatch(/\bwhile\b/);
   });
 
   it('i compiti del primo video non scorrono la lista con il for, quelli del secondo sì', () => {
-    for (const id of ['invitati', 'arrivo'] as const) for (const f of generaCompito(id, 9)) expect(f.soluzione).not.toMatch(/\bfor\b/);
+    for (const id of ['invitati', 'arrivo', 'playlist'] as const) for (const f of generaCompito(id, 9)) expect(f.soluzione).not.toMatch(/\bfor\b/);
     for (const id of ['biglietti', 'uscite'] as const) for (const f of generaCompito(id, 9)) expect(f.soluzione).toMatch(/\bfor\b/);
   });
 });

@@ -134,6 +134,7 @@ test.describe("l'Officina", () => {
       ['patentinoWhile', 'bloccato'],
       ['invitati', 'da-cominciare'],
       ['arrivo', 'bloccato'],
+      ['playlist', 'bloccato'],
       ['biglietti', 'bloccato'],
       ['uscite', 'bloccato'],
     ]);
@@ -143,7 +144,7 @@ test.describe("l'Officina", () => {
     expect(p.sezioni.map((s: { id: string; titolo: string; compiti: string[] }) => [s.id, s.titolo, s.compiti.length])).toEqual([
       ['for', 'Il ciclo for', 12],
       ['while', 'Il ciclo while', 12],
-      ['liste', 'Le liste', 4],
+      ['liste', 'Le liste', 5],
     ]);
 
     const bloccato = await officina(request, luca, 'compito', { classeId, compitoId: 'classifica' });

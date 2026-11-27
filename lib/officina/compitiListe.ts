@@ -1,23 +1,27 @@
 /* I compiti della sezione «Le liste» (PERCORSO.md §26 e §28): seguono i video della serie
- * (Traduzioni/python), e ogni compito usa solo quello che i video hanno già detto, più quello
- * che la classe sa dalle sezioni prima (`input()`, l'`if`, le f-string, accumulatore,
+ * (Traduzioni/python), e ogni compito usa solo quello che i video hanno già detto (tranne
+ * `insert` e `pop` nella playlist, spiegati dalle consegne), più quello che la classe sa dalle
+ * sezioni prima (`input()`, l'`if`, le f-string, accumulatore,
  * contatore, record).
  *
  * Primo video, «Le liste» (liste/): la lista fra quadre, il cassetto aperto con la sua
  * targhetta (da zero), `print` della lista intera, `append`, `len`, il cassetto che non c'è.
- * I cassetti si aprono uno alla volta.
+ * I cassetti si aprono uno alla volta, nessun ciclo.
  *   1. gli invitati della festa — primo, ultimo (len − 1), quanti; i ritardatari con `append`;
  *      l'invitato dell'ultimo minuto chiesto con `input()`; i posti della sala. Fase 1 guidata.
  *   2. l'ordine d'arrivo — la targhetta è la posizione meno uno: il podio, la maglia nera, chi
  *      è arrivato N°, il ritardatario, la posizione che non c'è.
+ *   3. la playlist della festa — la lista che cambia: `append` in fondo, `insert` in un posto
+ *      preciso, `pop` che toglie l'ultimo o quello di una targhetta. `insert` e `pop` il video non
+ *      li dice: li spiegano le consegne (deciso con Fabio il 27 novembre, PERCORSO.md §29).
  *
  * Secondo video, «Aprire tutti i cassetti» (aprire_cassetti/): il `for` che scorre la lista,
  * `for i in range(len(lista))` quando serve anche la targhetta («dove e cosa»), `for x in lista`
  * quando bastano i valori («solo cosa»).
- *   3. i biglietti d'invito — un biglietto per invitato, numerato, i ritardatari che il ciclo
+ *   4. i biglietti d'invito — un biglietto per invitato, numerato, i ritardatari che il ciclo
  *      prende da solo, la seconda lista delle risposte letta con la stessa targhetta, quanti
  *      vengono. Fase 1 guidata.
- *   4. le uscite in bici — i km di ogni uscita, il totale, la più lunga e in quale uscita, quante
+ *   5. le uscite in bici — i km di ogni uscita, il totale, la più lunga e in quale uscita, quante
  *      raggiungono un obiettivo chiesto con `input()`.
  *
  * La lista che si riempie con un `while` e la sentinella è il terzo video: qui non c'è.
@@ -403,7 +407,209 @@ function noteArrivo(p: ParametriArrivo): string[] {
   ];
 }
 
-/* ------------------------------------------------------------ 3. i biglietti d'invito */
+/* ------------------------------------------------------- 3. la playlist della festa */
+
+/** Titoli inventati, corti, senza apostrofi (la lista stampata li mette fra apici). */
+const CANZONI = [
+  'Onde lunghe', 'Notte in moto', 'Cuore di neon', 'Estate pazza', 'Ballo sul tetto', 'Corri forte', 'Mare calmo',
+  'Salto nel vuoto', 'Strade di vetro', 'Fuoco lento', 'Vento del sud', 'Ultimo treno', 'Cielo blu', 'Sabato sera',
+] as const;
+
+interface ParametriPlaylist {
+  festeggiato: string;
+  /** La playlist scritta nel programma. */
+  lista: string[];
+  /** Le due richieste degli amici, in fondo con `append` (fase 1); l'ultima è quella tolta con `pop` (fase 3). */
+  richieste: [string, string];
+  /** La canzone del festeggiato, in testa con `insert(0, ...)` (fase 2). */
+  preferita: string;
+  /** Le richieste da `input()` (fasi 4-5): quella della prova mostrata e due nascoste. */
+  chieste: [string, string, string];
+}
+
+function parametriPlaylist(seme: number): ParametriPlaylist {
+  const rnd = generatore(seme);
+  const festeggiato = FESTEGGIATI[Math.floor(rnd() * FESTEGGIATI.length)];
+  const titoli: string[] = [];
+  while (titoli.length < 10) {
+    const t = CANZONI[Math.floor(rnd() * CANZONI.length)];
+    if (!titoli.includes(t)) titoli.push(t);
+  }
+  return {
+    festeggiato,
+    lista: titoli.slice(0, 4),
+    richieste: [titoli[4], titoli[5]],
+    preferita: titoli[6],
+    chieste: [titoli[7], titoli[8], titoli[9]],
+  };
+}
+
+/** Il posto chiesto alla fase 4: il mostrato in mezzo, poi il primo e uno più in là (`insert(posto)` deve cadere). */
+const POSTI_RICHIESTA = [3, 1, 5] as const;
+/** Le canzoni in scaletta quando si salta (fase 5): 4 + 2 richieste + la preferita − la tolta + la chiesta. */
+const IN_SCALETTA = 7;
+/** Il posto da saltare (fase 5): uno che c'è, uno che non c'è (il secondo esempio), proprio l'ultimo (fa cadere `>=`). */
+const POSTI_SALTO = [2, IN_SCALETTA + 1, IN_SCALETTA] as const;
+
+const nonCe = (posto: number, quante: number) => `Non c'è la canzone ${posto}: in scaletta sono ${quante}`;
+
+/** La playlist dopo le fasi, e le righe che il programma stampa. */
+function righePlaylist(p: ParametriPlaylist, fase: 1 | 2 | 3 | 4 | 5, k = 0): string[] {
+  const playlist = [...p.lista, ...p.richieste];
+  const righe: string[] = [];
+  if (fase >= 2) playlist.unshift(p.preferita);
+  if (fase >= 3) righe.push(`Tolta: ${playlist.pop()}`);
+  if (fase >= 4) playlist.splice(POSTI_RICHIESTA[k] - 1, 0, p.chieste[k]);
+  if (fase === 5) {
+    const posto = POSTI_SALTO[k];
+    righe.push(posto > playlist.length ? nonCe(posto, playlist.length) : `Saltata: ${playlist.splice(posto - 1, 1)[0]}`);
+  }
+  righe.push(sdraiata(playlist), `Canzoni: ${playlist.length}`);
+  if (fase >= 2) righe.push(`Si comincia con: ${playlist[0]}`);
+  return righe;
+}
+
+function regolaPlaylist(fase: number): string {
+  const append = 'Le due richieste entrano in fondo alla lista con `append`, non riscrivendo la lista da capo; la lista si stampa con un `print` della lista e quante sono le canzoni lo dice `len`: niente numeri scritti a mano.';
+  const insert = fase >= 2 ? ' La canzone del festeggiato entra in testa con `insert` e la targhetta 0, non riscrivendo la lista, e la prima canzone esce dal cassetto 0: non valgono titoli scritti a mano nei `print`.' : '';
+  const pop = fase >= 3 ? " L'ultima canzone si toglie con `pop`, e il titolo stampato è quello che `pop` ha tolto (o quello letto dall'ultimo cassetto prima di toglierlo): non vale togliere l'`append` né scrivere il titolo a mano." : '';
+  const richiesta = fase >= 4 ? ' La canzone chiesta e il suo posto arrivano da `input()`, e la canzone entra con `insert` alla targhetta calcolata dal posto: non valgono titoli né targhette scritti a mano.' : '';
+  const salto =
+    fase === 5
+      ? ' Il posto da saltare arriva da `input()` con `int()`; se quel posto c\'è lo decide un `if` che confronta il posto con `len` della lista, e la canzone saltata si toglie con `pop` alla targhetta calcolata dal posto.'
+      : '';
+  return append + insert + pop + richiesta + salto;
+}
+
+export function fasiPlaylist(seme: number): Esercizio[] {
+  const p = parametriPlaylist(seme);
+  const { lista, richieste, preferita, chieste, festeggiato } = p;
+  const b = { ...base, terreno: 'collina' as const };
+  const domandaCanzone = 'Che canzone vuoi? ';
+  const domandaPosto = 'A che posto la metti? ';
+  const domandaSalto = 'Che posto salti? ';
+  const prove4: Prova[] = chieste.map((c, k) => ({ risposte: [c, String(POSTI_RICHIESTA[k])], output: righePlaylist(p, 4, k) }));
+  const prove5: Prova[] = chieste.map((c, k) => ({ risposte: [c, String(POSTI_RICHIESTA[k]), String(POSTI_SALTO[k])], output: righePlaylist(p, 5, k) }));
+  const fase = (n: 1 | 2 | 3 | 4 | 5, consegna: string, soluzione: string, outputAtteso: string[], extra: Partial<Esercizio> = {}): Esercizio => ({
+    ...b,
+    consegna,
+    outputAtteso,
+    soluzione,
+    regola: regolaPlaylist(n),
+    ...extra,
+  });
+
+  const scrittaLista = `playlist = ${scritta(lista)}`;
+  const aggiunte = richieste.map((c) => `playlist.append("${c}")`).join('\n');
+  const inTesta = `playlist.insert(0, "${preferita}")`;
+  const togli = 'tolta = playlist.pop()\nprint(f"Tolta: {tolta}")';
+  const chiedi = `richiesta = input("${domandaCanzone}")\nposto = int(input("${domandaPosto}"))\nplaylist.insert(posto - 1, richiesta)`;
+  const salta =
+    `salto = int(input("${domandaSalto}"))\nif salto > len(playlist):\n    print(f"Non c'è la canzone {salto}: in scaletta sono {len(playlist)}")\n` +
+    'else:\n    saltata = playlist.pop(salto - 1)\n    print(f"Saltata: {saltata}")';
+  const stampa = 'print(playlist)\nprint(f"Canzoni: {len(playlist)}")';
+  const prima = 'print(f"Si comincia con: {playlist[0]}")';
+  const r1 = `${scrittaLista}\n${aggiunte}\n${stampa}`;
+  const r2 = `${scrittaLista}\n${aggiunte}\n${inTesta}\n${stampa}\n${prima}`;
+  const r3 = `${scrittaLista}\n${aggiunte}\n${inTesta}\n${togli}\n${stampa}\n${prima}`;
+  const r4 = `${scrittaLista}\n${aggiunte}\n${inTesta}\n${togli}\n${chiedi}\n${stampa}\n${prima}`;
+  const r5 = `${scrittaLista}\n${aggiunte}\n${inTesta}\n${togli}\n${chiedi}\n${salta}\n${stampa}\n${prima}`;
+
+  return conNote([
+    fase(
+      1,
+      `**Fase 1 — le richieste.** Per la festa di ${festeggiato} c'è già la playlist: \`playlist = ${scritta(lista)}\`. Due amici chiedono ${elenco(richieste)}: ` +
+        `aggiungile **in fondo** con \`append\`, una per riga, senza riscrivere la lista. Poi stampa la playlist intera e \`Canzoni: ${lista.length + 2}\`, contate da \`len\`.`,
+      r1,
+      righePlaylist(p, 1),
+    ),
+    fase(
+      2,
+      `**Fase 2 — prima di tutte.** ${festeggiato} vuole che la festa cominci con la sua canzone, **${preferita}**. \`append\` mette solo in fondo: per mettere un cassetto ` +
+        `in un posto preciso c'è \`insert\`, che vuole due cose fra le tonde, separate da una virgola: **la targhetta** del cassetto nuovo e **quello da metterci**. ` +
+        `Con \`playlist.insert(0, ...)\` la canzone va nel cassetto 0, e tutte le altre scalano di un posto. Mettila dopo le richieste, prima dei \`print\`, ` +
+        `e in fondo stampa \`Si comincia con: ${preferita}\`, prendendo il titolo dal primo cassetto.`,
+      r2,
+      righePlaylist(p, 2),
+    ),
+    fase(
+      3,
+      `**Fase 3 — una di troppo.** La festa dura poco: l'ultima canzone, **${richieste[1]}**, non ci sta più. Per togliere un cassetto c'è \`pop\`: \`playlist.pop()\`, con le tonde vuote, ` +
+        `toglie **l'ultimo** e ti dà quello che c'era dentro, così lo puoi mettere in una variabile (\`tolta = playlist.pop()\`). Toglila subito dopo l'\`insert\` e stampa ` +
+        `\`Tolta: ${richieste[1]}\` con il titolo che \`pop\` ti ha dato. Le righe dopo trovano da sole la playlist più corta.`,
+      r3,
+      righePlaylist(p, 3),
+    ),
+    fase(
+      4,
+      `**Fase 4 — la richiesta.** Durante la festa un amico chiede una canzone e dice anche a che posto vuole sentirla. Dopo il \`pop\` chiedi \`${domandaCanzone}\` e poi ` +
+        `\`${domandaPosto}\` (con \`int()\`), e metti la canzone nella playlist con \`insert\`. Attenzione: il posto **non** è la targhetta. Chi vuole la sua canzone al 3° posto ` +
+        `quante canzoni vuole prima? Risposte di prova: **${chieste[0]}**, poi **${POSTI_RICHIESTA[0]}**; il programma deve funzionare con ogni canzone e ogni posto.`,
+      r4,
+      prove4[0].output,
+      { prove: prove4 },
+    ),
+    fase(
+      5,
+      `**Fase 5 — la canzone da saltare.** Una canzone proprio non piace: chiedi \`${domandaSalto}\` con \`int()\` e toglila con \`pop\`, che con una targhetta fra le tonde ` +
+        `(\`playlist.pop(0)\` toglie la prima) toglie quel cassetto e non l'ultimo. Stampa \`Saltata: …\` con il titolo tolto. Ma il posto potrebbe non esserci: prima di togliere, un \`if\` che ` +
+        `lo confronta con quante canzoni ci sono, e se è oltre stampa \`Non c'è la canzone ${IN_SCALETTA + 1}: in scaletta sono ${IN_SCALETTA}\` (con il posto chiesto e il numero vero). ` +
+        `Tutto prima dei \`print\` della playlist. Risposte di prova: **${chieste[0]}**, **${POSTI_RICHIESTA[0]}**, poi **${POSTI_SALTO[0]}**.`,
+      r5,
+      prove5[0].output,
+      { prove: prove5 },
+    ),
+  ], notePlaylist(p));
+}
+
+export function schedaPlaylist(seme: number): SchedaCompito {
+  const p = parametriPlaylist(seme);
+  return {
+    id: 'playlist',
+    titolo: 'La playlist della festa',
+    committente:
+      `Alla festa di ${p.festeggiato} la musica la decide un programma: la playlist è una lista, e durante la festa cambia. Le canzoni nuove si aggiungono in fondo ` +
+      `con \`append\` o in un posto preciso con \`insert\`, quelle che non servono più si tolgono con \`pop\`. Il programma stampa sempre la playlist com'è adesso.`,
+    prodotto: 'La playlist della festa: le richieste in fondo, la canzone del festeggiato in testa, una tolta, una chiesta al posto giusto e una saltata, se quel posto c\'è.',
+    dati: [
+      `Festeggiato: ${p.festeggiato}`,
+      `Playlist di partenza: ${p.lista.join(', ')}`,
+      `Richieste degli amici (fase 1): ${p.richieste.join(', ')}`,
+      `La canzone di ${p.festeggiato} (fase 2): ${p.preferita}`,
+      `Canzone chiesta e posto di prova (fasi 4-5): ${p.chieste[0]}, al ${POSTI_RICHIESTA[0]}° posto`,
+      `Posto da saltare di prova (fase 5): ${POSTI_SALTO[0]}`,
+    ],
+    outputFinale: righePlaylist(p, 5),
+  };
+}
+
+function notePlaylist(p: ParametriPlaylist): string[] {
+  const { lista, richieste, preferita, chieste } = p;
+  return [
+    `Dopo la lista due righe playlist.append("${richieste[0]}") e playlist.append("${richieste[1]}"), poi print(playlist) e il print con len(playlist). ` +
+      "Far capire: append (dal video) aggiunge un cassetto in fondo, e i print dopo vedono la lista cresciuta. " +
+      'Errori tipici: le richieste aggiunte riscrivendo la lista fra quadre (passa l\'output, il giudice lo boccia), gli append dopo i print, ' +
+      `il ${lista.length + 2} scritto a mano nel testo, append con due titoli insieme (errore), le virgolette dimenticate intorno al titolo.`,
+    `Dopo gli append: playlist.insert(0, "${preferita}"), poi i print di prima e in fondo print(f"Si comincia con: {playlist[0]}"). ` +
+      "insert non è nel video: va detto a parole che vuole prima la targhetta e poi il valore, separati da una virgola, e che i cassetti dopo scalano di uno (nessuno viene sovrascritto). " +
+      `Errori tipici: gli argomenti scambiati, insert("${preferita}", 0) (errore: la targhetta dev'essere un numero), playlist[0] = "${preferita}" (sovrascrive ${lista[0]} invece di spingerla avanti), ` +
+      `insert(1, ...) pensando al «primo posto», il titolo scritto a mano nel print di Si comincia (il giudice lo boccia).`,
+    `Subito dopo l'insert: tolta = playlist.pop() e print(f"Tolta: {tolta}") (va bene anche stampare playlist[len(playlist) - 1] prima del pop). ` +
+      "pop non è nel video: va detto che toglie l'ultimo cassetto e dà quello che c'era, per questo si può mettere a destra dell'uguale. " +
+      `Errori tipici: togliere l'append di ${richieste[1]} invece di usare pop e stampare il titolo a mano (passa l'output, il giudice lo boccia), ` +
+      `pop(0) (toglie ${preferita}, la prima), il pop messo dopo i print, print(f"Tolta: {playlist.pop}") senza le tonde.`,
+    `Dopo il pop: richiesta = input(...), posto = int(input(...)), playlist.insert(posto - 1, richiesta). ` +
+      `Far capire: il posto è la targhetta più uno, come nell'ordine d'arrivo; al ${POSTI_RICHIESTA[0]}° posto vanno ${POSTI_RICHIESTA[0] - 1} canzoni prima, quindi targhetta ${POSTI_RICHIESTA[0] - 1}. ` +
+      `Errori tipici: insert(posto, richiesta) (la mette un posto più in là: cade sulle prove nascoste, una chiede il 1° posto e allora cambia anche «Si comincia con»), ` +
+      `insert(posto - 1, "richiesta") con le virgolette, il titolo «${chieste[0]}» o il ${POSTI_RICHIESTA[0] - 1} scritti a mano, int dimenticato (la targhetta non è un numero), append al posto di insert.`,
+    `Dopo l'insert della richiesta: salto = int(input(...)); if salto > len(playlist): il print «Non c'è la canzone ...: in scaletta sono ...» con salto e len(playlist); else: saltata = playlist.pop(salto - 1) e print(f"Saltata: {saltata}"). ` +
+      `Far capire: con ${IN_SCALETTA} canzoni le targhette vanno da 0 a ${IN_SCALETTA - 1}, i posti da 1 a ${IN_SCALETTA}; pop con una targhetta toglie quel cassetto e non l'ultimo, e il controllo si fa prima di togliere. ` +
+      `Errori tipici: pop(salto) (toglie quella dopo, e con il posto ${IN_SCALETTA} cerca un cassetto che non c'è), >= al posto di > (sbaglia proprio sull'ultima: una prova nascosta lo controlla), ` +
+      `il ${IN_SCALETTA} scritto a mano nell'if o nel testo, l'if messo dopo i print della playlist (la playlist stampata ha ancora la canzone saltata).`,
+  ];
+}
+
+/* ------------------------------------------------------------ 4. i biglietti d'invito */
 
 interface ParametriBiglietti {
   festeggiato: string;
@@ -561,7 +767,7 @@ function noteBiglietti(p: ParametriBiglietti): string[] {
   ];
 }
 
-/* --------------------------------------------------------------- 4. le uscite in bici */
+/* --------------------------------------------------------------- 5. le uscite in bici */
 
 interface ParametriUscite {
   ciclista: string;

@@ -105,11 +105,12 @@ Un task alla volta, commit piccoli, test verdi prima di chiudere il task. Legger
 - [x] 13q. «Ripeti per esercitarti»: il compito finito si rifà da capo con numeri nuovi, come la prima volta, senza toccare il voto (12 novembre 2026; PERCORSO.md §25).
 - [ ] 13g. Dopo la prima lezione con le novità: rileggere dal database conversazioni, bozze ferme, registro del giudice ed errori per fase; confrontare con la prima settimana.
 
-## Task 14 — Le liste (PERCORSO.md §26, §28)
+## Task 14 — Le liste (PERCORSO.md §26, §28, §29)
 
 - [x] 14a. Il micro-interprete con le liste del primo video: `[...]`, `lista[i]`, `append`, `len`, `for x in lista`, `print` della lista come Python, l'`IndexError` a parole di cassettiera; i fatti nuovi per giudice e tutor; i suggerimenti dell'editor (26 novembre 2026).
 - [x] 14b. La sezione «Le liste» con i primi due compiti, su quello che il primo video ha detto: gli invitati della festa (fase 1 guidata) e l'ordine d'arrivo (26 novembre 2026).
 - [x] 14c. Il giudice torna a giudicare: Sonnet 5.5 rifiuta `thinking: disabled`, dal 30 ottobre tutti i verdetti erano `GUASTO`; ora `between_tools` (PERCORSO.md §27).
-- [ ] 14d. Fabio legge i testi dei quattro compiti; alla prima lezione dopo il deploy controllare nel registro che i verdetti non siano più `GUASTO` (il deploy della correzione è del 26 novembre).
+- [ ] 14d. Fabio legge i testi dei cinque compiti; alla prima lezione dopo il deploy controllare nel registro che i verdetti non siano più `GUASTO` (il deploy della correzione è del 26 novembre).
 - [x] 14e. La sezione segue i video (PERCORSO.md §28): le fasi 4-5 di invitati e ordine d'arrivo rifatte senza il `while` che riempie la lista (è il terzo video); dal secondo video, «Aprire tutti i cassetti», i biglietti d'invito (fase 1 guidata) e le uscite in bici; l'hint delle righe mancanti riconosce il ciclo che gira poco anche quando ogni giro apre un cassetto diverso (26 novembre 2026).
+- [x] 14g. La playlist della festa, terza della sezione (PERCORSO.md §29): `append`, `insert` e `pop`, chiesti da Fabio anche se il primo video dice solo `append`; nell'interprete `insert` e `pop` (anche dentro un calcolo), i fatti `numInsert`/`numPop`, i suggerimenti dell'editor (27 novembre 2026).
 - [ ] 14f. I compiti dopo il terzo video (il `while` che riempie la cassettiera, con la sentinella): da decidere con Fabio partendo dal suo copione.
